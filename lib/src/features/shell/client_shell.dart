@@ -10,6 +10,7 @@ import 'package:reservpy/src/features/reservations/search_business_screen.dart';
 import 'package:reservpy/src/features/reservations/my_reservations_screen.dart';
 import 'package:reservpy/src/features/map/explore_map_screen.dart';
 import 'package:reservpy/src/features/profile/profile_screen.dart';
+import 'package:reservpy/src/features/notifications/notification_panel.dart';
 import 'package:go_router/go_router.dart';
 
 /// Client navigation shell with responsive layout:
@@ -236,27 +237,30 @@ class _ClientDesktopSidebar extends ConsumerWidget {
                   child: const Icon(Icons.calendar_month_rounded, color: Colors.white, size: 18),
                 ),
                 const SizedBox(width: 10),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'ReservPy',
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: colorScheme.onSurface,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'ReservPy',
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: colorScheme.onSurface,
+                        ),
                       ),
-                    ),
-                    Text(
-                      'Panel de cliente',
-                      style: GoogleFonts.inter(
-                        fontSize: 10,
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.w500,
+                      Text(
+                        'Panel de cliente',
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+                const NotificationBell(),
               ],
             ),
           ),
