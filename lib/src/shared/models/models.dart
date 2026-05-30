@@ -478,6 +478,8 @@ class Reservation {
   final String? clientName;
   final String? serviceName;
   final String? businessName;
+  final String? employeeId;
+  final String? employeeName;
 
   const Reservation({
     required this.id,
@@ -493,6 +495,8 @@ class Reservation {
     this.clientName,
     this.serviceName,
     this.businessName,
+    this.employeeId,
+    this.employeeName,
   });
 
   factory Reservation.fromJson(Map<String, dynamic> json) => Reservation(
@@ -513,6 +517,8 @@ class Reservation {
     clientName: json['profiles'] != null ? '${json['profiles']['first_name']} ${json['profiles']['last_name']}' : null,
     serviceName: json['services'] != null ? json['services']['name'] as String? : null,
     businessName: json['businesses'] != null ? json['businesses']['name'] as String? : null,
+    employeeId: json['employee_id'] as String?,
+    employeeName: json['employee_name'] as String?,
   );
 
   Map<String, dynamic> toJson() => {
@@ -524,6 +530,8 @@ class Reservation {
     'status': status.name,
     'notes': notes,
     'cancellation_reason': cancellationReason,
+    'employee_id': employeeId,
+    'employee_name': employeeName,
   };
 
   Reservation copyWith({ReservationStatus? status, String? cancellationReason}) {
@@ -541,6 +549,8 @@ class Reservation {
       clientName: clientName,
       serviceName: serviceName,
       businessName: businessName,
+      employeeId: employeeId,
+      employeeName: employeeName,
     );
   }
 }
@@ -592,6 +602,82 @@ class DashboardStats {
   });
 }
 
+/// Business review left by a client.
+class Review {
+  final String id;
+  final String businessId;
+  final String clientId;
+  final String? reservationId;
+  final int rating;
+  final String comment;
+  final DateTime createdAt;
+  final String? clientName;
+
+  const Review({
+    required this.id,
+    required this.businessId,
+    required this.clientId,
+    this.reservationId,
+    required this.rating,
+    this.comment = '',
+    required this.createdAt,
+    this.clientName,
+  });
+
+  factory Review.fromJson(Map<String, dynamic> json) => Review(
+    id: json['id'] as String,
+    businessId: json['business_id'] as String,
+    clientId: json['client_id'] as String,
+    reservationId: json['reservation_id'] as String?,
+    rating: json['rating'] as int,
+    comment: json['comment'] as String? ?? '',
+    createdAt: DateTime.parse(json['created_at'] as String),
+    clientName: json['client_name'] as String?,
+  );
+}
+
+/// In-app notification.
+enum NotificationType { newReservation, cancellation, reminder, system }
+
+class AppNotification {
+  final String id;
+  final String userId;
+  final String? businessId;
+  final NotificationType type;
+  final String title;
+  final String body;
+  final bool isRead;
+  final DateTime createdAt;
+  final String? reservationId;
+
+  const AppNotification({
+    required this.id,
+    required this.userId,
+    this.businessId,
+    required this.type,
+    required this.title,
+    required this.body,
+    this.isRead = false,
+    required this.createdAt,
+    this.reservationId,
+  });
+
+  factory AppNotification.fromJson(Map<String, dynamic> json) => AppNotification(
+    id: json['id'] as String,
+    userId: json['user_id'] as String,
+    businessId: json['business_id'] as String?,
+    type: NotificationType.values.firstWhere(
+      (e) => e.name == (json['type'] as String? ?? 'system'),
+      orElse: () => NotificationType.system,
+    ),
+    title: json['title'] as String? ?? '',
+    body: json['body'] as String? ?? '',
+    isRead: json['is_read'] as bool? ?? false,
+    createdAt: DateTime.parse(json['created_at'] as String),
+    reservationId: json['reservation_id'] as String?,
+  );
+}
+
 /// Enhanced dashboard statistics computed from real reservation data.
 class EnhancedDashboardStats {
   final int reservationsToday;
@@ -605,6 +691,8 @@ class EnhancedDashboardStats {
   final int completedCount;
   final List<Reservation> upcomingReservations;
   final List<Reservation> todayReservations;
+  final List<int> weeklyBreakdown;
+  final List<MapEntry<String, int>> topServices;
 
   const EnhancedDashboardStats({
     this.reservationsToday = 0,
@@ -618,5 +706,7 @@ class EnhancedDashboardStats {
     this.completedCount = 0,
     this.upcomingReservations = const [],
     this.todayReservations = const [],
+    this.weeklyBreakdown = const [0, 0, 0, 0, 0, 0, 0],
+    this.topServices = const [],
   });
 }

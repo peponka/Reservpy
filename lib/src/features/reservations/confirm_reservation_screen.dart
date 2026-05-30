@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
 
 import 'package:reservpy/src/shared/models/models.dart';
+import 'package:reservpy/src/shared/models/employee.dart';
 import 'package:reservpy/src/shared/models/category_fields.dart';
 import 'package:reservpy/src/shared/providers/providers.dart';
 import 'package:reservpy/src/core/widgets/widgets.dart';
@@ -15,6 +16,7 @@ import 'package:reservpy/src/core/constants/app_sizes.dart';
 import 'package:reservpy/src/core/constants/app_strings.dart';
 import 'package:reservpy/src/core/utils/date_utils.dart';
 import 'package:reservpy/src/data/repositories/reservation_repository.dart';
+import 'package:reservpy/src/data/repositories/notification_repository.dart';
 import 'package:reservpy/src/data/repositories/profile_repository.dart';
 import 'package:reservpy/src/data/services/email_service.dart';
 
@@ -45,6 +47,12 @@ class _ConfirmReservationScreenState
   bool _isSubmitting = false;
   final Map<String, dynamic> _fieldValues = {};
   final Map<String, TextEditingController> _fieldControllers = {};
+
+  // Recurring reservation
+  bool _isRecurring = false;
+  String _recurrenceType = 'weekly'; // weekly, biweekly, monthly
+  int _recurrenceCount = 3;
+  Employee? _selectedEmployee;
 
   @override
   void dispose() {
@@ -127,6 +135,8 @@ class _ConfirmReservationScreenState
       clientName: user.fullName,
       serviceName: service.name,
       businessName: business.name,
+      employeeId: _selectedEmployee?.id,
+      employeeName: _selectedEmployee?.name,
     );
 
     // Re-verify slot availability before creating (prevent race condition)
@@ -150,6 +160,55 @@ class _ConfirmReservationScreenState
       }
 
       await ReservationRepository().create(reservation);
+
+      // Create recurring reservations if enabled
+      if (_isRecurring) {
+        for (int i = 1; i <= _recurrenceCount; i++) {
+          final offset = _recurrenceType == 'weekly'
+              ? Duration(days: 7 * i)
+              : _recurrenceType == 'biweekly'
+                  ? Duration(days: 14 * i)
+                  : Duration(days: 0); // monthly handled below
+
+          DateTime nextStart;
+          if (_recurrenceType == 'monthly') {
+            nextStart = DateTime(
+              widget.selectedTime.year,
+              widget.selectedTime.month + i,
+              widget.selectedTime.day,
+              widget.selectedTime.hour,
+              widget.selectedTime.minute,
+            );
+          } else {
+            nextStart = widget.selectedTime.add(offset);
+          }
+          final nextEnd = nextStart.add(Duration(minutes: service.durationMinutes));
+
+          final recRes = Reservation(
+            id: _uuid.v4(),
+            businessId: widget.businessId,
+            clientId: user.id,
+            serviceId: widget.serviceId,
+            startTime: nextStart,
+            endTime: nextEnd,
+            status: ReservationStatus.pending,
+            notes: reservation.notes,
+            createdAt: DateTime.now(),
+            clientName: user.fullName,
+            serviceName: service.name,
+            businessName: business.name,
+            employeeId: _selectedEmployee?.id,
+            employeeName: _selectedEmployee?.name,
+          );
+          // Best-effort: skip unavailable slots silently
+          try {
+            final avail = await ReservationRepository().isSlotAvailable(
+              widget.businessId, nextStart, nextEnd,
+            );
+            if (avail) await ReservationRepository().create(recRes);
+          } catch (_) {}
+        }
+      }
       ref.invalidate(businessReservationsProvider);
       ref.invalidate(clientReservationsProvider);
 
@@ -167,6 +226,16 @@ class _ConfirmReservationScreenState
           notes: reservation.notes,
         );
       }
+      // ── Notify business owner (fire-and-forget) ──
+      NotificationRepository().create(
+        userId: business.ownerId,
+        businessId: business.id,
+        type: NotificationType.newReservation,
+        title: 'Nueva reserva',
+        body: '${user.fullName} reservó ${service.name} para el ${DateFormat('dd/MM HH:mm', 'es').format(widget.selectedTime)}',
+        reservationId: reservation.id,
+      ).catchError((_) {});
+
       // Email al negocio
       ProfileRepository().getProfile(business.ownerId).then((owner) {
         if (owner != null && owner.email.isNotEmpty) {
@@ -442,6 +511,226 @@ class _ConfirmReservationScreenState
               hint: 'Algo más que quieras agregar...',
               prefixIcon: Icons.notes_rounded,
               maxLines: 2,
+            ),
+
+            const SizedBox(height: AppSizes.s24),
+
+            // ── Employee Selector ──
+            Consumer(
+              builder: (context, ref, _) {
+                final employees = ref.watch(employeesProvider).value ?? [];
+                final activeEmployees = employees.where((e) => e.isActive).toList();
+                if (activeEmployees.isEmpty) return const SizedBox.shrink();
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '¿Con quién preferís?',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Elegí un profesional (opcional)',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.outline,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        // "Sin preferencia" chip
+                        ChoiceChip(
+                          label: Text('Sin preferencia',
+                              style: TextStyle(
+                                fontWeight: _selectedEmployee == null
+                                    ? FontWeight.w700
+                                    : FontWeight.w400,
+                                fontSize: 13,
+                              )),
+                          selected: _selectedEmployee == null,
+                          selectedColor: theme.colorScheme.primary.withValues(alpha: 0.12),
+                          checkmarkColor: theme.colorScheme.primary,
+                          side: BorderSide(
+                            color: _selectedEmployee == null
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.outline.withValues(alpha: 0.2),
+                          ),
+                          onSelected: (_) => setState(() => _selectedEmployee = null),
+                        ),
+                        ...activeEmployees.map((emp) {
+                          final isSelected = _selectedEmployee?.id == emp.id;
+                          return ChoiceChip(
+                            avatar: CircleAvatar(
+                              backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.2),
+                              radius: 12,
+                              child: Text(emp.initials,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: theme.colorScheme.primary,
+                                  )),
+                            ),
+                            label: Text(emp.name,
+                                style: TextStyle(
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                                  fontSize: 13,
+                                )),
+                            selected: isSelected,
+                            selectedColor: theme.colorScheme.primary.withValues(alpha: 0.12),
+                            checkmarkColor: theme.colorScheme.primary,
+                            side: BorderSide(
+                              color: isSelected
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.outline.withValues(alpha: 0.2),
+                            ),
+                            onSelected: (_) => setState(() => _selectedEmployee = emp),
+                          );
+                        }),
+                      ],
+                    ),
+                    const SizedBox(height: AppSizes.s16),
+                  ],
+                );
+              },
+            ),
+
+            // ── Recurring Toggle ──
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: _isRecurring
+                    ? theme.colorScheme.primary.withValues(alpha: 0.04)
+                    : theme.cardTheme.color,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: _isRecurring
+                      ? theme.colorScheme.primary.withValues(alpha: 0.2)
+                      : theme.colorScheme.outline.withValues(alpha: 0.1),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.repeat_rounded, size: 20,
+                          color: _isRecurring
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.outline),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Repetir turno',
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w700)),
+                            Text('Reservar automáticamente las próximas semanas',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.outline)),
+                          ],
+                        ),
+                      ),
+                      Switch.adaptive(
+                        value: _isRecurring,
+                        onChanged: (v) => setState(() => _isRecurring = v),
+                      ),
+                    ],
+                  ),
+                  if (_isRecurring) ...[
+                    const SizedBox(height: 16),
+                    // Type selector
+                    Row(
+                      children: [
+                        _RecurrenceChip(
+                          label: 'Semanal',
+                          selected: _recurrenceType == 'weekly',
+                          onTap: () => setState(() => _recurrenceType = 'weekly'),
+                          color: theme.colorScheme.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        _RecurrenceChip(
+                          label: 'Quincenal',
+                          selected: _recurrenceType == 'biweekly',
+                          onTap: () => setState(() => _recurrenceType = 'biweekly'),
+                          color: theme.colorScheme.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        _RecurrenceChip(
+                          label: 'Mensual',
+                          selected: _recurrenceType == 'monthly',
+                          onTap: () => setState(() => _recurrenceType = 'monthly'),
+                          color: theme.colorScheme.primary,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    // Count selector
+                    Row(
+                      children: [
+                        Text('Repeticiones:',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600)),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.remove_circle_outline_rounded, size: 24),
+                          onPressed: _recurrenceCount > 2
+                              ? () => setState(() => _recurrenceCount--)
+                              : null,
+                        ),
+                        Text('$_recurrenceCount',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w800)),
+                        IconButton(
+                          icon: const Icon(Icons.add_circle_outline_rounded, size: 24),
+                          onPressed: _recurrenceCount < 8
+                              ? () => setState(() => _recurrenceCount++)
+                              : null,
+                        ),
+                      ],
+                    ),
+                    // Preview dates
+                    const SizedBox(height: 8),
+                    ...List.generate(_recurrenceCount, (i) {
+                      DateTime nextDate;
+                      if (_recurrenceType == 'weekly') {
+                        nextDate = widget.selectedTime.add(Duration(days: 7 * (i + 1)));
+                      } else if (_recurrenceType == 'biweekly') {
+                        nextDate = widget.selectedTime.add(Duration(days: 14 * (i + 1)));
+                      } else {
+                        nextDate = DateTime(
+                          widget.selectedTime.year,
+                          widget.selectedTime.month + (i + 1),
+                          widget.selectedTime.day,
+                          widget.selectedTime.hour,
+                          widget.selectedTime.minute,
+                        );
+                      }
+                      final dayName = DateFormat('EEEE', 'es').format(nextDate);
+                      final cap = dayName[0].toUpperCase() + dayName.substring(1);
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          children: [
+                            Icon(Icons.event_rounded, size: 14,
+                                color: theme.colorScheme.primary.withValues(alpha: 0.6)),
+                            const SizedBox(width: 8),
+                            Text(
+                              '$cap ${DateFormat('dd/MM').format(nextDate)} - ${DateFormat('HH:mm').format(nextDate)}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.outline),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
+                ],
+              ),
             ),
 
             const SizedBox(height: AppSizes.s32),
@@ -722,6 +1011,51 @@ class _SummaryRow extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Chip for selecting recurrence type (weekly/biweekly/monthly).
+class _RecurrenceChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final Color color;
+
+  const _RecurrenceChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? color.withValues(alpha: 0.1) : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: selected ? color : Theme.of(context).colorScheme.outline.withValues(alpha: 0.15),
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              color: selected ? color : Theme.of(context).colorScheme.outline,
+            ),
+          ),
+        ),
       ),
     );
   }

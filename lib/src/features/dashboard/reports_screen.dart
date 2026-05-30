@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:math' as math;
+import 'dart:convert';
+import 'dart:ui' as dart_ui;
+import 'package:web/web.dart' as web;
+import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
 import '../../core/widgets/widgets.dart';
@@ -37,141 +41,27 @@ class ReportsScreen extends ConsumerWidget {
     final periodDays = _periodToDays(period);
     final reportsAsync = ref.watch(reportsDataProvider(periodDays));
 
-    return Stack(
-      children: [
-        // Reports content (blurred behind paywall)
-        reportsAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, stack) => Center(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSizes.s24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.error_outline, size: 48, color: AppColors.error),
-                  const SizedBox(height: AppSizes.s16),
-                  Text('Error al cargar los reportes',
-                      style: Theme.of(context).textTheme.titleMedium),
-                ],
-              ),
-            ),
-          ),
-          data: (data) => _ReportsBody(
-            period: period,
-            reservations: data.reservations,
-            services: data.services,
+    return reportsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSizes.s24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: AppColors.error),
+              const SizedBox(height: AppSizes.s16),
+              Text('Error al cargar los reportes',
+                  style: Theme.of(context).textTheme.titleMedium),
+            ],
           ),
         ),
-
-        // Premium overlay
-        Positioned.fill(
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.white.withValues(alpha: 0.0),
-                  Colors.white.withValues(alpha: 0.85),
-                  Colors.white.withValues(alpha: 0.95),
-                  Colors.white,
-                ],
-                stops: const [0.0, 0.25, 0.45, 0.6],
-              ),
-            ),
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(height: 120),
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFFFD700).withValues(alpha: 0.3),
-                            blurRadius: 20,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(Icons.diamond_rounded,
-                          size: 48, color: Colors.white),
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      'Reportes Premium',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFF1A1A2E),
-                          ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Accedé a métricas detalladas, ingresos,\nhoras pico y análisis de clientes.',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.grey.shade600,
-                            height: 1.5,
-                          ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      alignment: WrapAlignment.center,
-                      children: [
-                        _PremiumFeatureChip(icon: Icons.trending_up_rounded, label: 'Ingresos'),
-                        _PremiumFeatureChip(icon: Icons.people_rounded, label: 'Clientes'),
-                        _PremiumFeatureChip(icon: Icons.schedule_rounded, label: 'Horas pico'),
-                        _PremiumFeatureChip(icon: Icons.star_rounded, label: 'Top servicios'),
-                      ],
-                    ),
-                    const SizedBox(height: 28),
-                    SizedBox(
-                      width: 260,
-                      height: 52,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Próximamente: planes Premium para tu negocio'),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.diamond_rounded, size: 20),
-                        label: const Text('Pasar a Premium',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFFD700),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: Text('Más tarde',
-                          style: TextStyle(color: Colors.grey.shade500, fontSize: 14)),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
+      ),
+      data: (data) => _ReportsBody(
+        period: period,
+        reservations: data.reservations,
+        services: data.services,
+      ),
     );
   }
 }
@@ -240,6 +130,10 @@ class _ReportsBody extends ConsumerWidget {
               children: [
                 // ── 1. Header + period selector ──
                 _Header(period: period),
+                const SizedBox(height: AppSizes.s16),
+
+                // ── Export Excel/CSV ──
+                _ExportSection(reservations: reservations, services: services),
                 const SizedBox(height: AppSizes.s24),
 
                 // ── 2. Revenue Overview ──
@@ -590,7 +484,7 @@ class _BarChartPainter extends CustomPainter {
               fontWeight: FontWeight.w700,
             ),
           ),
-          textDirection: TextDirection.ltr,
+          textDirection: dart_ui.TextDirection.ltr,
         )..layout();
         tp.paint(
           canvas,
@@ -1455,4 +1349,292 @@ String _extractInitials(String name) {
     return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
   }
   return name.isNotEmpty ? name[0].toUpperCase() : '?';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  7. EXPORT EXCEL/CSV
+// ═══════════════════════════════════════════════════════════
+
+class _ExportSection extends StatelessWidget {
+  final List<Reservation> reservations;
+  final List<ServiceModel> services;
+
+  const _ExportSection({
+    required this.reservations,
+    required this.services,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AppCard(
+      padding: const EdgeInsets.all(AppSizes.s20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(AppSizes.s8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF217346).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+                ),
+                child: const Icon(Icons.table_chart_rounded,
+                    color: Color(0xFF217346), size: AppSizes.iconLg),
+              ),
+              const SizedBox(width: AppSizes.s12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Exportar para tu contador',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Descargá un archivo CSV compatible con Excel',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.outline,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSizes.s16),
+
+          // Export buttons row
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 44,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _exportCsv(context, reservations, services),
+                    icon: const Icon(Icons.download_rounded, size: 18),
+                    label: const Text('Exportar Reservas',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF217346),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSizes.s12),
+              Expanded(
+                child: SizedBox(
+                  height: 44,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _exportServicesSummary(context, reservations, services),
+                    icon: const Icon(Icons.summarize_rounded, size: 18),
+                    label: const Text('Resumen Servicios',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF217346),
+                      side: const BorderSide(color: Color(0xFF217346)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: AppSizes.s12),
+          Row(
+            children: [
+              Icon(Icons.info_outline_rounded,
+                  size: 14, color: theme.colorScheme.outline.withValues(alpha: 0.6)),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  '${reservations.length} registros en el período seleccionado',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.outline,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Generate and download a CSV with all reservation details.
+  void _exportCsv(
+    BuildContext context,
+    List<Reservation> reservations,
+    List<ServiceModel> services,
+  ) {
+    try {
+      final dateFormat = DateFormat('dd/MM/yyyy');
+      final timeFormat = DateFormat('HH:mm');
+
+      // Build a price map from services
+      final priceMap = <String, double>{};
+      for (final s in services) {
+        if (s.price != null) priceMap[s.id] = s.price!;
+      }
+
+      // BOM for Excel UTF-8 compatibility
+      final bom = '\uFEFF';
+      final header = 'Fecha,Hora Inicio,Hora Fin,Cliente,Servicio,Empleado,Estado,Monto (Gs.)';
+      final rows = reservations.map((r) {
+        final price = priceMap[r.serviceId] ?? 0;
+        final status = _statusLabel(r.status);
+        return [
+          dateFormat.format(r.startTime),
+          timeFormat.format(r.startTime),
+          timeFormat.format(r.endTime),
+          _escapeCsv(r.clientName ?? 'N/A'),
+          _escapeCsv(r.serviceName ?? 'N/A'),
+          _escapeCsv(r.employeeName ?? 'Sin asignar'),
+          status,
+          price.toStringAsFixed(0),
+        ].join(',');
+      }).join('\n');
+
+      final csvContent = '$bom$header\n$rows';
+      final bytes = utf8.encode(csvContent);
+      final base64Data = base64Encode(bytes);
+      final dataUri = 'data:text/csv;charset=utf-8;base64,$base64Data';
+
+      final anchor = web.document.createElement('a') as web.HTMLAnchorElement;
+      anchor.href = dataUri;
+      anchor.download = 'reservas_reporte.csv';
+      anchor.click();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Archivo CSV descargado'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al exportar: $e')),
+      );
+    }
+  }
+
+  /// Generate a summary CSV grouped by service.
+  void _exportServicesSummary(
+    BuildContext context,
+    List<Reservation> reservations,
+    List<ServiceModel> services,
+  ) {
+    try {
+      final priceMap = <String, double>{};
+      for (final s in services) {
+        if (s.price != null) priceMap[s.id] = s.price!;
+      }
+
+      // Aggregate by service
+      final serviceStats = <String, _ServiceExportRow>{};
+      for (final r in reservations.where((r) => r.status != ReservationStatus.cancelled)) {
+        final name = r.serviceName ?? 'Sin servicio';
+        final price = priceMap[r.serviceId] ?? 0;
+        final existing = serviceStats[name];
+        if (existing != null) {
+          serviceStats[name] = _ServiceExportRow(
+            name: name,
+            count: existing.count + 1,
+            revenue: existing.revenue + price,
+          );
+        } else {
+          serviceStats[name] = _ServiceExportRow(
+            name: name,
+            count: 1,
+            revenue: price,
+          );
+        }
+      }
+
+      final sorted = serviceStats.values.toList()
+        ..sort((a, b) => b.revenue.compareTo(a.revenue));
+
+      final totalRevenue = sorted.fold<double>(0, (s, r) => s + r.revenue);
+      final totalCount = sorted.fold<int>(0, (s, r) => s + r.count);
+
+      final bom = '\uFEFF';
+      final header = 'Servicio,Cantidad,Ingresos (Gs.),% del Total';
+      final rows = sorted.map((s) {
+        final pct = totalRevenue > 0 ? (s.revenue / totalRevenue * 100).toStringAsFixed(1) : '0';
+        return [
+          _escapeCsv(s.name),
+          s.count.toString(),
+          s.revenue.toStringAsFixed(0),
+          '$pct%',
+        ].join(',');
+      }).join('\n');
+
+      final totalRow = 'TOTAL,$totalCount,${totalRevenue.toStringAsFixed(0)},100%';
+      final csvContent = '$bom$header\n$rows\n\n$totalRow';
+      final bytes = utf8.encode(csvContent);
+      final base64Data = base64Encode(bytes);
+      final dataUri = 'data:text/csv;charset=utf-8;base64,$base64Data';
+
+      final anchor = web.document.createElement('a') as web.HTMLAnchorElement;
+      anchor.href = dataUri;
+      anchor.download = 'resumen_servicios.csv';
+      anchor.click();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Resumen de servicios descargado'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al exportar: $e')),
+      );
+    }
+  }
+
+  String _escapeCsv(String value) {
+    if (value.contains(',') || value.contains('"') || value.contains('\n')) {
+      return '"${value.replaceAll('"', '""')}"';
+    }
+    return value;
+  }
+
+  String _statusLabel(ReservationStatus s) {
+    switch (s) {
+      case ReservationStatus.pending:
+        return 'Pendiente';
+      case ReservationStatus.confirmed:
+        return 'Confirmada';
+      case ReservationStatus.completed:
+        return 'Completada';
+      case ReservationStatus.cancelled:
+        return 'Cancelada';
+    }
+  }
+}
+
+class _ServiceExportRow {
+  final String name;
+  final int count;
+  final double revenue;
+  const _ServiceExportRow({
+    required this.name,
+    required this.count,
+    required this.revenue,
+  });
 }

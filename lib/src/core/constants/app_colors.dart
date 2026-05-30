@@ -32,7 +32,7 @@ class AppColors {
 
   // ─── Semantic ──────────────────────────────────────────
   static const Color success = Color(0xFF2ED573);
-  static const Color warning = Color(0xFFFFA502);
+  static const Color warning = Color(0xFF5B8DEF);
   static const Color error = Color(0xFFFF4757);
   static const Color info = Color(0xFF3B82F6);
 
@@ -43,7 +43,7 @@ class AppColors {
   static const Color borderDark = Color(0xFF374151);
 
   // ─── Status Colors for Reservations ────────────────────
-  static const Color statusPending = Color(0xFFFFA502);
+  static const Color statusPending = Color(0xFF5B8DEF);
   static const Color statusConfirmed = Color(0xFF2ED573);
   static const Color statusCancelled = Color(0xFFFF4757);
   static const Color statusCompleted = Color(0xFF3B82F6);

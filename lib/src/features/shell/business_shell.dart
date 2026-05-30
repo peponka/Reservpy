@@ -18,6 +18,7 @@ import 'package:reservpy/src/features/business/clients_screen.dart';
 import 'package:reservpy/src/features/business/services_screen.dart';
 import 'package:reservpy/src/features/business/availability_screen.dart';
 import 'package:reservpy/src/features/dashboard/reports_screen.dart';
+import 'package:reservpy/src/features/notifications/notification_panel.dart';
 
 /// Business owner navigation shell with responsive layout:
 /// - Desktop (>=800px): Left sidebar navigation (like Reservly.com.ar)
@@ -250,26 +251,42 @@ class BusinessShell extends ConsumerWidget {
                   return SizedBox(
                     width: constraints.maxWidth,
                     height: constraints.maxHeight,
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      switchInCurve: Curves.easeOutCubic,
-                      switchOutCurve: Curves.easeInCubic,
-                      transitionBuilder: (Widget child, Animation<double> animation) {
-                        return FadeTransition(
-                          opacity: animation,
-                          child: SlideTransition(
-                            position: Tween<Offset>(
-                              begin: const Offset(0.0, 0.015),
-                              end: Offset.zero,
-                            ).animate(animation),
-                            child: child,
+                    child: Column(
+                      children: [
+                        // Notification bar
+                        Padding(
+                          padding: const EdgeInsets.only(right: 12, top: 8),
+                          child: Row(
+                            children: [
+                              const Spacer(),
+                              const NotificationBell(),
+                            ],
                           ),
-                        );
-                      },
-                      child: KeyedSubtree(
-                        key: ValueKey<int>(currentIndex),
-                        child: _buildActiveTab(currentIndex, ref),
-                      ),
+                        ),
+                        Expanded(
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 300),
+                            switchInCurve: Curves.easeOutCubic,
+                            switchOutCurve: Curves.easeInCubic,
+                            transitionBuilder: (Widget child, Animation<double> animation) {
+                              return FadeTransition(
+                                opacity: animation,
+                                child: SlideTransition(
+                                  position: Tween<Offset>(
+                                    begin: const Offset(0.0, 0.015),
+                                    end: Offset.zero,
+                                  ).animate(animation),
+                                  child: child,
+                                ),
+                              );
+                            },
+                            child: KeyedSubtree(
+                              key: ValueKey<int>(currentIndex),
+                              child: _buildActiveTab(currentIndex, ref),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   );
                 },

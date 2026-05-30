@@ -10,6 +10,11 @@ import 'package:reservpy/src/data/repositories/reports_repository.dart';
 import 'package:reservpy/src/data/repositories/employee_repository.dart';
 import 'package:reservpy/src/data/repositories/reservation_repository.dart';
 import 'package:reservpy/src/data/repositories/blocked_slot_repository.dart';
+import 'package:reservpy/src/data/repositories/notification_repository.dart';
+import 'package:reservpy/src/data/repositories/review_repository.dart';
+import 'package:reservpy/src/data/repositories/business_photo_repository.dart';
+import 'package:reservpy/src/data/repositories/favorite_repository.dart';
+import 'package:reservpy/src/data/repositories/promotion_repository.dart';
 import 'package:reservpy/src/shared/models/employee.dart';
 
 // ─── Theme ───────────────────────────────────────────────
@@ -160,6 +165,16 @@ final filteredBusinessesProvider = Provider<List<Business>>((ref) {
   }).toList();
 });
 
+/// Count of active businesses per category ID.
+final businessCountByCategoryProvider = Provider<Map<String, int>>((ref) {
+  final businesses = ref.watch(businessesProvider).value ?? [];
+  final counts = <String, int>{};
+  for (final b in businesses.where((b) => b.isActive)) {
+    counts[b.categoryId] = (counts[b.categoryId] ?? 0) + 1;
+  }
+  return counts;
+});
+
 // ─── Navigation state ────────────────────────────────────
 final clientNavIndexProvider = StateProvider<int>((ref) => 0);
 final businessNavIndexProvider = StateProvider<int>((ref) => 0);
@@ -275,6 +290,26 @@ final enhancedDashboardStatsProvider = Provider<EnhancedDashboardStats>((ref) {
     }
   }
 
+  // Weekly breakdown: reservations per day (Mon-Sun) for the current week
+  final weeklyBreakdown = List.generate(7, (i) {
+    final dayStart = weekStart.add(Duration(days: i));
+    final dayEnd = dayStart.add(const Duration(days: 1));
+    return reservations.where((r) =>
+      r.startTime.isAfter(dayStart.subtract(const Duration(seconds: 1))) &&
+      r.startTime.isBefore(dayEnd) &&
+      r.status != ReservationStatus.cancelled
+    ).length;
+  });
+
+  // Top services by reservation count
+  final serviceCountMap = <String, int>{};
+  for (final r in reservations.where((r) => r.status != ReservationStatus.cancelled)) {
+    final name = r.serviceName ?? 'Sin servicio';
+    serviceCountMap[name] = (serviceCountMap[name] ?? 0) + 1;
+  }
+  final topServices = serviceCountMap.entries.toList()
+    ..sort((a, b) => b.value.compareTo(a.value));
+
   return EnhancedDashboardStats(
     reservationsToday: todayReservations.length,
     reservationsThisWeek: weekReservations.length,
@@ -287,6 +322,8 @@ final enhancedDashboardStatsProvider = Provider<EnhancedDashboardStats>((ref) {
     completedCount: completed,
     upcomingReservations: upcoming.take(5).toList(),
     todayReservations: todayReservations,
+    weeklyBreakdown: weeklyBreakdown,
+    topServices: topServices,
   );
 });
 
@@ -307,4 +344,54 @@ final reportsDataProvider =
     from: from,
     to: now,
   );
+});
+
+// ─── Notifications ─────────────────────────────────────
+
+final notificationsProvider = FutureProvider<List<AppNotification>>((ref) async {
+  final userId = SupabaseConfig.client.auth.currentUser?.id;
+  if (userId == null) return [];
+  return NotificationRepository().fetchForUser(userId);
+});
+
+final unreadNotificationCountProvider = Provider<int>((ref) {
+  final notifications = ref.watch(notificationsProvider).value ?? [];
+  return notifications.where((n) => !n.isRead).length;
+});
+
+// ─── Reviews ─────────────────────────────────────────────
+
+final businessReviewsProvider = FutureProvider.family<List<Review>, String>((ref, businessId) async {
+  return ReviewRepository().fetchForBusiness(businessId);
+});
+
+final businessAverageRatingProvider = Provider.family<double, String>((ref, businessId) {
+  final reviews = ref.watch(businessReviewsProvider(businessId)).value ?? [];
+  if (reviews.isEmpty) return 0.0;
+  final sum = reviews.fold<int>(0, (s, r) => s + r.rating);
+  return sum / reviews.length;
+});
+
+// ─── Business Photos ──────────────────────────────────────
+
+final businessPhotosProvider = FutureProvider.family<List<BusinessPhoto>, String>((ref, businessId) async {
+  return BusinessPhotoRepository().fetchPhotos(businessId);
+});
+
+// ─── Favorites ─────────────────────────────────────────────
+
+final clientFavoritesProvider = FutureProvider<List<String>>((ref) async {
+  final userId = SupabaseConfig.client.auth.currentUser?.id;
+  if (userId == null) return [];
+  return FavoriteRepository().fetchFavoriteIds(userId);
+});
+
+// ─── Promotions ────────────────────────────────────────────
+
+final businessPromotionsProvider = FutureProvider.family<List<Promotion>, String>((ref, businessId) async {
+  return PromotionRepository().fetchForBusiness(businessId);
+});
+
+final activePromotionsProvider = FutureProvider.family<List<Promotion>, String>((ref, businessId) async {
+  return PromotionRepository().fetchActiveForBusiness(businessId);
 });

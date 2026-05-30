@@ -154,130 +154,168 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
     ColorScheme colorScheme,
     String userName,
   ) {
-    return Container(
-      padding: const EdgeInsets.all(AppSizes.s24),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primary, AppColors.primaryDark],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(AppSizes.radiusXl),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.30),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppSizes.radiusXl),
+      child: Stack(
+        children: [
+          // Gradient background
+          Container(
+            padding: const EdgeInsets.all(AppSizes.s24),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFF00C896),
+                  Color(0xFF00A67E),
+                  Color(0xFF0A2540),
+                ],
+                stops: [0.0, 0.45, 1.0],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.30),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isWide = constraints.maxWidth > 520;
+
+                final greeting = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSizes.s12,
+                        vertical: AppSizes.s4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+                      ),
+                      child: Text(
+                        _greetingLabel(),
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          letterSpacing: 1.4,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSizes.s12),
+                    Text(
+                      '${_greetingTitle()}, 👋 $userName',
+                      style: GoogleFonts.inter(
+                        fontSize: isWide ? 30 : 22,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        height: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: AppSizes.s8),
+                    Text(
+                      'Bienvenido. Reservá tu primer turno en segundos.',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.white.withValues(alpha: 0.82),
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                );
+
+                final clock = Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSizes.s20,
+                    vertical: AppSizes.s16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.20),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _formattedClock(),
+                        style: GoogleFonts.inter(
+                          fontSize: isWide ? 34 : 26,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: AppSizes.s4),
+                      Text(
+                        'HORA LOCAL',
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white.withValues(alpha: 0.70),
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (isWide) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(child: greeting),
+                      const SizedBox(width: AppSizes.s24),
+                      clock,
+                    ],
+                  );
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    greeting,
+                    const SizedBox(height: AppSizes.s16),
+                    Align(alignment: Alignment.centerLeft, child: clock),
+                  ],
+                );
+              },
+            ),
+          ),
+          // Decorative circle — top right
+          Positioned(
+            top: -30,
+            right: -30,
+            child: Container(
+              width: 150,
+              height: 150,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.06),
+              ),
+            ),
+          ),
+          // Decorative circle — bottom left
+          Positioned(
+            bottom: -20,
+            left: -20,
+            child: Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.04),
+              ),
+            ),
           ),
         ],
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isWide = constraints.maxWidth > 520;
-
-          final greeting = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSizes.s12,
-                  vertical: AppSizes.s4,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-                ),
-                child: Text(
-                  _greetingLabel(),
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    letterSpacing: 1.4,
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSizes.s12),
-              Text(
-                '${_greetingTitle()}, $userName',
-                style: GoogleFonts.inter(
-                  fontSize: isWide ? 28 : 22,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                  height: 1.2,
-                ),
-              ),
-              const SizedBox(height: AppSizes.s8),
-              Text(
-                'Bienvenido. Reservá tu primer turno en segundos.',
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w400,
-                  color: Colors.white.withValues(alpha: 0.82),
-                  height: 1.4,
-                ),
-              ),
-            ],
-          );
-
-          final clock = Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSizes.s20,
-              vertical: AppSizes.s16,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(AppSizes.radiusLg),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.20),
-              ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  _formattedClock(),
-                  style: GoogleFonts.inter(
-                    fontSize: isWide ? 34 : 26,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: AppSizes.s4),
-                Text(
-                  'HORA LOCAL',
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white.withValues(alpha: 0.70),
-                    letterSpacing: 1.2,
-                  ),
-                ),
-              ],
-            ),
-          );
-
-          if (isWide) {
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(child: greeting),
-                const SizedBox(width: AppSizes.s24),
-                clock,
-              ],
-            );
-          }
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              greeting,
-              const SizedBox(height: AppSizes.s16),
-              Align(alignment: Alignment.centerLeft, child: clock),
-            ],
-          );
-        },
       ),
     );
   }
@@ -365,41 +403,69 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.label,
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textSecondary,
-                    letterSpacing: 0.8,
-                  ),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.label,
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    const SizedBox(height: AppSizes.s8),
+                    Text(
+                      item.value,
+                      style: GoogleFonts.inter(
+                        fontSize: 36,
+                        fontWeight: FontWeight.w900,
+                        color: colorScheme.onSurface,
+                        height: 1.0,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: AppSizes.s8),
-                Text(
-                  item.value,
-                  style: GoogleFonts.inter(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w800,
-                    color: colorScheme.onSurface,
-                    height: 1.0,
+              ),
+              Container(
+                padding: const EdgeInsets.all(AppSizes.s12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [item.color, item.color.withValues(alpha: 0.7)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
+                  borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                  boxShadow: [
+                    BoxShadow(
+                      color: item.color.withValues(alpha: 0.25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+                child: Icon(item.icon, color: Colors.white, size: 24),
+              ),
+            ],
           ),
+          const SizedBox(height: AppSizes.s12),
           Container(
-            padding: const EdgeInsets.all(AppSizes.s12),
+            height: 4,
             decoration: BoxDecoration(
-              color: item.color.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+              gradient: LinearGradient(
+                colors: [
+                  item.color.withValues(alpha: 0.4),
+                  item.color.withValues(alpha: 0.05),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(2),
             ),
-            child: Icon(item.icon, color: item.color, size: 24),
           ),
         ],
       ),
@@ -1124,7 +1190,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
             color: theme.cardTheme.color,
             borderRadius: BorderRadius.circular(AppSizes.radiusLg),
             border: Border.all(
-              color: colorScheme.outline.withValues(alpha: 0.08),
+              color: action.color.withValues(alpha: 0.3),
             ),
             boxShadow: [
               BoxShadow(
@@ -1139,10 +1205,21 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
               Container(
                 padding: const EdgeInsets.all(AppSizes.s12),
                 decoration: BoxDecoration(
-                  color: action.color.withValues(alpha: 0.10),
+                  gradient: LinearGradient(
+                    colors: [action.color, action.color.withValues(alpha: 0.7)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                  boxShadow: [
+                    BoxShadow(
+                      color: action.color.withValues(alpha: 0.25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
-                child: Icon(action.icon, color: action.color, size: 22),
+                child: Icon(action.icon, color: Colors.white, size: 22),
               ),
               const SizedBox(width: AppSizes.s16),
               Expanded(
@@ -1171,7 +1248,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
               Icon(
                 Icons.arrow_forward_ios_rounded,
                 size: 14,
-                color: AppColors.textMuted,
+                color: action.color,
               ),
             ],
           ),

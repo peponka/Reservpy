@@ -8,6 +8,7 @@ import 'package:reservpy/src/core/constants/app_colors.dart';
 import 'package:reservpy/src/core/constants/app_sizes.dart';
 import 'package:reservpy/src/shared/models/models.dart';
 import 'package:reservpy/src/shared/providers/providers.dart';
+import 'package:reservpy/src/features/favorites/favorite_button.dart';
 
 /// Provider for the currently selected business on the map.
 final _selectedMapBusinessProvider = StateProvider<Business?>((ref) => null);
@@ -717,177 +718,305 @@ class _BusinessCard extends StatelessWidget {
     final distanceKm =
         ((business.latitude ?? 0).abs() % 5 * 0.3 + 0.2).toStringAsFixed(1);
 
+    // Lighter shade for gradient
+    final lighterCategoryColor = Color.lerp(category.color, Colors.white, 0.35)!;
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: AppSizes.animNormal),
-        padding: const EdgeInsets.all(AppSizes.s16),
         decoration: BoxDecoration(
           color: theme.cardTheme.color ?? Colors.white,
           borderRadius: BorderRadius.circular(AppSizes.radiusLg),
           border: Border.all(
             color: isSelected
-                ? AppColors.primary.withValues(alpha: 0.5)
+                ? category.color.withValues(alpha: 0.5)
                 : colorScheme.outline.withValues(alpha: 0.08),
             width: isSelected ? 2 : 1,
           ),
           boxShadow: [
             BoxShadow(
               color: isSelected
-                  ? AppColors.primary.withValues(alpha: 0.08)
+                  ? category.color.withValues(alpha: 0.10)
                   : Colors.black.withValues(alpha: 0.04),
-              blurRadius: isSelected ? 8 : 6,
+              blurRadius: isSelected ? 10 : 6,
               offset: const Offset(0, 2),
             ),
           ],
         ),
-        child: Column(
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(AppSizes.radiusLg - 1),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Category icon circle
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: category.color.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                // Left accent bar when selected
+                if (isSelected)
+                  Container(
+                    width: 4,
+                    decoration: BoxDecoration(
+                      color: category.color,
+                    ),
                   ),
-                  child: Icon(
-                    category.icon,
-                    color: category.color,
-                    size: AppSizes.iconLg,
-                  ),
-                ),
-                const SizedBox(width: AppSizes.s12),
 
-                // Business info
+                // Card content
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        business.name,
-                        style: GoogleFonts.inter(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.onSurface,
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSizes.s16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Category icon – gradient circle
+                            Container(
+                              width: 52,
+                              height: 52,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    category.color,
+                                    lighterCategoryColor,
+                                  ],
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: category.color.withValues(alpha: 0.25),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                category.icon,
+                                color: Colors.white,
+                                size: AppSizes.iconLg,
+                              ),
+                            ),
+                            const SizedBox(width: AppSizes.s12),
+
+                            // Business info
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Name with category color dot
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: category.color,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          business.name,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w700,
+                                            color: colorScheme.onSurface,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: AppSizes.s2),
+                                  if (business.address != null)
+                                    Padding(
+                                      padding: const EdgeInsets.only(left: 14),
+                                      child: Text(
+                                        business.address!,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12,
+                                          color: colorScheme.outline,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  const SizedBox(height: AppSizes.s4),
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 14),
+                                    child: Text(
+                                      category.name,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: category.color,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // Favorite button
+                            FavoriteButton(businessId: business.id),
+                            const SizedBox(width: AppSizes.s8),
+
+                            // Open/Closed pill badge with pulsing dot
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: (isOpen ? AppColors.success : AppColors.error)
+                                    .withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+                                border: Border.all(
+                                  color: (isOpen ? AppColors.success : AppColors.error)
+                                      .withValues(alpha: 0.2),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (isOpen)
+                                    TweenAnimationBuilder<double>(
+                                      tween: Tween<double>(begin: 0.3, end: 1.0),
+                                      duration: const Duration(milliseconds: 1500),
+                                      builder: (context, value, child) {
+                                        return Opacity(
+                                          opacity: value,
+                                          child: child,
+                                        );
+                                      },
+                                      onEnd: () {},
+                                      child: Container(
+                                        width: 6,
+                                        height: 6,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: AppColors.success,
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    Container(
+                                      width: 6,
+                                      height: 6,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: AppColors.error,
+                                      ),
+                                    ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    isOpen ? 'Abierto' : 'Cerrado',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: isOpen ? AppColors.success : AppColors.error,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: AppSizes.s2),
-                      if (business.address != null)
-                        Text(
-                          business.address!,
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: colorScheme.outline,
+                        const SizedBox(height: AppSizes.s12),
+
+                        // Bottom row: distance, hours, reserve button
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.near_me_rounded,
+                              size: 14,
+                              color: colorScheme.outline,
+                            ),
+                            const SizedBox(width: AppSizes.s4),
+                            Text(
+                              '$distanceKm km',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: colorScheme.outline,
+                              ),
+                            ),
+                            const SizedBox(width: AppSizes.s16),
+                            Icon(
+                              Icons.schedule_rounded,
+                              size: 14,
+                              color: colorScheme.outline,
+                            ),
+                            const SizedBox(width: AppSizes.s4),
+                            Expanded(
+                              child: Text(
+                                '${business.openingTimeStr} - ${business.closingTimeStr}',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  color: colorScheme.outline,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppSizes.s8),
+
+                        // Gradient reserve button
+                        SizedBox(
+                          width: double.infinity,
+                          height: 38,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [
+                                  AppColors.primary,
+                                  Color(0xFF00A67E),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primary.withValues(alpha: 0.25),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: ElevatedButton(
+                              onPressed: onReserve,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSizes.s12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(AppSizes.radiusSm),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: Text(
+                                'Reservar',
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
-                      const SizedBox(height: AppSizes.s4),
-                      Text(
-                        category.name,
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: category.color,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: AppSizes.s8),
-
-                // Open/Closed badge
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: (isOpen ? AppColors.success : AppColors.error)
-                        .withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    isOpen ? 'Abierto' : 'Cerrado',
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: isOpen ? AppColors.success : AppColors.error,
+                      ],
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: AppSizes.s12),
-
-            // Bottom row: distance, hours, reserve button
-            Row(
-              children: [
-                Icon(
-                  Icons.near_me_rounded,
-                  size: 14,
-                  color: colorScheme.outline,
-                ),
-                const SizedBox(width: AppSizes.s4),
-                Text(
-                  '$distanceKm km',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: colorScheme.outline,
-                  ),
-                ),
-                const SizedBox(width: AppSizes.s16),
-                Icon(
-                  Icons.access_time_rounded,
-                  size: 14,
-                  color: colorScheme.outline,
-                ),
-                const SizedBox(width: AppSizes.s4),
-                Expanded(
-                  child: Text(
-                    '${business.openingTimeStr} - ${business.closingTimeStr}',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: colorScheme.outline,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSizes.s8),
-            SizedBox(
-              width: double.infinity,
-              height: 32,
-              child: ElevatedButton(
-                onPressed: onReserve,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSizes.s12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(AppSizes.radiusSm),
-                  ),
-                  elevation: 0,
-                ),
-                child: Text(
-                  'Reservar',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

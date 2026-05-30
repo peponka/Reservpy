@@ -12,6 +12,9 @@ import 'package:http/http.dart' as http;
 import 'package:reservpy/src/shared/models/models.dart';
 import 'package:reservpy/src/shared/providers/providers.dart';
 import 'package:reservpy/src/data/repositories/business_repository.dart';
+import 'package:reservpy/src/features/photos/photo_widgets.dart';
+import 'package:reservpy/src/features/promotions/promotions_widget.dart';
+import 'package:reservpy/src/features/qr/qr_share_widget.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -320,6 +323,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
                     // ── Reminders Navigation ─────────────────────
                     _buildRemindersCard(theme, colorScheme),
+                    const SizedBox(height: AppSizes.s24),
+
+                    // ── Photos Manager ───────────────────────────
+                    BusinessPhotosManager(businessId: business.id),
+                    const SizedBox(height: AppSizes.s24),
+
+                    // ── Promotions Manager ───────────────────────
+                    PromotionsManager(businessId: business.id),
                     const SizedBox(height: AppSizes.s24),
 
                     // ── Save + Edit buttons ─────────────────────
@@ -696,6 +707,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // QR Share button
+        SizedBox(
+          width: double.infinity,
+          child: QrShareButton(
+            businessId: business.id,
+            businessName: business.name,
+            expanded: true,
+          ),
+        ),
+        const SizedBox(height: AppSizes.s16),
+
         // Save button
         SizedBox(
           height: AppSizes.buttonMd,

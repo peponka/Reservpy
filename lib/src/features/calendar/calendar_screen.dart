@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:reservpy/src/shared/models/models.dart';
@@ -11,6 +12,7 @@ import 'package:reservpy/src/core/constants/app_strings.dart';
 import 'package:reservpy/src/core/utils/date_utils.dart';
 import 'package:reservpy/src/data/repositories/reservation_repository.dart';
 import 'package:reservpy/src/data/repositories/blocked_slot_repository.dart';
+import 'package:reservpy/src/core/utils/whatsapp_helper.dart';
 
 const _uuid = Uuid();
 
@@ -36,12 +38,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     _selectedDate = DateTime(now.year, now.month, now.day);
   }
 
-  /// Generates the 7-day range starting from today.
+  /// Generates the 7-day range starting from Monday of the selected week.
   List<DateTime> get _weekDays {
-    final today = DateTime.now();
+    final monday = _selectedDate.subtract(Duration(days: _selectedDate.weekday - 1));
     return List.generate(
       7,
-      (i) => DateTime(today.year, today.month, today.day + i),
+      (i) => DateTime(monday.year, monday.month, monday.day + i),
     );
   }
 
@@ -77,6 +79,34 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     AppStrings.calendar,
                     style: theme.textTheme.headlineLarge,
                   ),
+                  const SizedBox(width: AppSizes.s12),
+                  // Today button
+                  if (!AppDateUtils.isToday(_selectedDate))
+                    SizedBox(
+                      height: 32,
+                      width: 70,
+                      child: OutlinedButton(
+                        onPressed: () {
+                          final now = DateTime.now();
+                          setState(() => _selectedDate = DateTime(now.year, now.month, now.day));
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: const BorderSide(color: AppColors.primary, width: 1.5),
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                          ),
+                        ),
+                        child: Text(
+                          'Hoy',
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ),
                   const Spacer(),
                   // Day/Week toggle
                   SegmentedButton<bool>(
@@ -141,6 +171,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
             const SizedBox(height: AppSizes.s8),
 
+            // ── Day Summary Bar ──
+            if (_isDayView)
+              _buildDaySummary(theme, reservations),
+
             // ── View Content ──
             Expanded(
               child: AnimatedSwitcher(
@@ -202,6 +236,67 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             r.startTime.isAfter(dayStart.subtract(const Duration(seconds: 1))) &&
             r.startTime.isBefore(dayEnd))
         .length;
+  }
+
+  Widget _buildDaySummary(ThemeData theme, List<Reservation> reservations) {
+    final dayStart = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+    final dayEnd = dayStart.add(const Duration(days: 1));
+    final dayRes = reservations.where((r) =>
+      r.startTime.isAfter(dayStart.subtract(const Duration(seconds: 1))) &&
+      r.startTime.isBefore(dayEnd)
+    ).toList();
+
+    final confirmed = dayRes.where((r) => r.status == ReservationStatus.confirmed).length;
+    final pending = dayRes.where((r) => r.status == ReservationStatus.pending).length;
+    final cancelled = dayRes.where((r) => r.status == ReservationStatus.cancelled).length;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSizes.s24, vertical: AppSizes.s4),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: AppSizes.s16, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.summarize_rounded, size: 16, color: AppColors.primary),
+            const SizedBox(width: AppSizes.s8),
+            Text(
+              '${dayRes.length} turnos',
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.accent,
+              ),
+            ),
+            const Spacer(),
+            if (confirmed > 0) _summaryChip('$confirmed ✓', AppColors.statusConfirmed),
+            if (pending > 0) ...[const SizedBox(width: 6), _summaryChip('$pending ⏳', AppColors.statusPending)],
+            if (cancelled > 0) ...[const SizedBox(width: 6), _summaryChip('$cancelled ✕', AppColors.statusCancelled)],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _summaryChip(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+      ),
+      child: Text(
+        text,
+        style: GoogleFonts.inter(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
+    );
   }
 
   void _showBlockTimeDialog(
@@ -790,6 +885,43 @@ class _DayView extends ConsumerWidget {
                 ),
               ],
 
+              // WhatsApp button (for pending/confirmed)
+              if (reservation.status == ReservationStatus.pending ||
+                  reservation.status == ReservationStatus.confirmed)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        WhatsAppHelper.sendBusinessToClientReminder(
+                          clientPhone: null,
+                          clientName: reservation.clientName ?? 'Cliente',
+                          businessName: reservation.businessName ?? 'Mi negocio',
+                          serviceName: reservation.serviceName ?? 'Turno',
+                          startTime: reservation.startTime,
+                        );
+                      },
+                      icon: const Icon(Icons.message_rounded,
+                          size: 18, color: Color(0xFF25D366)),
+                      label: Text(
+                        'Recordar por WhatsApp',
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF25D366),
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFF25D366)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
               const SizedBox(height: AppSizes.s8),
             ],
           ),
@@ -871,11 +1003,10 @@ class _WeekView extends ConsumerWidget {
               const SizedBox(width: 54), // Alineado con la columna de horas
               ...List.generate(7, (index) {
                 final day = weekDays[index];
-                final isToday = AppDateUtils.isToday(day);
-                final isWednesday = day.weekday == DateTime.wednesday;
+                final isCurrentDay = AppDateUtils.isToday(day);
                 
-                // Si es miércoles 27 (o miércoles en general), destacamos en Teal como el mockup
-                final highlight = isWednesday;
+                // Highlight the actual current day
+                final highlight = isCurrentDay;
 
                 return Expanded(
                   child: Container(
@@ -906,7 +1037,7 @@ class _WeekView extends ConsumerWidget {
                             shape: BoxShape.circle,
                             color: highlight
                                 ? colorScheme.primary
-                                : isToday
+                                : isCurrentDay
                                     ? colorScheme.primary.withValues(alpha: 0.15)
                                     : Colors.transparent,
                           ),
@@ -917,7 +1048,7 @@ class _WeekView extends ConsumerWidget {
                                 fontWeight: FontWeight.w700,
                                 color: highlight
                                     ? colorScheme.onPrimary
-                                    : isToday
+                                    : isCurrentDay
                                         ? colorScheme.primary
                                         : null,
                               ),
@@ -981,7 +1112,7 @@ class _WeekView extends ConsumerWidget {
                         const SizedBox(width: 54),
                         ...List.generate(7, (dayIndex) {
                           final day = weekDays[dayIndex];
-                          final isWednesday = day.weekday == DateTime.wednesday;
+                          final isCurrentDay = AppDateUtils.isToday(day);
 
                           // Filtrar reservas para este día
                           final dayStart = DateTime(day.year, day.month, day.day);
@@ -994,7 +1125,7 @@ class _WeekView extends ConsumerWidget {
                           return Expanded(
                             child: Container(
                               decoration: BoxDecoration(
-                                color: isWednesday
+                                color: isCurrentDay
                                     ? colorScheme.primary.withValues(alpha: 0.03)
                                     : null,
                                 border: Border(

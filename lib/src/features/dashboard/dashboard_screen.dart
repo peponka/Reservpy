@@ -62,7 +62,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final colorScheme = theme.colorScheme;
     final user = ref.watch(currentUserProvider);
     final stats = ref.watch(enhancedDashboardStatsProvider);
-    final allReservations = ref.watch(businessReservationsProvider).value ?? [];
+    final allReservations =
+        ref.watch(businessReservationsProvider).value ?? [];
 
     final userName = user?.firstName ?? 'Usuario';
     final reservationCount = allReservations.length;
@@ -81,28 +82,30 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // ═══════════════════════════════════════════════════
                 // 1. GREETING HEADER
-                // ═══════════════════════════════════════════════════
-                _buildGreetingHeader(theme, colorScheme, userName, isDesktop),
+                _buildGreetingHeader(
+                    theme, colorScheme, userName, isDesktop),
                 const SizedBox(height: AppSizes.s24),
 
-                // ═══════════════════════════════════════════════════
                 // 2. KPI CARDS ROW
-                // ═══════════════════════════════════════════════════
-                _buildKpiSection(theme, colorScheme, stats, isDesktop),
+                _buildKpiSection(
+                    theme, colorScheme, stats, isDesktop),
                 const SizedBox(height: AppSizes.s24),
 
-                // ═══════════════════════════════════════════════════
-                // 3. TWO-COLUMN: UPCOMING + TODAY AGENDA
-                // ═══════════════════════════════════════════════════
-                _buildContentSection(theme, colorScheme, stats, isDesktop),
+                // 3. ALERTS / PENDING ACTIONS
+                if (stats.pendingCount > 0) ...[
+                  _buildPendingAlert(theme, stats),
+                  const SizedBox(height: AppSizes.s24),
+                ],
+
+                // 4. CHARTS + AGENDA ROW
+                _buildChartsAndAgenda(
+                    theme, colorScheme, stats, isDesktop),
                 const SizedBox(height: AppSizes.s24),
 
-                // ═══════════════════════════════════════════════════
-                // 4. PLAN FREE BANNER
-                // ═══════════════════════════════════════════════════
-                _buildPlanBanner(theme, colorScheme, reservationCount),
+                // 5. BOTTOM: Popular services + Plan banner
+                _buildBottomSection(
+                    theme, colorScheme, stats, reservationCount, isDesktop),
               ],
             ),
           ),
@@ -111,140 +114,160 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════
   // 1. GREETING HEADER
-  // ─────────────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════
   Widget _buildGreetingHeader(
     ThemeData theme,
     ColorScheme colorScheme,
     String userName,
     bool isDesktop,
   ) {
-    final greetingColumn = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          _greeting(),
-          style: GoogleFonts.inter(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: AppColors.primary,
-            letterSpacing: 1.2,
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 1800),
+      curve: Curves.easeInOut,
+      builder: (context, shimmerValue, child) {
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSizes.s24,
+            vertical: AppSizes.s24,
           ),
-        ),
-        const SizedBox(height: AppSizes.s4),
-        Text(
-          '${_greetingTitle()}, $userName',
-          style: GoogleFonts.inter(
-            fontSize: isDesktop ? 28 : 22,
-            fontWeight: FontWeight.w700,
-            color: colorScheme.onSurface,
-          ),
-        ),
-        const SizedBox(height: AppSizes.s4),
-        Text(
-          'Bienvenido. Gestioná tus turnos del día.',
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w400,
-          ),
-        ),
-      ],
-    );
-
-    final clockCard = Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSizes.s24,
-        vertical: 14.0,
-      ),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.primary.withValues(alpha: 0.08),
-            AppColors.primary.withValues(alpha: 0.01),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(AppSizes.radiusLg),
-        border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.25),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.06),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            _formattedClock(),
-            style: GoogleFonts.inter(
-              fontSize: isDesktop ? 34 : 26,
-              fontWeight: FontWeight.w800,
-              color: AppColors.primary,
-              letterSpacing: 0.5,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                const Color(0xFF0A2540),
+                Color.lerp(
+                  const Color(0xFF1A3A5C),
+                  const Color(0xFF0A2540),
+                  (shimmerValue * 0.15).clamp(0.0, 0.15),
+                )!,
+                const Color(0xFF1A3A5C),
+              ],
+              stops: [
+                0.0,
+                shimmerValue.clamp(0.0, 1.0),
+                1.0,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-          ),
-          const SizedBox(height: AppSizes.s2),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 6,
-                height: 6,
-                decoration: const BoxDecoration(
-                  color: AppColors.primary,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'HORA LOCAL',
-                style: GoogleFonts.inter(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primary.withValues(alpha: 0.7),
-                  letterSpacing: 1.5,
-                ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0A2540).withValues(alpha: 0.25),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
-        ],
-      ),
-    );
-
-    if (isDesktop) {
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(child: greetingColumn),
-          const SizedBox(width: AppSizes.s16),
-          clockCard,
-        ],
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        greetingColumn,
-        const SizedBox(height: AppSizes.s16),
-        Align(alignment: Alignment.centerLeft, child: clockCard),
-      ],
+          child: Stack(
+            children: [
+              // Decorative circle accent
+              Positioned(
+                top: -30,
+                right: -30,
+                child: Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.primary.withValues(alpha: 0.10),
+                  ),
+                ),
+              ),
+              // Content row
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _greeting(),
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white.withValues(alpha: 0.5),
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: AppSizes.s8),
+                        Text(
+                          '${_greetingTitle()}, $userName',
+                          style: GoogleFonts.inter(
+                            fontSize: isDesktop ? 32 : 26,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: AppSizes.s4),
+                        Text(
+                          'Bienvenido. Gestioná tus turnos del día.',
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            color: Colors.white.withValues(alpha: 0.6),
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppSizes.s16),
+                  // Clock inside the banner
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _formattedClock(),
+                        style: GoogleFonts.inter(
+                          fontSize: isDesktop ? 34 : 26,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: AppSizes.s4),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.8),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'HORA LOCAL',
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white.withValues(alpha: 0.45),
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════
   // 2. KPI CARDS
-  // ─────────────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════
   Widget _buildKpiSection(
     ThemeData theme,
     ColorScheme colorScheme,
@@ -257,32 +280,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         value: '${stats.reservationsToday}',
         icon: Icons.calendar_today_rounded,
         color: AppColors.primary,
-        trendPercent: 12.5,
-        trendPoints: const [3, 5, 4, 7, 6, 8, 9],
       ),
       _KpiData(
         label: 'Esta semana',
         value: '${stats.reservationsThisWeek}',
         icon: Icons.date_range_rounded,
         color: AppColors.info,
-        trendPercent: 8.2,
-        trendPoints: const [20, 24, 22, 28, 32, 30, 35],
       ),
       _KpiData(
-        label: 'Pendientes',
-        value: '${stats.pendingCount}',
-        icon: Icons.hourglass_empty_rounded,
-        color: stats.pendingCount > 0 ? AppColors.warning : AppColors.textMuted,
-        trendPercent: stats.pendingCount > 0 ? -15.0 : 0.0,
-        trendPoints: stats.pendingCount > 0 ? const [10, 8, 9, 6, 5, 4, 2] : const [],
+        label: 'Ocupación',
+        value: '${stats.occupancyPercent.round()}%',
+        icon: Icons.pie_chart_rounded,
+        color: stats.occupancyPercent > 70
+            ? AppColors.success
+            : stats.occupancyPercent > 30
+                ? AppColors.warning
+                : AppColors.error,
       ),
       _KpiData(
         label: 'Ingresos est.',
-        value: 'Gs. ${NumberFormat('#,###', 'es').format(stats.estimatedRevenue)}',
+        value:
+            'Gs. ${NumberFormat('#,###', 'es').format(stats.estimatedRevenue)}',
         icon: Icons.attach_money_rounded,
         color: AppColors.success,
-        trendPercent: 24.1,
-        trendPoints: const [150, 180, 210, 200, 240, 270, 310],
       ),
     ];
 
@@ -293,7 +313,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             child: Padding(
               padding: EdgeInsets.only(
                 left: entry.key == 0 ? 0 : AppSizes.s6,
-                right: entry.key == kpis.length - 1 ? 0 : AppSizes.s6,
+                right:
+                    entry.key == kpis.length - 1 ? 0 : AppSizes.s6,
               ),
               child: _buildKpiCard(theme, colorScheme, entry.value),
             ),
@@ -302,38 +323,42 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       );
     }
 
-    // Mobile: 2x2 grid
     return Column(
       children: [
         Row(
           children: [
-            Expanded(child: _buildKpiCard(theme, colorScheme, kpis[0])),
+            Expanded(
+                child: _buildKpiCard(theme, colorScheme, kpis[0])),
             const SizedBox(width: AppSizes.s12),
-            Expanded(child: _buildKpiCard(theme, colorScheme, kpis[1])),
+            Expanded(
+                child: _buildKpiCard(theme, colorScheme, kpis[1])),
           ],
         ),
         const SizedBox(height: AppSizes.s12),
         Row(
           children: [
-            Expanded(child: _buildKpiCard(theme, colorScheme, kpis[2])),
+            Expanded(
+                child: _buildKpiCard(theme, colorScheme, kpis[2])),
             const SizedBox(width: AppSizes.s12),
-            Expanded(child: _buildKpiCard(theme, colorScheme, kpis[3])),
+            Expanded(
+                child: _buildKpiCard(theme, colorScheme, kpis[3])),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildKpiCard(ThemeData theme, ColorScheme colorScheme, _KpiData data) {
+  Widget _buildKpiCard(
+      ThemeData theme, ColorScheme colorScheme, _KpiData data) {
     return Container(
       padding: const EdgeInsets.all(AppSizes.s16),
       decoration: BoxDecoration(
         color: theme.cardTheme.color,
-        borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+        borderRadius: BorderRadius.circular(16),
         gradient: LinearGradient(
           colors: [
             theme.cardTheme.color ?? Colors.white,
-            data.color.withValues(alpha: 0.02),
+            data.color.withValues(alpha: 0.03),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -358,10 +383,25 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               Container(
                 padding: const EdgeInsets.all(AppSizes.s8),
                 decoration: BoxDecoration(
-                  color: data.color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+                  gradient: LinearGradient(
+                    colors: [
+                      data.color,
+                      data.color.withValues(alpha: 0.7),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius:
+                      BorderRadius.circular(AppSizes.radiusSm),
+                  boxShadow: [
+                    BoxShadow(
+                      color: data.color.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-                child: Icon(data.icon, color: data.color, size: 18),
+                child: Icon(data.icon, color: Colors.white, size: 18),
               ),
               const SizedBox(width: AppSizes.s8),
               Expanded(
@@ -379,91 +419,157 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ],
           ),
           const SizedBox(height: AppSizes.s12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      data.value,
-                      style: GoogleFonts.inter(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: colorScheme.onSurface,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (data.trendPercent != 0.0) ...[
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            data.trendPercent > 0
-                                ? Icons.arrow_upward_rounded
-                                : Icons.arrow_downward_rounded,
-                            size: 12,
-                            color: data.trendPercent > 0
-                                ? AppColors.success
-                                : AppColors.error,
-                          ),
-                          const SizedBox(width: 2),
-                          Text(
-                            '${data.trendPercent > 0 ? '+' : ''}${data.trendPercent}%',
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: data.trendPercent > 0
-                                  ? AppColors.success
-                                  : AppColors.error,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              if (data.trendPoints.isNotEmpty)
-                SizedBox(
-                  width: 56,
-                  height: 28,
-                  child: _AnimatedSparkline(
-                    values: data.trendPoints,
-                    color: data.color,
-                  ),
-                ),
-            ],
+          Text(
+            data.value,
+            style: GoogleFonts.inter(
+              fontSize: 26,
+              fontWeight: FontWeight.w900,
+              color: colorScheme.onSurface,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: AppSizes.s12),
+          // Colored accent bar at the bottom
+          Container(
+            height: 4,
+            decoration: BoxDecoration(
+              color: data.color.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
         ],
       ),
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────
-  // 3. CONTENT SECTION (Upcoming + Today)
-  // ─────────────────────────────────────────────────────────────────
-  Widget _buildContentSection(
+  // ═══════════════════════════════════════════════════════════
+  // 3. PENDING ALERT
+  // ═══════════════════════════════════════════════════════════
+  Widget _buildPendingAlert(ThemeData theme, EnhancedDashboardStats stats) {
+    return Container(
+      padding: const EdgeInsets.all(AppSizes.s16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.warning.withValues(alpha: 0.15),
+            AppColors.warning.withValues(alpha: 0.03),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+        border: Border.all(
+          color: AppColors.warning.withValues(alpha: 0.25),
+        ),
+      ),
+      child: Row(
+        children: [
+          TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 1.0, end: 1.15),
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.easeInOut,
+            builder: (context, scale, child) {
+              return TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 1.15, end: 1.0),
+                duration: const Duration(milliseconds: 800),
+                curve: Curves.easeInOut,
+                builder: (context, reverseScale, child) {
+                  return Transform.scale(
+                    scale: scale < 1.15 ? scale : reverseScale,
+                    child: child,
+                  );
+                },
+                child: child,
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.notifications_active_rounded,
+                  color: AppColors.warning, size: 22),
+            ),
+          ),
+          const SizedBox(width: AppSizes.s16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${stats.pendingCount} reserva${stats.pendingCount > 1 ? 's' : ''} pendiente${stats.pendingCount > 1 ? 's' : ''}',
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.accent,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Confirmá o cancelá para mantener tu agenda al día',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSizes.s12),
+          SizedBox(
+            height: 36,
+            width: 70,
+            child: ElevatedButton(
+              onPressed: () {
+                ref.read(businessNavIndexProvider.notifier).state = 1;
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.warning,
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppSizes.s16),
+                shape: RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(AppSizes.radiusMd),
+                ),
+                elevation: 0,
+              ),
+              child: Text(
+                'Ver',
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // 4. CHARTS + AGENDA
+  // ═══════════════════════════════════════════════════════════
+  Widget _buildChartsAndAgenda(
     ThemeData theme,
     ColorScheme colorScheme,
     EnhancedDashboardStats stats,
     bool isDesktop,
   ) {
-    final upcomingCard = _buildUpcomingCard(theme, colorScheme, stats.upcomingReservations);
-    final todayCard = _buildTodayAgendaCard(theme, colorScheme, stats.todayReservations);
+    final weekChart =
+        _buildWeeklyChart(theme, colorScheme, stats);
+    final agendaCard = _buildTodayAgendaCard(
+        theme, colorScheme, stats.todayReservations);
 
     if (isDesktop) {
       return IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(flex: 2, child: upcomingCard),
+            Expanded(flex: 3, child: weekChart),
             const SizedBox(width: AppSizes.s20),
-            Expanded(flex: 1, child: todayCard),
+            Expanded(flex: 2, child: agendaCard),
           ],
         ),
       );
@@ -471,19 +577,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     return Column(
       children: [
-        upcomingCard,
+        weekChart,
         const SizedBox(height: AppSizes.s20),
-        todayCard,
+        agendaCard,
       ],
     );
   }
 
-  // ── Upcoming Reservations Card ──
-  Widget _buildUpcomingCard(
+  // ── Weekly Bar Chart ──
+  Widget _buildWeeklyChart(
     ThemeData theme,
     ColorScheme colorScheme,
-    List<Reservation> upcoming,
+    EnhancedDashboardStats stats,
   ) {
+    final dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+    final breakdown = stats.weeklyBreakdown;
+    final maxVal = breakdown.isEmpty
+        ? 1
+        : breakdown.reduce(math.max).clamp(1, double.maxFinite.toInt());
+    final todayIndex = DateTime.now().weekday - 1;
+
     return Container(
       padding: const EdgeInsets.all(AppSizes.s20),
       decoration: BoxDecoration(
@@ -504,220 +617,120 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header
           Row(
             children: [
-              Icon(Icons.event_note_rounded, size: 20, color: AppColors.primary),
+              Icon(Icons.bar_chart_rounded,
+                  size: 20, color: AppColors.primary),
               const SizedBox(width: AppSizes.s8),
               Text(
-                'Próximos turnos',
+                'Reservas de la semana',
                 style: GoogleFonts.inter(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                   color: colorScheme.onSurface,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: AppSizes.s4),
-          Text(
-            'Próximos 14 días',
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: AppSizes.s20),
-          if (upcoming.isEmpty)
-            _buildEmptyUpcoming(theme, colorScheme)
-          else
-            ...upcoming.take(5).map(
-              (r) => _buildReservationTile(theme, colorScheme, r),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyUpcoming(ThemeData theme, ColorScheme colorScheme) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: AppSizes.s32),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            colorScheme.outline.withValues(alpha: 0.02),
-            colorScheme.outline.withValues(alpha: 0.05),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(AppSizes.radiusLg),
-        border: Border.all(
-          color: colorScheme.outline.withValues(alpha: 0.06),
-          width: 1.5,
-        ),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.08),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.calendar_today_rounded,
-              color: AppColors.primary,
-              size: 24,
-            ),
-          ),
-          const SizedBox(height: AppSizes.s16),
-          Text(
-            'Sin turnos próximos',
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: colorScheme.onSurface,
-            ),
-          ),
-          const SizedBox(height: AppSizes.s4),
-          Text(
-            'Reservá un turno y aparecerá acá',
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReservationTile(
-    ThemeData theme,
-    ColorScheme colorScheme,
-    Reservation r,
-  ) {
-    final timeStr =
-        '${DateFormat('HH:mm').format(r.startTime)} – ${DateFormat('HH:mm').format(r.endTime)}';
-    final dateStr = DateFormat("EEE d MMM", 'es').format(r.startTime);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSizes.s8),
-      padding: const EdgeInsets.all(AppSizes.s12),
-      decoration: BoxDecoration(
-        color: colorScheme.outline.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-        border: Border.all(
-          color: colorScheme.outline.withValues(alpha: 0.06),
-        ),
-      ),
-      child: Row(
-        children: [
-          // Avatar circle
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Text(
-                (r.clientName?.isNotEmpty == true)
-                    ? r.clientName![0].toUpperCase()
-                    : 'C',
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primary,
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius:
+                      BorderRadius.circular(AppSizes.radiusFull),
                 ),
-              ),
-            ),
-          ),
-          const SizedBox(width: AppSizes.s12),
-          // Details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  r.clientName ?? 'Cliente',
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: colorScheme.onSurface,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: AppSizes.s2),
-                Text(
-                  '${r.serviceName ?? 'Servicio'} · $timeStr',
+                child: Text(
+                  '${stats.reservationsThisWeek} total',
                   style: GoogleFonts.inter(
                     fontSize: 12,
-                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: AppSizes.s8),
-          // Date + Status
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                dateStr,
-                style: GoogleFonts.inter(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textSecondary,
                 ),
               ),
-              const SizedBox(height: AppSizes.s4),
-              _buildStatusBadge(r.status),
             ],
           ),
-        ],
-      ),
-    );
-  }
+          const SizedBox(height: AppSizes.s24),
 
-  Widget _buildStatusBadge(ReservationStatus status) {
-    final Color color;
-    final String label;
-    switch (status) {
-      case ReservationStatus.pending:
-        color = AppColors.statusPending;
-        label = 'Pendiente';
-      case ReservationStatus.confirmed:
-        color = AppColors.statusConfirmed;
-        label = 'Confirmado';
-      case ReservationStatus.cancelled:
-        color = AppColors.statusCancelled;
-        label = 'Cancelado';
-      case ReservationStatus.completed:
-        color = AppColors.statusCompleted;
-        label = 'Completado';
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.inter(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: color,
-        ),
+          // Bar chart
+          SizedBox(
+            height: 160,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: List.generate(7, (i) {
+                final val = i < breakdown.length ? breakdown[i] : 0;
+                final heightFraction = val / maxVal;
+                final isToday = i == todayIndex;
+
+                return Expanded(
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 4),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        // Value label
+                        Text(
+                          '$val',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: isToday
+                                ? AppColors.primary
+                                : AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        // Bar
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 600),
+                          curve: Curves.easeOutQuint,
+                          height: (heightFraction * 110)
+                              .clamp(6.0, 110.0),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: isToday
+                                  ? [
+                                      AppColors.primary,
+                                      AppColors.primary
+                                          .withValues(alpha: 0.7),
+                                    ]
+                                  : [
+                                      AppColors.primary
+                                          .withValues(alpha: 0.3),
+                                      AppColors.primary
+                                          .withValues(alpha: 0.15),
+                                    ],
+                            ),
+                            borderRadius: BorderRadius.circular(
+                                AppSizes.radiusSm),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        // Day label
+                        Text(
+                          dayNames[i],
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: isToday
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: isToday
+                                ? AppColors.primary
+                                : AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -786,7 +799,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             _buildEmptyAgenda(theme, colorScheme)
           else
             ...activeToday.map(
-              (r) => _buildAgendaTimelineItem(theme, colorScheme, r, r == activeToday.last),
+              (r) => _buildAgendaTimelineItem(
+                  theme, colorScheme, r, r == activeToday.last),
             ),
         ],
       ),
@@ -814,12 +828,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ),
       child: Column(
         children: [
-          Icon(
-            Icons.beach_access_rounded,
-            size: 36,
-            color: colorScheme.outline.withValues(alpha: 0.35),
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.beach_access_rounded,
+              color: AppColors.primary,
+              size: 24,
+            ),
           ),
-          const SizedBox(height: AppSizes.s12),
+          const SizedBox(height: AppSizes.s16),
           Text(
             'Tu agenda está vacía',
             style: GoogleFonts.inter(
@@ -830,34 +852,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
           const SizedBox(height: AppSizes.s4),
           Text(
-            'Reservá tu primer turno en segundos.\nSin llamadas, sin esperas.',
+            'No hay turnos para hoy.',
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               fontSize: 13,
               color: AppColors.textSecondary,
               height: 1.4,
-            ),
-          ),
-          const SizedBox(height: AppSizes.s16),
-          OutlinedButton.icon(
-            onPressed: () {
-              ref.read(businessNavIndexProvider.notifier).state = 2; // Reservations tab
-            },
-            icon: const Icon(Icons.add_rounded, size: 18),
-            label: Text(
-              'Nuevo turno',
-              style: GoogleFonts.inter(fontWeight: FontWeight.w600),
-            ),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.primary,
-              side: const BorderSide(color: AppColors.primary, width: 1.5),
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSizes.s16,
-                vertical: AppSizes.s8,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-              ),
             ),
           ),
         ],
@@ -876,7 +876,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Timeline dot & line
         SizedBox(
           width: 24,
           child: Column(
@@ -900,7 +899,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
         ),
         const SizedBox(width: AppSizes.s8),
-        // Content
         Expanded(
           child: Padding(
             padding: const EdgeInsets.only(bottom: AppSizes.s12),
@@ -943,22 +941,172 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Color _statusColor(ReservationStatus status) {
-    switch (status) {
-      case ReservationStatus.pending:
-        return AppColors.statusPending;
-      case ReservationStatus.confirmed:
-        return AppColors.statusConfirmed;
-      case ReservationStatus.cancelled:
-        return AppColors.statusCancelled;
-      case ReservationStatus.completed:
-        return AppColors.statusCompleted;
+  // ═══════════════════════════════════════════════════════════
+  // 5. BOTTOM: Services + Plan Banner
+  // ═══════════════════════════════════════════════════════════
+  Widget _buildBottomSection(
+    ThemeData theme,
+    ColorScheme colorScheme,
+    EnhancedDashboardStats stats,
+    int reservationCount,
+    bool isDesktop,
+  ) {
+    final servicesCard =
+        _buildTopServicesCard(theme, colorScheme, stats);
+    final planBanner =
+        _buildPlanBanner(theme, colorScheme, reservationCount);
+
+    if (isDesktop) {
+      return IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(flex: 2, child: servicesCard),
+            const SizedBox(width: AppSizes.s20),
+            Expanded(flex: 3, child: planBanner),
+          ],
+        ),
+      );
     }
+
+    return Column(
+      children: [
+        servicesCard,
+        const SizedBox(height: AppSizes.s20),
+        planBanner,
+      ],
+    );
   }
 
-  // ─────────────────────────────────────────────────────────────────
-  // 4. PLAN FREE BANNER
-  // ─────────────────────────────────────────────────────────────────
+  // ── Top Services Card ──
+  Widget _buildTopServicesCard(
+    ThemeData theme,
+    ColorScheme colorScheme,
+    EnhancedDashboardStats stats,
+  ) {
+    final topServices = stats.topServices;
+    final totalCount = topServices.fold<int>(0, (s, e) => s + e.value);
+    final colors = [
+      AppColors.primary,
+      AppColors.info,
+      AppColors.success,
+      AppColors.warning,
+      AppColors.error,
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(AppSizes.s20),
+      decoration: BoxDecoration(
+        color: theme.cardTheme.color,
+        borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+        border: Border.all(
+          color: AppColors.success.withValues(alpha: 0.08),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.success.withValues(alpha: 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.trending_up_rounded,
+                  size: 20, color: AppColors.success),
+              const SizedBox(width: AppSizes.s8),
+              Text(
+                'Servicios más populares',
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSizes.s20),
+          if (topServices.isEmpty)
+            Center(
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(vertical: AppSizes.s16),
+                child: Text(
+                  'Aún no hay reservas con servicios.',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            )
+          else
+            ...topServices.take(5).toList().asMap().entries.map((entry) {
+              final i = entry.key;
+              final e = entry.value;
+              final pct = totalCount > 0
+                  ? (e.value / totalCount * 100).round()
+                  : 0;
+              final barColor = colors[i % colors.length];
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: AppSizes.s12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            e.key,
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: colorScheme.onSurface,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Text(
+                          '${e.value} ($pct%)',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: barColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(
+                          AppSizes.radiusFull),
+                      child: LinearProgressIndicator(
+                        value: totalCount > 0
+                            ? e.value / totalCount
+                            : 0,
+                        backgroundColor:
+                            barColor.withValues(alpha: 0.08),
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(barColor),
+                        minHeight: 8,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  // ── Plan Banner ──
   Widget _buildPlanBanner(
     ThemeData theme,
     ColorScheme colorScheme,
@@ -999,7 +1147,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 padding: const EdgeInsets.all(AppSizes.s8),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                  borderRadius:
+                      BorderRadius.circular(AppSizes.radiusMd),
                 ),
                 child: const Icon(
                   Icons.workspace_premium_rounded,
@@ -1013,7 +1162,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Plan Free · $reservationCount/10 reservas usadas',
+                      'Plan Free · $reservationCount/10 reservas',
                       style: GoogleFonts.inter(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
@@ -1022,7 +1171,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                     const SizedBox(height: AppSizes.s4),
                     Text(
-                      'Actualizá a Pro para turnos ilimitados y funciones premium',
+                      'Actualizá a Pro para turnos ilimitados',
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         fontWeight: FontWeight.w400,
@@ -1031,14 +1180,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                     const SizedBox(height: AppSizes.s12),
                     ClipRRect(
-                      borderRadius:
-                          BorderRadius.circular(AppSizes.radiusFull),
+                      borderRadius: BorderRadius.circular(
+                          AppSizes.radiusFull),
                       child: LinearProgressIndicator(
                         value: usage,
-                        backgroundColor: Colors.white.withValues(alpha: 0.2),
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                          Colors.white,
-                        ),
+                        backgroundColor:
+                            Colors.white.withValues(alpha: 0.2),
+                        valueColor:
+                            const AlwaysStoppedAnimation<Color>(
+                                Colors.white),
                         minHeight: 8,
                       ),
                     ),
@@ -1050,27 +1200,32 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           const SizedBox(height: AppSizes.s16),
           Align(
             alignment: Alignment.centerRight,
-            child: ElevatedButton(
-              onPressed: () {
-                ref.read(businessNavIndexProvider.notifier).state = 7;
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: AppColors.accent,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSizes.s20,
-                  vertical: 10.0,
+            child: SizedBox(
+              height: 38,
+              width: 170,
+              child: ElevatedButton(
+                onPressed: () {
+                  ref.read(businessNavIndexProvider.notifier).state =
+                      7;
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: AppColors.accent,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSizes.s20,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius:
+                        BorderRadius.circular(AppSizes.radiusLg),
+                  ),
+                  elevation: 0,
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppSizes.radiusLg),
-                ),
-                elevation: 0,
-              ),
-              child: Text(
-                'Actualizar a Pro',
-                style: GoogleFonts.inter(
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.accent,
+                child: Text(
+                  'Actualizar a Pro',
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.accent,
+                  ),
                 ),
               ),
             ),
@@ -1079,194 +1234,32 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ),
     );
   }
+
+  Color _statusColor(ReservationStatus status) {
+    switch (status) {
+      case ReservationStatus.pending:
+        return AppColors.statusPending;
+      case ReservationStatus.confirmed:
+        return AppColors.statusConfirmed;
+      case ReservationStatus.cancelled:
+        return AppColors.statusCancelled;
+      case ReservationStatus.completed:
+        return AppColors.statusCompleted;
+    }
+  }
 }
 
-// ─────────────────────────────────────────────────────────────────
-// Helper data class for KPI cards
-// ─────────────────────────────────────────────────────────────────
+// ─── Helper data class ───────────────────────────────────
 class _KpiData {
   final String label;
   final String value;
   final IconData icon;
   final Color color;
-  final double trendPercent;
-  final List<double> trendPoints;
 
   const _KpiData({
     required this.label,
     required this.value,
     required this.icon,
     required this.color,
-    this.trendPercent = 0.0,
-    this.trendPoints = const [],
   });
-}
-
-class _AnimatedSparkline extends StatefulWidget {
-  final List<double> values;
-  final Color color;
-
-  const _AnimatedSparkline({
-    required this.values,
-    required this.color,
-  });
-
-  @override
-  State<_AnimatedSparkline> createState() => _AnimatedSparklineState();
-}
-
-class _AnimatedSparklineState extends State<_AnimatedSparkline>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    );
-    _animation = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutQuint,
-    );
-    _controller.forward();
-  }
-
-  @override
-  void didUpdateWidget(covariant _AnimatedSparkline oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.values != widget.values) {
-      _controller.reset();
-      _controller.forward();
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: _animation,
-      builder: (context, _) {
-        return CustomPaint(
-          size: Size.infinite,
-          painter: _SparklinePainter(
-            values: widget.values,
-            color: widget.color,
-            animationValue: _animation.value,
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _SparklinePainter extends CustomPainter {
-  final List<double> values;
-  final Color color;
-  final double animationValue;
-
-  _SparklinePainter({
-    required this.values,
-    required this.color,
-    required this.animationValue,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (values.isEmpty || values.length < 2) return;
-
-    final maxVal = values.reduce(math.max);
-    final minVal = values.reduce(math.min);
-    final valRange = maxVal - minVal == 0 ? 1.0 : maxVal - minVal;
-
-    final width = size.width;
-    final height = size.height;
-
-    final List<Offset> points = [];
-    final double stepX = width / (values.length - 1);
-
-    for (int i = 0; i < values.length; i++) {
-      final double x = i * stepX;
-      final double normalized = (values[i] - minVal) / valRange;
-      final double y = height - (normalized * (height - 8) + 4);
-      points.add(Offset(x, y));
-    }
-
-    final path = Path();
-    path.moveTo(points[0].dx, points[0].dy);
-
-    for (int i = 0; i < points.length - 1; i++) {
-      final p0 = points[i];
-      final p1 = points[i + 1];
-      final controlX = (p0.dx + p1.dx) / 2;
-      path.cubicTo(
-        controlX, p0.dy,
-        controlX, p1.dy,
-        p1.dx, p1.dy,
-      );
-    }
-
-    final animatedPath = Path();
-    final pathMetrics = path.computeMetrics();
-    for (final metric in pathMetrics) {
-      final length = metric.length * animationValue;
-      animatedPath.addPath(metric.extractPath(0, length), Offset.zero);
-    }
-
-    if (animatedPath.getBounds().width > 0) {
-      final fillPath = Path.from(animatedPath);
-      final double lastX = width * animationValue;
-      
-      fillPath.lineTo(lastX, height);
-      fillPath.lineTo(0, height);
-      fillPath.close();
-
-      final fillGradient = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          color.withValues(alpha: 0.15),
-          color.withValues(alpha: 0.0),
-        ],
-      );
-      final fillPaint = Paint()
-        ..shader = fillGradient.createShader(Rect.fromLTWH(0, 0, width, height))
-        ..style = PaintingStyle.fill;
-      canvas.drawPath(fillPath, fillPaint);
-    }
-
-    final linePaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0
-      ..strokeCap = StrokeCap.round;
-    canvas.drawPath(animatedPath, linePaint);
-
-    if (animationValue > 0.9) {
-      final lastPoint = points.last;
-      
-      final glowPaint = Paint()
-        ..color = color.withValues(alpha: 0.3)
-        ..style = PaintingStyle.fill;
-      canvas.drawCircle(lastPoint, 5.0, glowPaint);
-
-      final dotPaint = Paint()
-        ..color = color
-        ..style = PaintingStyle.fill;
-      canvas.drawCircle(lastPoint, 2.5, dotPaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _SparklinePainter old) =>
-      old.animationValue != animationValue ||
-      old.values != values ||
-      old.color != color;
 }
