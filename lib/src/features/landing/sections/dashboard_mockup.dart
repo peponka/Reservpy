@@ -310,7 +310,7 @@ class _BrowserChrome extends StatelessWidget {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      'reservly.com.py/admin/dashboard',
+                      'reservpy.com/admin/dashboard',
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.inter(
                         fontSize: isMobile ? 11 : 12,

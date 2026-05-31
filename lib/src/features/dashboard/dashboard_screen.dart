@@ -1112,8 +1112,81 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     ColorScheme colorScheme,
     int reservationCount,
   ) {
-    final usage = (reservationCount / 10).clamp(0.0, 1.0);
+    final business = ref.watch(currentBusinessProvider);
+    final isPro = business?.isPro ?? false;
     final isDark = theme.brightness == Brightness.dark;
+
+    // ── Pro plan: show active badge ──
+    if (isPro) {
+      return Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSizes.s24,
+          vertical: AppSizes.s20,
+        ),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              const Color(0xFFF59E0B),
+              isDark ? const Color(0xFFD97706) : const Color(0xFFFBBF24),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(AppSizes.radiusXl),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFF59E0B).withValues(alpha: 0.25),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(AppSizes.s8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+              ),
+              child: const Icon(
+                Icons.workspace_premium_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: AppSizes.s16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Plan Pro activo ⭐',
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: AppSizes.s4),
+                  Text(
+                    'Reservas y equipo ilimitados',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.white.withValues(alpha: 0.85),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // ── Free plan: show upgrade banner ──
+    final usage = (reservationCount / 10).clamp(0.0, 1.0);
 
     return Container(
       padding: const EdgeInsets.symmetric(

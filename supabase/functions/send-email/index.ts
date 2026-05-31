@@ -49,7 +49,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
 
     const from =
-      Deno.env.get("FROM_EMAIL") ?? "ReservPy <no-reply@ReservPy.app>";
+      Deno.env.get("FROM_EMAIL") ?? "ReservPy <no-reply@reservpy.com>";
 
     const resendRes = await fetch("https://api.resend.com/emails", {
       method: "POST",

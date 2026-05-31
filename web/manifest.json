@@ -1,6 +1,6 @@
 {
-    "name": "Reservly Paraguay",
-    "short_name": "Reservly",
+    "name": "ReservPy",
+    "short_name": "ReservPy",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FFFFFF",

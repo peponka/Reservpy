@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:reservpy/src/core/constants/app_sizes.dart';
 
-/// Gestión de Clientes screen matching Reservly's admin/clients page.
+/// Gestión de Clientes screen matching ReservPy's admin/clients page.
 class ClientsScreen extends ConsumerWidget {
   const ClientsScreen({super.key});
 

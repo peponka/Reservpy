@@ -83,4 +83,20 @@ class BusinessRepository {
   Future<void> delete(String id) async {
     await _client.from('businesses').delete().eq('id', id);
   }
+
+  /// Upgrade business to Pro plan
+  Future<void> upgradeToPro(String businessId) async {
+    await _client.from('businesses').update({
+      'plan': 'pro',
+      'plan_activated_at': DateTime.now().toIso8601String(),
+    }).eq('id', businessId);
+  }
+
+  /// Downgrade business to Free plan
+  Future<void> downgradeToFree(String businessId) async {
+    await _client.from('businesses').update({
+      'plan': 'free',
+      'plan_activated_at': null,
+    }).eq('id', businessId);
+  }
 }

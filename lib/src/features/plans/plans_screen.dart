@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:reservpy/src/core/constants/app_sizes.dart';
 import 'package:reservpy/src/core/constants/app_colors.dart';
+import 'package:reservpy/src/shared/providers/providers.dart';
+import 'package:reservpy/src/features/plans/checkout_screen.dart';
 
 class PlansScreen extends ConsumerWidget {
   const PlansScreen({super.key});
@@ -13,6 +15,8 @@ class PlansScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final business = ref.watch(currentBusinessProvider);
+    final isPro = business?.isPro ?? false;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -33,11 +37,11 @@ class PlansScreen extends ConsumerWidget {
                 const SizedBox(height: AppSizes.s24),
 
                 // ── Current plan banner ─────────────────────
-                _buildCurrentPlanBanner(theme, colorScheme),
+                _buildCurrentPlanBanner(theme, colorScheme, isPro),
                 const SizedBox(height: AppSizes.s32),
 
                 // ── Plan cards ──────────────────────────────
-                _buildPlanCards(theme, colorScheme, isMobile),
+                _buildPlanCards(theme, colorScheme, isMobile, isPro, context, ref),
                 const SizedBox(height: AppSizes.s32),
 
                 // ── Footer ──────────────────────────────────
@@ -77,26 +81,27 @@ class PlansScreen extends ConsumerWidget {
   }
 
   // ─── Current plan banner ────────────────────────────────────
-  Widget _buildCurrentPlanBanner(ThemeData theme, ColorScheme colorScheme) {
+  Widget _buildCurrentPlanBanner(
+      ThemeData theme, ColorScheme colorScheme, bool isPro) {
+    final color = isPro ? _amberBrand : AppColors.primary;
+    final label = isPro ? 'Pro ⭐' : 'Free';
+    final icon = isPro ? Icons.workspace_premium_rounded : Icons.settings_outlined;
+
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSizes.s16,
         vertical: AppSizes.s12,
       ),
       decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.06),
+        color: color.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(AppSizes.radiusMd),
         border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.15),
+          color: color.withValues(alpha: 0.15),
         ),
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.settings_outlined,
-            size: AppSizes.iconMd,
-            color: AppColors.primary,
-          ),
+          Icon(icon, size: AppSizes.iconMd, color: color),
           const SizedBox(width: AppSizes.s12),
           Expanded(
             child: Text.rich(
@@ -109,11 +114,11 @@ class PlansScreen extends ConsumerWidget {
                 ),
                 children: [
                   TextSpan(
-                    text: 'Free',
+                    text: label,
                     style: GoogleFonts.inter(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
+                      color: color,
                     ),
                   ),
                 ],
@@ -130,9 +135,12 @@ class PlansScreen extends ConsumerWidget {
     ThemeData theme,
     ColorScheme colorScheme,
     bool isMobile,
+    bool isPro,
+    BuildContext context,
+    WidgetRef ref,
   ) {
-    final freeCard = _buildFreeCard(theme, colorScheme);
-    final proCard = _buildProCard(theme, colorScheme);
+    final freeCard = _buildFreeCard(theme, colorScheme, isPro);
+    final proCard = _buildProCard(theme, colorScheme, isPro, context, ref);
 
     if (isMobile) {
       return Column(
@@ -155,7 +163,8 @@ class PlansScreen extends ConsumerWidget {
   }
 
   // ─── FREE card ──────────────────────────────────────────────
-  Widget _buildFreeCard(ThemeData theme, ColorScheme colorScheme) {
+  Widget _buildFreeCard(
+      ThemeData theme, ColorScheme colorScheme, bool isPro) {
     const features = [
       '1 miembro del equipo',
       'Hasta 10 reservas/mes',
@@ -169,7 +178,9 @@ class PlansScreen extends ConsumerWidget {
         color: theme.cardTheme.color ?? Colors.white,
         borderRadius: BorderRadius.circular(AppSizes.radiusLg),
         border: Border.all(
-          color: colorScheme.outline.withValues(alpha: 0.08),
+          color: isPro
+              ? colorScheme.outline.withValues(alpha: 0.08)
+              : AppColors.primary.withValues(alpha: 0.3),
         ),
         boxShadow: [
           BoxShadow(
@@ -180,9 +191,12 @@ class PlansScreen extends ConsumerWidget {
         ],
       ),
       child: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           border: Border(
-            left: BorderSide(color: AppColors.primary, width: 2),
+            left: BorderSide(
+              color: isPro ? Colors.transparent : AppColors.primary,
+              width: 2,
+            ),
           ),
         ),
         padding: const EdgeInsets.all(AppSizes.s24),
@@ -190,7 +204,11 @@ class PlansScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Badge
-            _buildBadge('Tu plan', AppColors.primary, Colors.white),
+            _buildBadge(
+              isPro ? 'Free' : 'Tu plan',
+              isPro ? AppColors.textMuted : AppColors.primary,
+              Colors.white,
+            ),
             const SizedBox(height: AppSizes.s16),
 
             // Icon
@@ -235,7 +253,7 @@ class PlansScreen extends ConsumerWidget {
             ...features.map((f) => _buildFeatureRow(f)),
             const SizedBox(height: AppSizes.s24),
 
-            // Button – disabled / active style
+            // Button
             SizedBox(
               width: double.infinity,
               height: AppSizes.buttonMd,
@@ -250,7 +268,7 @@ class PlansScreen extends ConsumerWidget {
                   disabledForegroundColor: AppColors.textMuted,
                 ),
                 child: Text(
-                  'Plan activo',
+                  isPro ? 'Plan Free' : 'Plan activo',
                   style: GoogleFonts.inter(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -265,7 +283,8 @@ class PlansScreen extends ConsumerWidget {
   }
 
   // ─── PRO card ───────────────────────────────────────────────
-  Widget _buildProCard(ThemeData theme, ColorScheme colorScheme) {
+  Widget _buildProCard(ThemeData theme, ColorScheme colorScheme,
+      bool isPro, BuildContext context, WidgetRef ref) {
     const features = [
       'Equipo ilimitado',
       'Reservas ilimitadas',
@@ -281,12 +300,17 @@ class PlansScreen extends ConsumerWidget {
         color: theme.cardTheme.color ?? Colors.white,
         borderRadius: BorderRadius.circular(AppSizes.radiusLg),
         border: Border.all(
-          color: _amberBrand.withValues(alpha: 0.35),
+          color: isPro
+              ? _amberBrand.withValues(alpha: 0.4)
+              : _amberBrand.withValues(alpha: 0.35),
+          width: isPro ? 2 : 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 6,
+            color: isPro
+                ? _amberBrand.withValues(alpha: 0.12)
+                : Colors.black.withValues(alpha: 0.04),
+            blurRadius: isPro ? 16 : 6,
             offset: const Offset(0, 2),
           ),
         ],
@@ -297,7 +321,11 @@ class PlansScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Badge
-            _buildBadge('Recomendado', _amberBrand, Colors.white),
+            _buildBadge(
+              isPro ? 'Tu plan ⭐' : 'Recomendado',
+              _amberBrand,
+              Colors.white,
+            ),
             const SizedBox(height: AppSizes.s16),
 
             // Icon
@@ -356,36 +384,69 @@ class PlansScreen extends ConsumerWidget {
             ...features.map((f) => _buildFeatureRow(f)),
             const SizedBox(height: AppSizes.s24),
 
-            // Button – filled primary
+            // Button
             SizedBox(
               width: double.infinity,
               height: AppSizes.buttonMd,
-              child: ElevatedButton(
-                onPressed: () {
-                  // TODO: navigate to MercadoPago checkout
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(AppSizes.radiusMd),
-                  ),
-                ),
-                child: Text(
-                  'Suscribirse a Pro',
-                  style: GoogleFonts.inter(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
+              child: isPro
+                  ? OutlinedButton(
+                      onPressed: null,
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: _amberBrand.withValues(alpha: 0.4)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(AppSizes.radiusMd),
+                        ),
+                        disabledForegroundColor: _amberBrand,
+                      ),
+                      child: Text(
+                        'Plan activo ✓',
+                        style: GoogleFonts.inter(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    )
+                  : ElevatedButton(
+                      onPressed: () => _openCheckout(context, ref),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(AppSizes.radiusMd),
+                        ),
+                      ),
+                      child: Text(
+                        'Suscribirse a Pro',
+                        style: GoogleFonts.inter(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  // ─── Open Checkout ──────────────────────────────────────────
+  void _openCheckout(BuildContext context, WidgetRef ref) async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => const CheckoutScreen(),
+      ),
+    );
+
+    if (result == true) {
+      // Refresh business data to reflect the new plan
+      ref.invalidate(ownerBusinessProvider);
+      ref.invalidate(businessesProvider);
+    }
   }
 
   // ─── Shared: Feature row ────────────────────────────────────
@@ -448,7 +509,7 @@ class PlansScreen extends ConsumerWidget {
           const SizedBox(width: AppSizes.s8),
           Flexible(
             child: Text(
-              'Los pagos son procesados de forma segura por MercadoPago. '
+              'Los pagos son procesados de forma segura por Bancard. '
               'Podés cancelar en cualquier momento.',
               style: GoogleFonts.inter(
                 fontSize: 13,

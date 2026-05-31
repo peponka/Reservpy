@@ -194,6 +194,67 @@ function reservationConfirmed(data: Record<string, unknown>): { subject: string;
   return { subject: `Turno confirmado ✅ — ${businessName}`, html };
 }
 
+function reservationCancelled(data: Record<string, unknown>): { subject: string; html: string } {
+  const {
+    recipientName,
+    clientName,
+    businessName,
+    serviceName,
+    date,
+    time,
+    cancelledBy,
+    reason,
+    isBusinessCopy,
+  } = data as {
+    recipientName: string;
+    clientName?: string;
+    businessName: string;
+    serviceName: string;
+    date: string;
+    time: string;
+    cancelledBy?: string;
+    reason?: string;
+    isBusinessCopy?: boolean;
+  };
+
+  const heading = isBusinessCopy
+    ? `Turno cancelado ❌`
+    : `Tu turno fue cancelado`;
+
+  const intro = isBusinessCopy
+    ? `<strong>${clientName ?? recipientName}</strong> canceló su turno en tu negocio.`
+    : `Hola, ${recipientName}. Lamentablemente tu reserva fue cancelada.`;
+
+  const cancelledByRow = cancelledBy
+    ? detailRow("Cancelado por", cancelledBy)
+    : "";
+
+  const reasonRow = reason
+    ? detailRow("Motivo", reason)
+    : "";
+
+  const html = wrap(`
+    <h1 style="margin:0 0 8px;font-size:22px;color:${DARK};">${heading}</h1>
+    <p style="margin:0 0 20px;font-size:15px;color:#555555;line-height:1.6;">
+      ${intro}
+    </p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+           style="background-color:${LIGHT_BG};border-radius:8px;padding:16px;margin-bottom:24px;">
+      ${detailRow("Negocio", businessName)}
+      ${detailRow("Servicio", serviceName)}
+      ${detailRow("Fecha", date)}
+      ${detailRow("Hora", time)}
+      ${cancelledByRow}
+      ${reasonRow}
+    </table>
+    <p style="margin:0;font-size:13px;color:#999999;">
+      Si tenés dudas, contactá ${isBusinessCopy ? "al cliente" : "al negocio"} directamente desde la app.
+    </p>
+  `);
+
+  return { subject: `Turno cancelado ❌ — ${businessName}`, html };
+}
+
 function paymentReceipt(data: Record<string, unknown>): { subject: string; html: string } {
   const { payerName, amount, period } = data as {
     payerName: string;
@@ -221,6 +282,43 @@ function paymentReceipt(data: Record<string, unknown>): { subject: string; html:
   return { subject: "Recibo de pago — ReservPy", html };
 }
 
+function planUpgraded(data: Record<string, unknown>): { subject: string; html: string } {
+  const { ownerName, businessName, planName, amount, activatedAt } = data as {
+    ownerName: string;
+    businessName: string;
+    planName: string;
+    amount: string;
+    activatedAt: string;
+  };
+
+  const html = wrap(`
+    <h1 style="margin:0 0 8px;font-size:22px;color:${DARK};">¡Plan actualizado! ⭐</h1>
+    <p style="margin:0 0 20px;font-size:15px;color:#555555;line-height:1.6;">
+      Hola, ${ownerName}. Tu negocio <strong style="color:${PRIMARY};">${businessName}</strong> ahora tiene el plan <strong style="color:#F59E0B;">${planName}</strong>.
+    </p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+           style="background-color:${LIGHT_BG};border-radius:8px;padding:16px;margin-bottom:24px;">
+      ${detailRow("Plan", planName)}
+      ${detailRow("Monto", amount)}
+      ${detailRow("Activado", activatedAt)}
+      ${detailRow("Estado", '<span style="color:' + PRIMARY + ';font-weight:600;">Activo</span>')}
+    </table>
+    <p style="margin:0 0 24px;font-size:15px;color:#555555;line-height:1.6;">
+      Ya tenés acceso a reservas ilimitadas, equipo ilimitado, reportes avanzados y soporte prioritario.
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+      <tr><td style="background-color:${PRIMARY};border-radius:8px;text-align:center;">
+        <a href="https://ReservPy.app" target="_blank"
+           style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">
+          Ir a mi negocio
+        </a>
+      </td></tr>
+    </table>
+  `);
+
+  return { subject: "¡Tu plan fue actualizado a Pro! ⭐", html };
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -233,7 +331,9 @@ const templates: Record<
   business_created: businessCreated,
   client_registered: clientRegistered,
   reservation_confirmed: reservationConfirmed,
+  reservation_cancelled: reservationCancelled,
   payment_receipt: paymentReceipt,
+  plan_upgraded: planUpgraded,
 };
 
 /**

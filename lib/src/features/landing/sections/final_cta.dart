@@ -89,7 +89,7 @@ class FinalCtaSection extends StatelessWidget {
                         .slideY(begin: 0.15, end: 0),
                     const SizedBox(height: 16),
                     Text(
-                      'Más de 50 negocios paraguayos ya usan Reservly. Creá tu cuenta gratis en 5 minutos y empezá a recibir reservas hoy mismo.',
+                      'Más de 50 negocios paraguayos ya usan ReservPy. Creá tu cuenta gratis en 5 minutos y empezá a recibir reservas hoy mismo.',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.inter(
                         fontSize: mobile ? 16 : 18,

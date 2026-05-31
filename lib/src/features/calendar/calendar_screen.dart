@@ -12,7 +12,9 @@ import 'package:reservpy/src/core/constants/app_strings.dart';
 import 'package:reservpy/src/core/utils/date_utils.dart';
 import 'package:reservpy/src/data/repositories/reservation_repository.dart';
 import 'package:reservpy/src/data/repositories/blocked_slot_repository.dart';
+import 'package:reservpy/src/data/repositories/profile_repository.dart';
 import 'package:reservpy/src/core/utils/whatsapp_helper.dart';
+import 'package:reservpy/src/data/services/email_service.dart';
 
 const _uuid = Uuid();
 
@@ -935,6 +937,23 @@ class _DayView extends ConsumerWidget {
     try {
       await ReservationRepository().updateStatus(reservation.id, newStatus.name);
       ref.invalidate(businessReservationsProvider);
+
+      // Send cancellation email if status changed to cancelled
+      if (newStatus == ReservationStatus.cancelled) {
+        final business = ref.read(currentBusinessProvider);
+        ProfileRepository().getProfile(reservation.clientId).then((client) {
+          if (client != null && business != null) {
+            EmailService.enviarEmailCancelacionTurnoCliente(
+              clientEmail: client.email,
+              clientName: client.fullName,
+              businessName: business.name,
+              serviceName: reservation.serviceName ?? 'Servicio',
+              startTime: reservation.startTime,
+              cancelledBy: business.name,
+            );
+          }
+        }).catchError((_) {});
+      }
     } catch (_) {
       // silently fail — the UI will show stale data until next refresh
     }
@@ -1399,6 +1418,23 @@ class _WeekView extends ConsumerWidget {
     try {
       await ReservationRepository().updateStatus(reservation.id, newStatus.name);
       ref.invalidate(businessReservationsProvider);
+
+      // Send cancellation email if status changed to cancelled
+      if (newStatus == ReservationStatus.cancelled) {
+        final business = ref.read(currentBusinessProvider);
+        ProfileRepository().getProfile(reservation.clientId).then((client) {
+          if (client != null && business != null) {
+            EmailService.enviarEmailCancelacionTurnoCliente(
+              clientEmail: client.email,
+              clientName: client.fullName,
+              businessName: business.name,
+              serviceName: reservation.serviceName ?? 'Servicio',
+              startTime: reservation.startTime,
+              cancelledBy: business.name,
+            );
+          }
+        }).catchError((_) {});
+      }
     } catch (_) {
       // silently fail — the UI will show stale data until next refresh
     }

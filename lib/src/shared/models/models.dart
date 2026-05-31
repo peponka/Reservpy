@@ -272,6 +272,8 @@ class Business {
   final int cancellationHoursPolicy;
   final bool remindersEnabled;
   final List<int> reminderHoursBefore;
+  final String plan;
+  final DateTime? planActivatedAt;
 
   const Business({
     required this.id,
@@ -294,6 +296,8 @@ class Business {
     this.cancellationHoursPolicy = 2,
     this.remindersEnabled = true,
     this.reminderHoursBefore = const [24],
+    this.plan = 'free',
+    this.planActivatedAt,
   });
 
   factory Business.fromJson(Map<String, dynamic> json) => Business(
@@ -317,6 +321,10 @@ class Business {
     cancellationHoursPolicy: json['cancellation_hours_policy'] as int? ?? 2,
     remindersEnabled: json['reminders_enabled'] as bool? ?? true,
     reminderHoursBefore: (json['reminder_hours_before'] as List<dynamic>?)?.cast<int>() ?? [24],
+    plan: json['plan'] as String? ?? 'free',
+    planActivatedAt: json['plan_activated_at'] != null
+        ? DateTime.tryParse(json['plan_activated_at'] as String)
+        : null,
   );
 
   Map<String, dynamic> toJson() => {
@@ -353,6 +361,9 @@ class Business {
   String get closingTimeStr =>
       '${closingTime.hour.toString().padLeft(2, '0')}:${closingTime.minute.toString().padLeft(2, '0')}';
 
+  /// Whether this business is on the Pro plan.
+  bool get isPro => plan == 'pro';
+
   /// Whether the reservation can still be cancelled based on the policy.
   bool canCancelReservation(DateTime startTime) {
     final hoursUntil = startTime.difference(DateTime.now()).inHours;
@@ -380,6 +391,8 @@ class Business {
     int? cancellationHoursPolicy,
     bool? remindersEnabled,
     List<int>? reminderHoursBefore,
+    String? plan,
+    DateTime? planActivatedAt,
   }) {
     return Business(
       id: id ?? this.id,
@@ -402,6 +415,8 @@ class Business {
       cancellationHoursPolicy: cancellationHoursPolicy ?? this.cancellationHoursPolicy,
       remindersEnabled: remindersEnabled ?? this.remindersEnabled,
       reminderHoursBefore: reminderHoursBefore ?? this.reminderHoursBefore,
+      plan: plan ?? this.plan,
+      planActivatedAt: planActivatedAt ?? this.planActivatedAt,
     );
   }
 }

@@ -6,7 +6,7 @@ import 'package:reservpy/src/core/constants/app_sizes.dart';
 import 'package:reservpy/src/shared/models/models.dart';
 import 'package:reservpy/src/shared/providers/providers.dart';
 
-/// Servicios screen matching Reservly's admin/services page.
+/// Servicios screen matching ReservPy's admin/services page.
 class ServicesScreen extends ConsumerWidget {
   const ServicesScreen({super.key});
 

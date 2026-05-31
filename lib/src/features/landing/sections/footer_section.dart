@@ -45,7 +45,7 @@ class FooterSection extends StatelessWidget {
                     ),
                     const SizedBox(width: 10),
                     Text(
-                      'Reservly',
+                      'ReservPy',
                       style: GoogleFonts.inter(
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
@@ -89,7 +89,7 @@ class FooterSection extends StatelessWidget {
 
                 // ── Copyright ──
                 Text(
-                  '© 2026 Reservly Paraguay. Todos los derechos reservados.',
+                  '© 2026 ReservPy Paraguay. Todos los derechos reservados.',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.inter(
                     fontSize: 13,

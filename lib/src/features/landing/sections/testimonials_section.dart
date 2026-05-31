@@ -9,7 +9,7 @@ class TestimonialsSection extends StatelessWidget {
   static const _testimonials = [
     _Testimonial(
       quote:
-          'Desde que uso Reservly, mis pacientes reservan solos y yo dejé de atender WhatsApp todo el día. Es simple, rápido y mis pacientes lo aman.',
+          'Desde que uso ReservPy, mis pacientes reservan solos y yo dejé de atender WhatsApp todo el día. Es simple, rápido y mis pacientes lo aman.',
       name: 'Sofía Rodríguez',
       title: 'Psicóloga',
       city: 'Asunción',

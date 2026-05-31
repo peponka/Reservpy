@@ -11,6 +11,8 @@ import 'package:reservpy/src/shared/providers/providers.dart';
 import 'package:reservpy/src/shared/models/models.dart';
 import 'package:reservpy/src/features/reviews/review_widgets.dart';
 import 'package:reservpy/src/data/repositories/review_repository.dart';
+import 'package:reservpy/src/data/repositories/profile_repository.dart';
+import 'package:reservpy/src/data/services/email_service.dart';
 
 // ─── Filter enum ─────────────────────────────────────────
 enum _ReservationFilter { all, upcoming, completed, cancelled }
@@ -997,6 +999,32 @@ class _ReservationCardState extends ConsumerState<_ReservationCard> {
             body: '${user.fullName} canceló ${r.serviceName ?? "un turno"} del ${DateFormat('dd/MM HH:mm', 'es').format(r.startTime)}',
             reservationId: r.id,
           ).catchError((_) {});
+
+          // ── Send cancellation emails (fire-and-forget) ──
+          // Email to client (current user)
+          EmailService.enviarEmailCancelacionTurnoCliente(
+            clientEmail: user.email,
+            clientName: user.fullName,
+            businessName: r.businessName ?? 'Negocio',
+            serviceName: r.serviceName ?? 'Servicio',
+            startTime: r.startTime,
+            cancelledBy: user.fullName,
+            reason: reason.isNotEmpty ? reason : null,
+          );
+
+          // Email to business owner
+          ProfileRepository().getProfile(biz.ownerId).then((owner) {
+            if (owner != null) {
+              EmailService.enviarEmailCancelacionTurnoNegocio(
+                businessEmail: owner.email,
+                businessName: biz.name,
+                clientName: user.fullName,
+                serviceName: r.serviceName ?? 'Servicio',
+                startTime: r.startTime,
+                reason: reason.isNotEmpty ? reason : null,
+              );
+            }
+          }).catchError((_) {});
         }
       }
       if (mounted) {

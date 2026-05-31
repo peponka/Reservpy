@@ -951,7 +951,7 @@ class _EditBusinessScreenState extends ConsumerState<EditBusinessScreen> {
                           children: [
                             TileLayer(
                               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                              userAgentPackageName: 'com.reservly.app',
+                              userAgentPackageName: 'com.reservpy.app',
                             ),
                             if (_latitude != null && _longitude != null)
                               MarkerLayer(

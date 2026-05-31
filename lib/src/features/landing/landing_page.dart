@@ -18,7 +18,7 @@ import 'sections/final_cta.dart';
 import 'sections/footer_section.dart';
 
 /// Main landing page that composes all 14 sections into a single
-/// scrollable marketing page for Reservly Paraguay.
+/// scrollable marketing page for ReservPy Paraguay.
 class LandingPage extends StatefulWidget {
   const LandingPage({super.key});
 

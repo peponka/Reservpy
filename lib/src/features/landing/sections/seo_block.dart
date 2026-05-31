@@ -8,20 +8,20 @@ class SeoBlock extends StatelessWidget {
 
   static const _sections = <_SeoSection>[
     _SeoSection(
-      title: '¿Qué es Reservly? — La app de turnos de Paraguay',
+      title: '¿Qué es ReservPy? — La app de turnos de Paraguay',
       body:
-          'Reservly es la primera plataforma 100% paraguaya para gestionar turnos y reservas '
+          'ReservPy es la primera plataforma 100% paraguaya para gestionar turnos y reservas '
           'online. Nacida en Asunción, pensada para emprendedores de todo el país — desde '
           'Fernando de la Mora hasta Ciudad del Este. Con diseño moderno, panel intuitivo y '
           'soporte en español paraguayo, tu negocio recibe reservas las 24 horas sin perder '
           'ni un minuto en WhatsApp.',
     ),
     _SeoSection(
-      title: 'Chau cuaderno, chau WhatsApp — hola Reservly',
+      title: 'Chau cuaderno, chau WhatsApp — hola ReservPy',
       body:
           'En Paraguay, 8 de cada 10 negocios todavía agendan por WhatsApp o en un cuaderno. '
           'Eso significa turnos perdidos, clientes que no llegan y cero control de tu agenda. '
-          'Reservly cambia eso: tus clientes eligen el horario que les conviene, reciben '
+          'ReservPy cambia eso: tus clientes eligen el horario que les conviene, reciben '
           'confirmación automática y vos te olvidás de perseguir a nadie. Funciona 24/7, '
           'incluso cuando estás atendiendo o tomando tereré.',
     ),
@@ -29,7 +29,7 @@ class SeoBlock extends StatelessWidget {
       title: 'Paraguay se digitaliza — no te quedes atrás',
       body:
           'Los negocios paraguayos que digitalizan su agenda ahorran hasta 5 horas por semana '
-          'y reducen cancelaciones un 40%. Reservly te muestra métricas de ocupación, ingresos '
+          'y reducen cancelaciones un 40%. ReservPy te muestra métricas de ocupación, ingresos '
           'y rendimiento del equipo. Empezá gratis con hasta 10 reservas por mes y escalá '
           'cuando tu negocio lo necesite. Ya hay emprendedores en Asunción, Encarnación, Luque '
           'y CDE que lo usan — ¿vas a ser el próximo?',

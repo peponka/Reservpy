@@ -155,4 +155,103 @@ class EmailService {
       'period': period,
     });
   }
+
+  // ─── 6. Cancelación de Turno (Cliente) ─────────────────────
+  /// Envía email de cancelación de turno al CLIENTE.
+  static Future<void> enviarEmailCancelacionTurnoCliente({
+    required String clientEmail,
+    required String clientName,
+    required String businessName,
+    required String serviceName,
+    required DateTime startTime,
+    String? cancelledBy,
+    String? reason,
+  }) {
+    return _invoke('reservation_cancelled', clientEmail, {
+      'recipientName': clientName,
+      'businessName': businessName,
+      'serviceName': serviceName,
+      'date': '${startTime.day.toString().padLeft(2, '0')}/${startTime.month.toString().padLeft(2, '0')}/${startTime.year}',
+      'time': '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}',
+      'cancelledBy': cancelledBy,
+      'reason': reason,
+      'isBusinessCopy': false,
+    });
+  }
+
+  // ─── 7. Cancelación de Turno (Negocio) ─────────────────────
+  /// Envía email de cancelación de turno al NEGOCIO.
+  static Future<void> enviarEmailCancelacionTurnoNegocio({
+    required String businessEmail,
+    required String businessName,
+    required String clientName,
+    required String serviceName,
+    required DateTime startTime,
+    String? reason,
+  }) {
+    return _invoke('reservation_cancelled', businessEmail, {
+      'recipientName': businessName,
+      'clientName': clientName,
+      'businessName': businessName,
+      'serviceName': serviceName,
+      'date': '${startTime.day.toString().padLeft(2, '0')}/${startTime.month.toString().padLeft(2, '0')}/${startTime.year}',
+      'time': '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}',
+      'reason': reason,
+      'isBusinessCopy': true,
+    });
+  }
+
+  // ─── 8. Cancelación de Turno (Ambos) ───────────────────────
+  /// Conveniencia: envía email de cancelación a AMBOS (cliente + negocio).
+  static Future<void> enviarEmailCancelacionTurno({
+    required String clientEmail,
+    required String clientName,
+    required String businessEmail,
+    required String businessName,
+    required String serviceName,
+    required DateTime startTime,
+    String? cancelledBy,
+    String? reason,
+  }) async {
+    await Future.wait([
+      enviarEmailCancelacionTurnoCliente(
+        clientEmail: clientEmail,
+        clientName: clientName,
+        businessName: businessName,
+        serviceName: serviceName,
+        startTime: startTime,
+        cancelledBy: cancelledBy,
+        reason: reason,
+      ),
+      enviarEmailCancelacionTurnoNegocio(
+        businessEmail: businessEmail,
+        businessName: businessName,
+        clientName: clientName,
+        serviceName: serviceName,
+        startTime: startTime,
+        reason: reason,
+      ),
+    ]);
+  }
+
+  // ─── 9. Confirmación de Upgrade de Plan ────────────────────
+  /// Envía email de confirmación cuando un negocio actualiza su plan.
+  static Future<void> enviarEmailPlanUpgraded({
+    required String ownerEmail,
+    required String ownerName,
+    required String businessName,
+    required String planName,
+    required String amount,
+  }) {
+    final now = DateTime.now();
+    final activatedAt =
+        '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
+    return _invoke('plan_upgraded', ownerEmail, {
+      'ownerName': ownerName,
+      'businessName': businessName,
+      'planName': planName,
+      'amount': amount,
+      'activatedAt': activatedAt,
+    });
+  }
 }

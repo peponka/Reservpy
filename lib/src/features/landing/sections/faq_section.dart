@@ -10,7 +10,7 @@ class FaqSection extends StatelessWidget {
     _FaqItem(
       question: '¿Necesito conocimientos técnicos?',
       answer:
-          'Para nada. Reservly está diseñado para que cualquier persona pueda configurar su negocio en menos de 5 minutos. No necesitás saber de programación ni de diseño.',
+          'Para nada. ReservPy está diseñado para que cualquier persona pueda configurar su negocio en menos de 5 minutos. No necesitás saber de programación ni de diseño.',
     ),
     _FaqItem(
       question: '¿Mis clientes necesitan una app?',
@@ -30,7 +30,7 @@ class FaqSection extends StatelessWidget {
     _FaqItem(
       question: '¿Mis datos están seguros?',
       answer:
-          'Absolutamente. Usamos encriptación de nivel bancario y servidores seguros. Tu información y la de tus clientes está protegida. Reservly cumple con estándares internacionales de seguridad, adaptados al mercado paraguayo.',
+          'Absolutamente. Usamos encriptación de nivel bancario y servidores seguros. Tu información y la de tus clientes está protegida. ReservPy cumple con estándares internacionales de seguridad, adaptados al mercado paraguayo.',
     ),
   ];
 

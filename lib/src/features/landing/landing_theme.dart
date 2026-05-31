@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-/// Landing page color palette (green Reservly brand).
+/// Landing page color palette (green ReservPy brand).
 class LandingColors {
   LandingColors._();
 
-  // ─── Primary (Green Reservly) ──────────────────────────────────
+  // ─── Primary (Green ReservPy) ──────────────────────────────────
   static const Color primary = Color(0xFF00C896);
   static const Color primaryDark = Color(0xFF00A87A);
   static const Color primaryLight = Color(0xFF33D4AB);

@@ -87,7 +87,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     try {
       final searchUrl = 'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(query)}&format=json&limit=1';
       final response = await http.get(Uri.parse(searchUrl), headers: {
-        'User-Agent': 'com.reservly.app',
+        'User-Agent': 'com.reservpy.app',
       });
 
       if (response.statusCode == 200) {
@@ -509,7 +509,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       TileLayer(
                         urlTemplate:
                             'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        userAgentPackageName: 'com.reservly.app',
+                        userAgentPackageName: 'com.reservpy.app',
                       ),
                       if (_latitude != null && _longitude != null)
                         MarkerLayer(
@@ -921,7 +921,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   // ═══════════════════════════════════════════════════════════
   Widget _buildPublicUrlRow(Business business) {
     final slug = _slugFromName(business.name);
-    final url = 'https://www.reservly.com.ar/b/$slug';
+    final url = 'https://www.reservpy.com/b/$slug';
 
     return Container(
       padding: const EdgeInsets.symmetric(

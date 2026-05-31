@@ -235,7 +235,7 @@ class _Logo extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         Text(
-          'Reservly',
+          'ReservPy',
           style: GoogleFonts.inter(
             fontSize: 20,
             fontWeight: FontWeight.w700,

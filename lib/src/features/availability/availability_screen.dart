@@ -4,7 +4,7 @@ import 'package:reservpy/src/core/constants/app_colors.dart';
 import 'package:reservpy/src/core/constants/app_sizes.dart';
 import 'package:reservpy/src/shared/providers/providers.dart';
 
-/// Disponibilidad screen matching Reservly's admin/availability page.
+/// Disponibilidad screen matching ReservPy's admin/availability page.
 class AvailabilityScreen extends ConsumerWidget {
   const AvailabilityScreen({super.key});
 

@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 
 import 'package:reservpy/src/core/widgets/widgets.dart';
 import 'package:reservpy/src/core/constants/app_sizes.dart';
 import 'package:reservpy/src/core/constants/app_strings.dart';
 import 'package:reservpy/src/core/utils/validators.dart';
+import 'package:reservpy/src/data/repositories/auth_repository.dart';
 
 /// Forgot-password screen.
 ///
 /// Displays a lock icon, explanation text, and an email field.
-/// On submit, shows a success SnackBar and offers a link back to login.
+/// On submit, calls Supabase Auth to send a real password reset link.
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
 
@@ -21,6 +23,7 @@ class ForgotPasswordScreen extends StatefulWidget {
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
+  final _authRepo = AuthRepository();
   bool _isLoading = false;
   bool _emailSent = false;
 
@@ -35,32 +38,57 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     setState(() => _isLoading = true);
 
-    // Simulate network request.
-    await Future.delayed(const Duration(milliseconds: 800));
+    try {
+      await _authRepo.resetPassword(_emailController.text.trim());
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    setState(() {
-      _isLoading = false;
-      _emailSent = true;
-    });
+      setState(() {
+        _isLoading = false;
+        _emailSent = true;
+      });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-            const SizedBox(width: AppSizes.s8),
-            Expanded(
-              child: Text(
-                'Te enviamos un enlace a ${_emailController.text.trim()}',
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: AppSizes.s8),
+              Expanded(
+                child: Text(
+                  'Te enviamos un enlace a ${_emailController.text.trim()}',
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
+          duration: const Duration(seconds: 4),
         ),
-        duration: const Duration(seconds: 4),
-      ),
-    );
+      );
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.message.contains('not found')
+                ? 'No encontramos una cuenta con ese email'
+                : 'Error: ${e.message}',
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error de conexión: $e'),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   @override

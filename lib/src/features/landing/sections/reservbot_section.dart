@@ -106,7 +106,7 @@ class _ReservbotSectionState extends State<ReservbotSection> {
         ).animate().fadeIn(duration: 500.ms, delay: 100.ms).slideY(begin: 0.1),
         const SizedBox(height: 14),
         Text(
-          'Tu asistente virtual con IA integrado en el panel de Reservly. '
+          'Tu asistente virtual con IA integrado en el panel de ReservPy. '
           'Consultá turnos, detectá huecos y ejecutá acciones con lenguaje natural.',
           style: GoogleFonts.inter(
             fontSize: 15,
@@ -123,7 +123,7 @@ class _ReservbotSectionState extends State<ReservbotSection> {
           spacing: 12,
           runSpacing: 12,
           children: [
-            _OrangeCta(label: 'Probar Reservly'),
+            _OrangeCta(label: 'Probar ReservPy'),
             _OutlineCta(label: 'Ver plan Pro'),
           ],
         ).animate().fadeIn(duration: 400.ms, delay: 600.ms),
@@ -265,7 +265,7 @@ class _ReservbotSectionState extends State<ReservbotSection> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                'reservly.com.py/admin',
+                'reservpy.com/admin',
                 style: GoogleFonts.inter(
                   fontSize: 11,
                   color: const Color(0xFF71717A),

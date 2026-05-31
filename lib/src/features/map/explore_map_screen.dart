@@ -145,7 +145,7 @@ class _ExploreMapScreenState extends ConsumerState<ExploreMapScreen> {
                     TileLayer(
                       urlTemplate:
                           'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.reservly.app',
+                      userAgentPackageName: 'com.reservpy.app',
                     ),
                     MarkerLayer(
                       markers: _buildMarkers(businesses, categories, theme),

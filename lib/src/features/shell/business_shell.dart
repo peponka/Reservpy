@@ -21,12 +21,12 @@ import 'package:reservpy/src/features/dashboard/reports_screen.dart';
 import 'package:reservpy/src/features/notifications/notification_panel.dart';
 
 /// Business owner navigation shell with responsive layout:
-/// - Desktop (>=800px): Left sidebar navigation (like Reservly.com.ar)
+/// - Desktop (>=800px): Left sidebar navigation (like ReservPy)
 /// - Mobile (<800px): Bottom navigation bar
 class BusinessShell extends ConsumerWidget {
   const BusinessShell({super.key});
 
-  /// All navigation items matching Reservly's sidebar layout.
+  /// All navigation items matching ReservPy's sidebar layout.
   static const _sidebarItems = <_SidebarNavItem>[
     _SidebarNavItem(icon: Icons.grid_view_outlined, activeIcon: Icons.grid_view_rounded, label: 'Dashboard'),
     _SidebarNavItem(icon: Icons.people_outline_rounded, activeIcon: Icons.people_rounded, label: 'Clientes'),
@@ -217,6 +217,24 @@ class BusinessShell extends ConsumerWidget {
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: AppColors.primary,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSizes.s8),
+                TextButton.icon(
+                  onPressed: () async {
+                    await AuthRepository().signOut();
+                    ref.read(isLoggedInProvider.notifier).state = false;
+                    ref.read(currentUserProvider.notifier).state = null;
+                    if (context.mounted) context.go('/login');
+                  },
+                  icon: const Icon(Icons.logout_rounded, size: 18, color: AppColors.error),
+                  label: Text(
+                    'Cerrar sesión',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.error,
                     ),
                   ),
                 ),
@@ -526,7 +544,7 @@ class BusinessShell extends ConsumerWidget {
   }
 }
 
-/// Desktop left sidebar navigation matching Reservly.com.ar's admin panel.
+/// Desktop left sidebar navigation matching ReservPy's admin panel.
 class _DesktopSidebar extends ConsumerWidget {
   final int currentIndex;
   final ValueChanged<int> onIndexChanged;
