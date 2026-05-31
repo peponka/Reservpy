@@ -274,6 +274,8 @@ class Business {
   final List<int> reminderHoursBefore;
   final String plan;
   final DateTime? planActivatedAt;
+  /// Days of the week the business is open (1=Mon, 2=Tue, ..., 7=Sun).
+  final List<int> workingDays;
 
   const Business({
     required this.id,
@@ -298,6 +300,7 @@ class Business {
     this.reminderHoursBefore = const [24],
     this.plan = 'free',
     this.planActivatedAt,
+    this.workingDays = const [1, 2, 3, 4, 5, 6],
   });
 
   factory Business.fromJson(Map<String, dynamic> json) => Business(
@@ -325,6 +328,7 @@ class Business {
     planActivatedAt: json['plan_activated_at'] != null
         ? DateTime.tryParse(json['plan_activated_at'] as String)
         : null,
+    workingDays: (json['working_days'] as List<dynamic>?)?.cast<int>() ?? [1, 2, 3, 4, 5, 6],
   );
 
   Map<String, dynamic> toJson() => {
@@ -346,6 +350,7 @@ class Business {
     'cancellation_hours_policy': cancellationHoursPolicy,
     'reminders_enabled': remindersEnabled,
     'reminder_hours_before': reminderHoursBefore,
+    'working_days': workingDays,
   };
 
   bool get isCurrentlyOpen {
@@ -393,6 +398,7 @@ class Business {
     List<int>? reminderHoursBefore,
     String? plan,
     DateTime? planActivatedAt,
+    List<int>? workingDays,
   }) {
     return Business(
       id: id ?? this.id,
@@ -417,6 +423,7 @@ class Business {
       reminderHoursBefore: reminderHoursBefore ?? this.reminderHoursBefore,
       plan: plan ?? this.plan,
       planActivatedAt: planActivatedAt ?? this.planActivatedAt,
+      workingDays: workingDays ?? this.workingDays,
     );
   }
 }

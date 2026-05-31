@@ -30,17 +30,52 @@ class _AvailabilityScreenState extends ConsumerState<AvailabilityScreen> {
   ];
 
   /// Build DaySchedule list from the current business.
-  /// Days 0-4 (Mon-Fri) use the business opening/closing.
-  /// Days 5-6 (Sat-Sun) default to closed.
+  /// Uses business.workingDays to determine which days are open.
   List<_DaySchedule> _buildSchedule(Business business) {
     return List.generate(7, (i) {
-      final isWorkDay = i < 5;
+      final dayNum = i + 1; // 1=Mon, 2=Tue, ..., 7=Sun
+      final isWorkDay = business.workingDays.contains(dayNum);
       return _DaySchedule(
         dayName: _dayNames[i],
+        dayNum: dayNum,
         openingTime: isWorkDay ? business.openingTime : null,
         closingTime: isWorkDay ? business.closingTime : null,
       );
     });
+  }
+
+  Future<void> _toggleDay(Business business, int dayNum, bool currentlyOpen) async {
+    setState(() => _isSaving = true);
+    final updatedDays = List<int>.from(business.workingDays);
+    if (currentlyOpen) {
+      updatedDays.remove(dayNum);
+    } else {
+      updatedDays.add(dayNum);
+      updatedDays.sort();
+    }
+    try {
+      await BusinessRepository().updateField(business.id, 'working_days', updatedDays);
+      ref.invalidate(ownerBusinessProvider);
+      if (mounted) {
+        final dayName = _dayNames[dayNum - 1];
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(currentlyOpen ? '$dayName marcado como cerrado' : '$dayName marcado como abierto'),
+            backgroundColor: AppColors.primary,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al guardar: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   Future<void> _editSchedule(Business business) async {
@@ -241,7 +276,7 @@ class _AvailabilityScreenState extends ConsumerState<AvailabilityScreen> {
                       Expanded(
                         child: Text(
                           'El horario actual de tu negocio es de ${business.openingTimeStr} a ${business.closingTimeStr}. '
-                          'Los turnos de Lunes a Viernes usan este horario.',
+                          'Tocá un día para abrirlo o cerrarlo.',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: AppColors.info,
                             fontWeight: FontWeight.w500,
@@ -298,8 +333,11 @@ class _AvailabilityScreenState extends ConsumerState<AvailabilityScreen> {
                       ...weekDays.map(
                         (day) => Column(
                           children: [
-                            _buildDayRow(context, theme, colorScheme,
-                                day, isMobile),
+                            InkWell(
+                              onTap: _isSaving ? null : () => _toggleDay(business, day.dayNum, day.openingTime != null),
+                              child: _buildDayRow(context, theme, colorScheme,
+                                  day, isMobile),
+                            ),
                             const Divider(height: 1),
                           ],
                         ),
@@ -671,11 +709,13 @@ class _AvailabilityScreenState extends ConsumerState<AvailabilityScreen> {
 
 class _DaySchedule {
   final String dayName;
+  final int dayNum;
   final TimeOfDay? openingTime;
   final TimeOfDay? closingTime;
 
   const _DaySchedule({
     required this.dayName,
+    required this.dayNum,
     required this.openingTime,
     required this.closingTime,
   });

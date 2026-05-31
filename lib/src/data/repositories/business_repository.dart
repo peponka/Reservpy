@@ -99,4 +99,11 @@ class BusinessRepository {
       'plan_activated_at': null,
     }).eq('id', businessId);
   }
+
+  /// Update a single field on a business
+  Future<void> updateField(String businessId, String field, dynamic value) async {
+    await _client.from('businesses').update({
+      field: value,
+    }).eq('id', businessId);
+  }
 }

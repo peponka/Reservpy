@@ -1,28 +1,87 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:reservpy/src/core/constants/app_colors.dart';
 import 'package:reservpy/src/core/constants/app_sizes.dart';
 import 'package:reservpy/src/shared/providers/providers.dart';
+import 'package:reservpy/src/data/repositories/business_repository.dart';
 
 /// Disponibilidad screen matching ReservPy's admin/availability page.
-class AvailabilityScreen extends ConsumerWidget {
+class AvailabilityScreen extends ConsumerStatefulWidget {
   const AvailabilityScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AvailabilityScreen> createState() => _AvailabilityScreenState();
+}
+
+class _AvailabilityScreenState extends ConsumerState<AvailabilityScreen> {
+  bool _saving = false;
+
+  static const _dayLabels = <({String short, String full, int dayNum})>[
+    (short: 'Lun', full: 'Lunes', dayNum: 1),
+    (short: 'Mar', full: 'Martes', dayNum: 2),
+    (short: 'Mié', full: 'Miércoles', dayNum: 3),
+    (short: 'Jue', full: 'Jueves', dayNum: 4),
+    (short: 'Vie', full: 'Viernes', dayNum: 5),
+    (short: 'Sáb', full: 'Sábado', dayNum: 6),
+    (short: 'Dom', full: 'Domingo', dayNum: 7),
+  ];
+
+  Future<void> _toggleDay(int dayNum, bool currentlyActive) async {
+    final business = ref.read(currentBusinessProvider);
+    if (business == null) return;
+
+    setState(() => _saving = true);
+
+    final updatedDays = List<int>.from(business.workingDays);
+    if (currentlyActive) {
+      updatedDays.remove(dayNum);
+    } else {
+      updatedDays.add(dayNum);
+      updatedDays.sort();
+    }
+
+    try {
+      await BusinessRepository().updateField(
+        business.id,
+        'working_days',
+        updatedDays,
+      );
+      ref.invalidate(ownerBusinessProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              currentlyActive
+                  ? '${_dayLabels.firstWhere((d) => d.dayNum == dayNum).full} marcado como cerrado'
+                  : '${_dayLabels.firstWhere((d) => d.dayNum == dayNum).full} marcado como abierto',
+            ),
+            backgroundColor: AppColors.primary,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al guardar: $e'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final business = ref.watch(currentBusinessProvider);
-
-    final days = [
-      _DaySchedule('Lun', 'Lunes', true),
-      _DaySchedule('Mar', 'Martes', true),
-      _DaySchedule('Mié', 'Miércoles', true),
-      _DaySchedule('Jue', 'Jueves', true),
-      _DaySchedule('Vie', 'Viernes', true),
-      _DaySchedule('Sáb', 'Sábado', true),
-      _DaySchedule('Dom', 'Domingo', false),
-    ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -38,14 +97,17 @@ class AvailabilityScreen extends ConsumerWidget {
                 // Header
                 Text(
                   'Disponibilidad',
-                  style: theme.textTheme.headlineSmall?.copyWith(
+                  style: GoogleFonts.inter(
+                    fontSize: 24,
                     fontWeight: FontWeight.w700,
+                    color: colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Configurá tus días y horarios de atención',
-                  style: theme.textTheme.bodyMedium?.copyWith(
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
                     color: colorScheme.primary,
                   ),
                 ),
@@ -56,9 +118,9 @@ class AvailabilityScreen extends ConsumerWidget {
                 else ...[
                   _buildCurrentHoursCard(theme, colorScheme, business),
                   const SizedBox(height: AppSizes.s24),
-                  _buildDayChipsSection(theme, colorScheme, days, business),
+                  _buildDayChipsSection(theme, colorScheme, business),
                   const SizedBox(height: AppSizes.s24),
-                  _buildScheduleTable(theme, colorScheme, days, business),
+                  _buildScheduleTable(theme, colorScheme, business),
                 ],
               ],
             ),
@@ -88,14 +150,17 @@ class AvailabilityScreen extends ConsumerWidget {
           const SizedBox(height: 16),
           Text(
             'Sin horario configurado',
-            style: theme.textTheme.titleMedium?.copyWith(
+            style: GoogleFonts.inter(
+              fontSize: 16,
               fontWeight: FontWeight.w600,
+              color: colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             'Creá tu negocio para configurar la disponibilidad.',
-            style: theme.textTheme.bodySmall?.copyWith(
+            style: GoogleFonts.inter(
+              fontSize: 13,
               color: colorScheme.outline,
             ),
           ),
@@ -105,6 +170,7 @@ class AvailabilityScreen extends ConsumerWidget {
   }
 
   Widget _buildCurrentHoursCard(ThemeData theme, ColorScheme colorScheme, dynamic business) {
+    final openDays = business.workingDays.length;
     return Container(
       padding: const EdgeInsets.all(AppSizes.s20),
       decoration: BoxDecoration(
@@ -114,69 +180,42 @@ class AvailabilityScreen extends ConsumerWidget {
           color: colorScheme.primary.withValues(alpha: 0.15),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(AppSizes.s12),
-                decoration: BoxDecoration(
-                  color: colorScheme.primary.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.access_time_rounded,
-                  color: colorScheme.primary,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: AppSizes.s16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Horario actual',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${business.openingTimeStr} — ${business.closingTimeStr}  •  Turnos de ${business.slotDurationMinutes} min',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.outline,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          Container(
+            padding: const EdgeInsets.all(AppSizes.s12),
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.access_time_rounded,
+              color: colorScheme.primary,
+              size: 24,
+            ),
           ),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerRight,
-            child: OutlinedButton(
-              onPressed: () {},
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(
-                  color: colorScheme.primary,
-                  width: 1.5,
+          const SizedBox(width: AppSizes.s16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Horario actual',
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: colorScheme.onSurface,
+                  ),
                 ),
-                foregroundColor: colorScheme.primary,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSizes.s16,
-                  vertical: AppSizes.s8,
+                const SizedBox(height: 4),
+                Text(
+                  '${business.openingTimeStr} — ${business.closingTimeStr}  •  Turnos de ${business.slotDurationMinutes} min  •  $openDays días/semana',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: colorScheme.outline,
+                  ),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                ),
-              ),
-              child: const Text(
-                'Editar',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
+              ],
             ),
           ),
         ],
@@ -184,34 +223,58 @@ class AvailabilityScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildDayChipsSection(ThemeData theme, ColorScheme colorScheme, List<_DaySchedule> days, dynamic business) {
+  Widget _buildDayChipsSection(ThemeData theme, ColorScheme colorScheme, dynamic business) {
+    final workingDays = business.workingDays as List<int>;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Días de atención',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: AppSizes.s4),
-        Text(
-          'Seleccioná los días en los que atendés',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: colorScheme.outline,
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Días de atención',
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: AppSizes.s4),
+                  Text(
+                    'Tocá un día para abrirlo o cerrarlo',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: colorScheme.outline,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (_saving)
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+              ),
+          ],
         ),
         const SizedBox(height: AppSizes.s16),
         Wrap(
           spacing: AppSizes.s8,
           runSpacing: AppSizes.s8,
-          children: days.map((day) {
-            return _DayChip(
+          children: _dayLabels.map((day) {
+            final isActive = workingDays.contains(day.dayNum);
+            return _DayChipButton(
               shortLabel: day.short,
               fullLabel: day.full,
-              isActive: day.isActive,
+              isActive: isActive,
               openTime: business.openingTimeStr,
               closeTime: business.closingTimeStr,
+              onTap: _saving ? null : () => _toggleDay(day.dayNum, isActive),
             );
           }).toList(),
         ),
@@ -219,7 +282,9 @@ class AvailabilityScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildScheduleTable(ThemeData theme, ColorScheme colorScheme, List<_DaySchedule> days, dynamic business) {
+  Widget _buildScheduleTable(ThemeData theme, ColorScheme colorScheme, dynamic business) {
+    final workingDays = business.workingDays as List<int>;
+
     return Container(
       decoration: BoxDecoration(
         color: theme.cardTheme.color,
@@ -251,25 +316,29 @@ class AvailabilityScreen extends ConsumerWidget {
               children: [
                 Expanded(
                   flex: 3,
-                  child: Text('DÍA', style: theme.textTheme.labelSmall?.copyWith(
+                  child: Text('DÍA', style: GoogleFonts.inter(
+                    fontSize: 11,
                     color: colorScheme.outline, fontWeight: FontWeight.w700, letterSpacing: 0.5,
                   )),
                 ),
                 Expanded(
                   flex: 2,
-                  child: Text('APERTURA', style: theme.textTheme.labelSmall?.copyWith(
+                  child: Text('APERTURA', style: GoogleFonts.inter(
+                    fontSize: 11,
                     color: colorScheme.outline, fontWeight: FontWeight.w700, letterSpacing: 0.5,
                   )),
                 ),
                 Expanded(
                   flex: 2,
-                  child: Text('CIERRE', style: theme.textTheme.labelSmall?.copyWith(
+                  child: Text('CIERRE', style: GoogleFonts.inter(
+                    fontSize: 11,
                     color: colorScheme.outline, fontWeight: FontWeight.w700, letterSpacing: 0.5,
                   )),
                 ),
                 Expanded(
                   flex: 2,
-                  child: Text('ESTADO', style: theme.textTheme.labelSmall?.copyWith(
+                  child: Text('ESTADO', style: GoogleFonts.inter(
+                    fontSize: 11,
                     color: colorScheme.outline, fontWeight: FontWeight.w700, letterSpacing: 0.5,
                   ), textAlign: TextAlign.end),
                 ),
@@ -277,128 +346,144 @@ class AvailabilityScreen extends ConsumerWidget {
             ),
           ),
           // Day rows
-          ...days.map(
-            (day) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: colorScheme.outline.withValues(alpha: 0.05),
+          ..._dayLabels.map((day) {
+            final isActive = workingDays.contains(day.dayNum);
+            return InkWell(
+              onTap: _saving ? null : () => _toggleDay(day.dayNum, isActive),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: colorScheme.outline.withValues(alpha: 0.05),
+                    ),
                   ),
                 ),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: Text(day.full, style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    )),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(day.isActive ? business.openingTimeStr : '—', style: theme.textTheme.bodySmall),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(day.isActive ? business.closingTimeStr : '—', style: theme.textTheme.bodySmall),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: (day.isActive ? AppColors.success : Colors.grey).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          day.isActive ? 'Abierto' : 'Cerrado',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: day.isActive ? AppColors.success : Colors.grey,
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Text(day.full, style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: isActive ? colorScheme.onSurface : colorScheme.outline,
+                      )),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        isActive ? business.openingTimeStr : '—',
+                        style: GoogleFonts.inter(fontSize: 13, color: colorScheme.outline),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        isActive ? business.closingTimeStr : '—',
+                        style: GoogleFonts.inter(fontSize: 13, color: colorScheme.outline),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: (isActive ? AppColors.success : Colors.grey).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            isActive ? 'Abierto' : 'Cerrado',
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: isActive ? AppColors.success : Colors.grey,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ),
+            );
+          }),
         ],
       ),
     );
   }
 }
 
-class _DaySchedule {
-  final String short;
-  final String full;
-  final bool isActive;
-  const _DaySchedule(this.short, this.full, this.isActive);
-}
-
-class _DayChip extends StatelessWidget {
+class _DayChipButton extends StatelessWidget {
   final String shortLabel;
   final String fullLabel;
   final bool isActive;
   final String openTime;
   final String closeTime;
+  final VoidCallback? onTap;
 
-  const _DayChip({
+  const _DayChipButton({
     required this.shortLabel,
     required this.fullLabel,
     required this.isActive,
     required this.openTime,
     required this.closeTime,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Tooltip(
       message: isActive ? '$fullLabel: $openTime — $closeTime' : '$fullLabel: Cerrado',
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSizes.s16,
-          vertical: AppSizes.s12,
-        ),
-        decoration: BoxDecoration(
-          color: isActive
-              ? colorScheme.primary.withValues(alpha: 0.08)
-              : colorScheme.outline.withValues(alpha: 0.05),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          border: Border.all(
-            color: isActive
-                ? colorScheme.primary.withValues(alpha: 0.2)
-                : colorScheme.outline.withValues(alpha: 0.1),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSizes.s16,
+              vertical: AppSizes.s12,
+            ),
+            decoration: BoxDecoration(
+              color: isActive
+                  ? colorScheme.primary.withValues(alpha: 0.08)
+                  : colorScheme.outline.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+              border: Border.all(
+                color: isActive
+                    ? colorScheme.primary.withValues(alpha: 0.2)
+                    : colorScheme.outline.withValues(alpha: 0.1),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  shortLabel,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: isActive ? colorScheme.primary : Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: isActive ? AppColors.success : Colors.grey,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              shortLabel,
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: isActive ? colorScheme.primary : Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: isActive ? AppColors.success : Colors.grey,
-                shape: BoxShape.circle,
-              ),
-            ),
-          ],
         ),
       ),
     );
