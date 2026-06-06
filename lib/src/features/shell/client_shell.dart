@@ -21,9 +21,9 @@ class ClientShell extends ConsumerWidget {
 
   static const _navItems = <_NavItem>[
     _NavItem(icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Inicio'),
-    _NavItem(icon: Icons.add_circle_outline, activeIcon: Icons.add_circle_rounded, label: 'Sacar turnos'),
+    _NavItem(icon: Icons.add_circle_outline, activeIcon: Icons.add_circle_rounded, label: 'Turnos'),
     _NavItem(icon: Icons.explore_outlined, activeIcon: Icons.explore_rounded, label: 'Explorar'),
-    _NavItem(icon: Icons.calendar_today_outlined, activeIcon: Icons.calendar_today_rounded, label: 'Mis Reservas'),
+    _NavItem(icon: Icons.calendar_today_outlined, activeIcon: Icons.calendar_today_rounded, label: 'Reservas'),
     _NavItem(icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded, label: 'Perfil'),
   ];
 

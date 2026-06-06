@@ -601,8 +601,10 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
           crossCount = 2;
           aspectRatio = 0.75;
         } else {
+          // Mobile: una sola columna, card "alta" para mostrar todo
+          // (nombre, categoría, horarios, precios y botones sin cortes).
           crossCount = 1;
-          aspectRatio = 1.6;
+          aspectRatio = 0.85;
         }
 
         return SingleChildScrollView(
@@ -718,7 +720,8 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                           SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: crossCount,
                         crossAxisSpacing: AppSizes.s20,
-                        mainAxisSpacing: AppSizes.s20,
+                        // Más respiración entre cards (antes pegadas)
+                        mainAxisSpacing: AppSizes.s24,
                         childAspectRatio: aspectRatio,
                       ),
                       itemCount: filtered.length,

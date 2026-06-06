@@ -21,6 +21,8 @@ class AuthRepository {
     String? firstName,
     String? lastName,
     String role = 'client',
+    String? businessName,
+    String? categoryId,
   }) async {
     return await _auth.signUp(
       email: email,
@@ -29,6 +31,11 @@ class AuthRepository {
         'first_name': firstName ?? '',
         'last_name': lastName ?? '',
         'role': role,
+        // Guardamos nombre + rubro del negocio para pre-cargar el onboarding
+        if (businessName != null && businessName.isNotEmpty)
+          'business_name': businessName,
+        if (categoryId != null && categoryId.isNotEmpty)
+          'category_id': categoryId,
       },
     );
   }

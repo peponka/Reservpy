@@ -115,7 +115,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   // ═══════════════════════════════════════════════════════════
-  // 1. GREETING HEADER
+  // 1. GREETING HEADER (rediseño premium)
+  //   - Saludo + nombre con avatar circular con la inicial
+  //   - Sin badge redundante, sin reloj (ya está en la barra del teléfono)
   // ═══════════════════════════════════════════════════════════
   Widget _buildGreetingHeader(
     ThemeData theme,
@@ -123,145 +125,127 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     String userName,
     bool isDesktop,
   ) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween<double>(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 1800),
-      curve: Curves.easeInOut,
-      builder: (context, shimmerValue, child) {
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSizes.s24,
-            vertical: AppSizes.s24,
+    final initial =
+        userName.trim().isNotEmpty ? userName.trim()[0].toUpperCase() : '?';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(
+          AppSizes.s24, AppSizes.s24, AppSizes.s24, AppSizes.s24),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFF0A2540),
+            Color(0xFF143866),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0A2540).withValues(alpha: 0.25),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
           ),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                const Color(0xFF0A2540),
-                Color.lerp(
-                  const Color(0xFF1A3A5C),
-                  const Color(0xFF0A2540),
-                  (shimmerValue * 0.15).clamp(0.0, 0.15),
-                )!,
-                const Color(0xFF1A3A5C),
-              ],
-              stops: [
-                0.0,
-                shimmerValue.clamp(0.0, 1.0),
-                1.0,
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF0A2540).withValues(alpha: 0.25),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // Acento decorativo
+          Positioned(
+            top: -40,
+            right: -40,
+            child: IgnorePointer(
+              child: Container(
+                width: 140,
+                height: 140,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.primary.withValues(alpha: 0.10),
+                ),
               ),
-            ],
+            ),
           ),
-          child: Stack(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Decorative circle accent
-              Positioned(
-                top: -30,
-                right: -30,
-                child: Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.primary.withValues(alpha: 0.10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${_greetingTitle()},',
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white.withValues(alpha: 0.7),
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: AppSizes.s4),
+                    Text(
+                      userName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: isDesktop ? 30 : 26,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        height: 1.1,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: AppSizes.s8),
+                    Text(
+                      'Gestioná tus turnos del día',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: Colors.white.withValues(alpha: 0.65),
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSizes.s12),
+              // Avatar circular con la inicial del usuario (toque humano)
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [
+                      AppColors.primary,
+                      Color(0xFF00926E),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.4),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    initial,
+                    style: GoogleFonts.inter(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
-              // Content row
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _greeting(),
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white.withValues(alpha: 0.5),
-                            letterSpacing: 1.5,
-                          ),
-                        ),
-                        const SizedBox(height: AppSizes.s8),
-                        Text(
-                          '${_greetingTitle()}, $userName',
-                          style: GoogleFonts.inter(
-                            fontSize: isDesktop ? 32 : 26,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: AppSizes.s4),
-                        Text(
-                          'Bienvenido. Gestioná tus turnos del día.',
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            color: Colors.white.withValues(alpha: 0.6),
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: AppSizes.s16),
-                  // Clock inside the banner
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _formattedClock(),
-                        style: GoogleFonts.inter(
-                          fontSize: isDesktop ? 34 : 26,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const SizedBox(height: AppSizes.s4),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.8),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'HORA LOCAL',
-                            style: GoogleFonts.inter(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white.withValues(alpha: 0.45),
-                              letterSpacing: 1.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
             ],
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
@@ -419,15 +403,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ],
           ),
           const SizedBox(height: AppSizes.s12),
-          Text(
-            data.value,
-            style: GoogleFonts.inter(
-              fontSize: 26,
-              fontWeight: FontWeight.w900,
-              color: colorScheme.onSurface,
+          // FittedBox + scaleDown: si el valor es muy largo (Gs. 1.234.567)
+          // se achica solo en vez de cortarse.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              data.value,
+              style: GoogleFonts.inter(
+                fontSize: 26,
+                fontWeight: FontWeight.w900,
+                color: colorScheme.onSurface,
+              ),
+              maxLines: 1,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: AppSizes.s12),
           // Colored accent bar at the bottom

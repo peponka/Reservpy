@@ -1,39 +1,24 @@
 import 'dart:typed_data';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'package:reservpy/src/core/constants/app_colors.dart';
 import 'package:reservpy/src/core/constants/app_sizes.dart';
 import 'package:reservpy/src/shared/providers/providers.dart';
 import 'package:reservpy/src/data/repositories/business_photo_repository.dart';
 
-/// Pick an image file on Flutter Web using dart:html.
+/// Pick an image file using image_picker (cross-platform).
 Future<({Uint8List bytes, String name})?> _pickImageWeb() async {
-  final completer = Completer<({Uint8List bytes, String name})?>();
-  final input = html.FileUploadInputElement()..accept = 'image/*';
-  input.click();
-  input.onChange.listen((event) {
-    final file = input.files?.first;
-    if (file == null) {
-      completer.complete(null);
-      return;
-    }
-    final reader = html.FileReader();
-    reader.readAsArrayBuffer(file);
-    reader.onLoadEnd.listen((_) {
-      final bytes = reader.result as Uint8List;
-      completer.complete((bytes: bytes, name: file.name));
-    });
-  });
-  Future.delayed(const Duration(minutes: 2), () {
-    if (!completer.isCompleted) completer.complete(null);
-  });
-  return completer.future;
+  final picker = ImagePicker();
+  final XFile? xFile = await picker.pickImage(source: ImageSource.gallery);
+  if (xFile == null) return null;
+  final Uint8List rawBytes = await xFile.readAsBytes();
+  final String fileName = xFile.name;
+  return (bytes: rawBytes, name: fileName);
 }
 
 /// Photo gallery management for business owners.

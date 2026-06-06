@@ -122,71 +122,10 @@ class _ExploreMapScreenState extends ConsumerState<ExploreMapScreen> {
       );
     }
 
-    return Column(
-      children: [
-        // ── Map Section ──
-        if (showMap)
-          SizedBox(
-            height: MediaQuery.of(context).size.height * 0.65,
-            child: Stack(
-              children: [
-                // OpenStreetMap
-                FlutterMap(
-                  mapController: _mapController,
-                  options: MapOptions(
-                    initialCenter: const LatLng(-25.2637, -57.5759),
-                    initialZoom: 13.0,
-                    interactionOptions: const InteractionOptions(
-                      flags: InteractiveFlag.all,
-                    ),
-                    onTap: (_, _) => _clearSelection(),
-                  ),
-                  children: [
-                    TileLayer(
-                      urlTemplate:
-                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.reservpy.app',
-                    ),
-                    MarkerLayer(
-                      markers: _buildMarkers(businesses, categories, theme),
-                    ),
-                  ],
-                ),
-
-                // Toggle button (top-right)
-                Positioned(
-                  top: AppSizes.s12,
-                  right: AppSizes.s12,
-                  child: _MapToggleButton(
-                    showMap: showMap,
-                    onTap: () {
-                      ref.read(_showMapProvider.notifier).state = !showMap;
-                    },
-                  ),
-                ),
-
-                // Selected business popup (bottom of map)
-                if (selectedBusiness != null)
-                  Positioned(
-                    left: AppSizes.s12,
-                    right: AppSizes.s12,
-                    bottom: AppSizes.s12,
-                    child: _SelectedBusinessPopup(
-                      business: selectedBusiness,
-                      category: _findCategory(categories, selectedBusiness.categoryId),
-                      onClose: _clearSelection,
-                      onReserve: () {
-                        context.push(
-                            '/reserve/${selectedBusiness.id}/service');
-                      },
-                    ),
-                  ),
-              ],
-            ),
-          ),
-
-        // ── Toggle button when map is hidden ──
-        if (!showMap)
+    // ─── Modo SIN mapa: layout simple con lista normal ───
+    if (!showMap) {
+      return Column(
+        children: [
           Container(
             padding: const EdgeInsets.symmetric(
               horizontal: AppSizes.s16,
@@ -212,210 +151,353 @@ class _ExploreMapScreenState extends ConsumerState<ExploreMapScreen> {
               ],
             ),
           ),
+          Expanded(
+            child: _buildSheetContent(
+              theme: theme,
+              colorScheme: colorScheme,
+              categories: categories,
+              businesses: businesses,
+              selectedBusiness: selectedBusiness,
+              selectedCategoryId: selectedCategory,
+              scrollController: null, // sin controller = scroll normal
+              showHandle: false,
+            ),
+          ),
+        ],
+      );
+    }
 
-        // ── Bottom Section: Business List ──
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    // ─── Modo CON mapa: mapa a fondo + sheet arrastrable encima ───
+    return Stack(
+      children: [
+        // 1. Mapa ocupa toda la pantalla
+        Positioned.fill(
+          child: FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: const LatLng(-25.2637, -57.5759),
+              initialZoom: 13.0,
+              interactionOptions: const InteractionOptions(
+                flags: InteractiveFlag.all,
+              ),
+              onTap: (_, _) => _clearSelection(),
+            ),
             children: [
-              // Location banner
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSizes.s16,
-                  vertical: AppSizes.s8,
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.location_on_rounded,
-                      size: AppSizes.iconMd,
-                      color: AppColors.primary,
-                    ),
-                    const SizedBox(width: AppSizes.s6),
-                    Text(
-                      'Asunción, Paraguay 🇵🇾',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ],
-                ),
+              TileLayer(
+                urlTemplate:
+                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.reservpy.app',
               ),
-
-              // Search bar
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSizes.s16,
-                ),
-                child: Container(
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: theme.cardTheme.color ?? Colors.white,
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    border: Border.all(
-                      color: colorScheme.outline.withValues(alpha: 0.12),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.04),
-                        blurRadius: 4,
-                        offset: const Offset(0, 1),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-                    controller: _searchController,
-                    style: GoogleFonts.inter(fontSize: 14),
-                    decoration: InputDecoration(
-                      hintText: 'Buscar negocios...',
-                      hintStyle: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: colorScheme.outline.withValues(alpha: 0.6),
-                      ),
-                      prefixIcon: Icon(
-                        Icons.search_rounded,
-                        size: 20,
-                        color: colorScheme.outline,
-                      ),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear_rounded, size: 18),
-                              onPressed: () {
-                                _searchController.clear();
-                                ref.read(searchQueryProvider.notifier).state =
-                                    '';
-                                setState(() {});
-                              },
-                            )
-                          : null,
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        vertical: 12,
-                      ),
-                    ),
-                    onChanged: (value) {
-                      ref.read(searchQueryProvider.notifier).state = value;
-                      setState(() {});
-                    },
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: AppSizes.s8),
-
-              // Category filter chips
-              SizedBox(
-                height: 44,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSizes.s16,
-                    vertical: AppSizes.s4,
-                  ),
-                  itemCount: categories.length + 1,
-                  separatorBuilder: (_, _) =>
-                      const SizedBox(width: AppSizes.s8),
-                  itemBuilder: (context, index) {
-                    if (index == 0) {
-                      final isSelected = selectedCategory == null;
-                      return _CategoryChip(
-                        label: 'Todos',
-                        icon: Icons.apps_rounded,
-                        color: AppColors.primary,
-                        isSelected: isSelected,
-                        onTap: () {
-                          ref
-                              .read(selectedCategoryFilterProvider.notifier)
-                              .state = null;
-                        },
-                      );
-                    }
-                    final cat = categories[index - 1];
-                    final isSelected = selectedCategory == cat.id;
-                    return _CategoryChip(
-                      label: cat.name,
-                      icon: cat.icon,
-                      color: cat.color,
-                      isSelected: isSelected,
-                      onTap: () {
-                        ref
-                            .read(selectedCategoryFilterProvider.notifier)
-                            .state = isSelected ? null : cat.id;
-                      },
-                    );
-                  },
-                ),
-              ),
-
-              const SizedBox(height: AppSizes.s4),
-
-              // Business cards list
-              Expanded(
-                child: businesses.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.search_off_rounded,
-                              size: 48,
-                              color: colorScheme.outline.withValues(alpha: 0.4),
-                            ),
-                            const SizedBox(height: AppSizes.s12),
-                            Text(
-                              'Sin resultados',
-                              style: GoogleFonts.inter(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: colorScheme.onSurface,
-                              ),
-                            ),
-                            const SizedBox(height: AppSizes.s4),
-                            Text(
-                              'No encontramos negocios con esos filtros.',
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
-                                color: colorScheme.outline,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSizes.s16,
-                        ),
-                        itemCount: businesses.length,
-                        itemBuilder: (context, index) {
-                          final business = businesses[index];
-                          final category =
-                              _findCategory(categories, business.categoryId);
-                          return Padding(
-                            padding: const EdgeInsets.only(
-                              bottom: AppSizes.s12,
-                            ),
-                            child: _BusinessCard(
-                              business: business,
-                              category: category,
-                              isSelected:
-                                  selectedBusiness?.id == business.id,
-                              onTap: () {
-                                _selectBusiness(business);
-                              },
-                              onReserve: () {
-                                context.push(
-                                    '/reserve/${business.id}/service');
-                              },
-                            ),
-                          );
-                        },
-                      ),
+              MarkerLayer(
+                markers: _buildMarkers(businesses, categories, theme),
               ),
             ],
           ),
         ),
+
+        // 2. Toggle button (arriba a la derecha)
+        Positioned(
+          top: AppSizes.s12,
+          right: AppSizes.s12,
+          child: _MapToggleButton(
+            showMap: showMap,
+            onTap: () {
+              ref.read(_showMapProvider.notifier).state = !showMap;
+            },
+          ),
+        ),
+
+        // 3. Popup del negocio seleccionado (justo arriba del sheet)
+        if (selectedBusiness != null)
+          Positioned(
+            left: AppSizes.s12,
+            right: AppSizes.s12,
+            bottom: MediaQuery.of(context).size.height * 0.42,
+            child: _SelectedBusinessPopup(
+              business: selectedBusiness,
+              category:
+                  _findCategory(categories, selectedBusiness.categoryId),
+              onClose: _clearSelection,
+              onReserve: () {
+                context.push('/reserve/${selectedBusiness.id}/service');
+              },
+            ),
+          ),
+
+        // 4. Bottom sheet arrastrable — el usuario puede deslizar arriba
+        //    para ver más negocios sin tener el mapa fijo encima.
+        DraggableScrollableSheet(
+          initialChildSize: 0.4, // arranca al 40% para ver bien el mapa
+          minChildSize: 0.15,    // se puede achicar al 15% (solo handle)
+          maxChildSize: 0.92,    // se puede subir casi a pantalla completa
+          snap: true,
+          snapSizes: const [0.15, 0.4, 0.92],
+          builder: (context, scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: theme.scaffoldBackgroundColor,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 20,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: _buildSheetContent(
+                theme: theme,
+                colorScheme: colorScheme,
+                categories: categories,
+                businesses: businesses,
+                selectedBusiness: selectedBusiness,
+                selectedCategoryId: selectedCategory,
+                scrollController: scrollController,
+                showHandle: true,
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  /// Contenido del sheet (o del layout sin mapa): handle + banner +
+  /// buscador + chips + lista de negocios.
+  /// Si [scrollController] es null usa el scroll normal del padre.
+  Widget _buildSheetContent({
+    required ThemeData theme,
+    required ColorScheme colorScheme,
+    required List<BusinessCategory> categories,
+    required List<Business> businesses,
+    required Business? selectedBusiness,
+    required String? selectedCategoryId,
+    required ScrollController? scrollController,
+    required bool showHandle,
+  }) {
+    return CustomScrollView(
+      controller: scrollController,
+      slivers: [
+        // ── Handle bar (línea de arrastre) ──
+        if (showHandle)
+          SliverToBoxAdapter(
+            child: Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 10, bottom: 6),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: colorScheme.outline.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+          ),
+
+        // ── Banner ubicación ──
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSizes.s16,
+              vertical: AppSizes.s8,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.location_on_rounded,
+                  size: AppSizes.iconMd,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: AppSizes.s6),
+                Text(
+                  'Asunción, Paraguay 🇵🇾',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // ── Buscador ──
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSizes.s16),
+            child: Container(
+              height: 44,
+              decoration: BoxDecoration(
+                color: theme.cardTheme.color ?? Colors.white,
+                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                border: Border.all(
+                  color: colorScheme.outline.withValues(alpha: 0.12),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: TextField(
+                controller: _searchController,
+                style: GoogleFonts.inter(fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: 'Buscar negocios...',
+                  hintStyle: GoogleFonts.inter(
+                    fontSize: 14,
+                    color: colorScheme.outline.withValues(alpha: 0.6),
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    size: 20,
+                    color: colorScheme.outline,
+                  ),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear_rounded, size: 18),
+                          onPressed: () {
+                            _searchController.clear();
+                            ref
+                                .read(searchQueryProvider.notifier)
+                                .state = '';
+                            setState(() {});
+                          },
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                onChanged: (value) {
+                  ref.read(searchQueryProvider.notifier).state = value;
+                  setState(() {});
+                },
+              ),
+            ),
+          ),
+        ),
+
+        const SliverToBoxAdapter(child: SizedBox(height: AppSizes.s8)),
+
+        // ── Chips de categorías ──
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: 44,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSizes.s16,
+                vertical: AppSizes.s4,
+              ),
+              itemCount: categories.length + 1,
+              separatorBuilder: (_, _) =>
+                  const SizedBox(width: AppSizes.s8),
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  final isSelected = selectedCategoryId == null;
+                  return _CategoryChip(
+                    label: 'Todos',
+                    icon: Icons.apps_rounded,
+                    color: AppColors.primary,
+                    isSelected: isSelected,
+                    onTap: () {
+                      ref
+                          .read(selectedCategoryFilterProvider.notifier)
+                          .state = null;
+                    },
+                  );
+                }
+                final cat = categories[index - 1];
+                final isSelected = selectedCategoryId == cat.id;
+                return _CategoryChip(
+                  label: cat.name,
+                  icon: cat.icon,
+                  color: cat.color,
+                  isSelected: isSelected,
+                  onTap: () {
+                    ref
+                        .read(selectedCategoryFilterProvider.notifier)
+                        .state = isSelected ? null : cat.id;
+                  },
+                );
+              },
+            ),
+          ),
+        ),
+
+        const SliverToBoxAdapter(child: SizedBox(height: AppSizes.s8)),
+
+        // ── Lista de negocios (o empty state) ──
+        if (businesses.isEmpty)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.search_off_rounded,
+                    size: 48,
+                    color: colorScheme.outline.withValues(alpha: 0.4),
+                  ),
+                  const SizedBox(height: AppSizes.s12),
+                  Text(
+                    'Sin resultados',
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: AppSizes.s4),
+                  Text(
+                    'No encontramos negocios con esos filtros.',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: colorScheme.outline,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSizes.s16,
+              0,
+              AppSizes.s16,
+              AppSizes.s24,
+            ),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final business = businesses[index];
+                  final category =
+                      _findCategory(categories, business.categoryId);
+                  return Padding(
+                    padding:
+                        const EdgeInsets.only(bottom: AppSizes.s12),
+                    child: _BusinessCard(
+                      business: business,
+                      category: category,
+                      isSelected: selectedBusiness?.id == business.id,
+                      onTap: () => _selectBusiness(business),
+                      onReserve: () {
+                        context.push('/reserve/${business.id}/service');
+                      },
+                    ),
+                  );
+                },
+                childCount: businesses.length,
+              ),
+            ),
+          ),
       ],
     );
   }

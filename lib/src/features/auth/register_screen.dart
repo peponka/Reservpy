@@ -15,6 +15,9 @@ import 'package:reservpy/src/core/constants/app_sizes.dart';
 import 'package:reservpy/src/core/constants/app_strings.dart';
 import 'package:reservpy/src/core/utils/validators.dart';
 import 'package:reservpy/src/data/repositories/auth_repository.dart';
+import 'package:reservpy/src/data/repositories/business_repository.dart';
+import 'package:reservpy/src/data/repositories/service_repository.dart';
+import 'package:reservpy/src/data/services/default_services.dart';
 import 'package:reservpy/src/data/repositories/profile_repository.dart';
 import 'package:reservpy/src/data/repositories/user_role_repository.dart';
 import 'package:reservpy/src/data/services/email_service.dart';
@@ -153,6 +156,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
         firstName: _firstNameController.text.trim(),
         lastName: _lastNameController.text.trim(),
         role: dbRole.dbValue,
+        // Pasamos nombre + rubro del negocio para no volver a pedirlos en onboarding
+        businessName: role == UserRole.business
+            ? _businessNameController.text.trim()
+            : null,
+        categoryId: role == UserRole.business ? _selectedCategoryId : null,
       );
 
       if (!mounted) return;
@@ -205,23 +213,126 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
           );
         }
 
-        // Sign out after registration — user must log in
-        await _authRepo.signOut();
+        // ── Entrar directo: mantenemos la sesión abierta ──
+        // (Ya no deslogueamos ni mandamos al login la primera vez.
+        //  El login solo se usa cuando el usuario vuelve más adelante.)
+        final roles = (role == UserRole.business)
+            ? <UserRole>[UserRole.businessOwner, UserRole.client]
+            : <UserRole>[UserRole.client];
 
-        if (!mounted) return;
-
-        GoRouter.of(context).go('/login');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('¡Cuenta creada con éxito! Iniciá sesión para continuar.'),
-            backgroundColor: const Color(0xFF00C896),
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 4),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
+        final newUser = AppUser(
+          id: response.user!.id,
+          firstName: _firstNameController.text.trim(),
+          lastName: _lastNameController.text.trim(),
+          email: userEmail,
+          phone: _phoneController.text.trim().isNotEmpty
+              ? _phoneController.text.trim()
+              : null,
+          role: role,
+          roles: roles,
+          createdAt: DateTime.now(),
         );
+
+        ref.read(currentUserProvider.notifier).state = newUser;
+        ref.read(isLoggedInProvider.notifier).state = true;
+        // Como el usuario ya eligió "Tengo un negocio" o "Quiero reservar",
+        // fijamos el rol activo y entramos directo (sin pasar por selector).
+        ref.read(activeRoleProvider.notifier).state =
+            (role == UserRole.business) ? UserRole.businessOwner : UserRole.client;
+
+        if (role == UserRole.business) {
+          // ── Crear el negocio AHORA con los datos del registro ──
+          // Así, al volver a entrar, el usuario ya tiene su negocio
+          // y va directo a su panel (sin la pantalla "Crear mi negocio").
+          final String requestedName = _businessNameController.text.trim();
+
+          // 1) Obtener el nombre del rubro ANTES de crear el negocio.
+          //    Esperamos a que el provider termine de cargar (con timeout corto)
+          //    para no depender del estado en caché.
+          String? categoryName;
+          if (_selectedCategoryId != null && _selectedCategoryId!.isNotEmpty) {
+            try {
+              final cats = await ref
+                  .read(categoriesProvider.future)
+                  .timeout(const Duration(seconds: 5));
+              for (final c in cats) {
+                if (c.id == _selectedCategoryId) {
+                  categoryName = c.name;
+                  break;
+                }
+              }
+            } catch (_) {
+              // Si el provider no carga a tiempo, seguimos sin nombre de rubro
+              // (no podemos cargar servicios sugeridos pero el negocio se crea).
+            }
+          }
+
+          // 2) Crear el negocio. Si esto falla, NO silenciamos: mostramos error
+          //    y dejamos al usuario en pantalla de registro.
+          final Business created;
+          try {
+            created = await BusinessRepository().create(Business(
+              id: '',
+              ownerId: response.user!.id,
+              categoryId: _selectedCategoryId ?? '',
+              name: requestedName,
+              openingTime: const TimeOfDay(hour: 8, minute: 0),
+              closingTime: const TimeOfDay(hour: 18, minute: 0),
+              slotDurationMinutes: 30,
+              createdAt: DateTime.now(),
+            ));
+          } catch (e) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error al crear el negocio: $e'),
+                backgroundColor: Colors.red.shade600,
+                behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 5),
+              ),
+            );
+            return;
+          }
+
+          // 3) Cargar servicios sugeridos del rubro (best-effort: si alguno
+          //    falla, seguimos con los que sí entraron).
+          if (categoryName != null) {
+            final svcRepo = ServiceRepository();
+            for (final svc
+                in defaultServicesForCategory(categoryName, created.id)) {
+              try {
+                await svcRepo.create(svc);
+              } catch (_) {
+                // Si un servicio falla, no rompemos el flujo.
+              }
+            }
+          }
+
+          // 4) Invalidar para que el panel cargue el negocio recién creado.
+          ref.invalidate(businessesProvider);
+          ref.invalidate(ownerBusinessProvider);
+          ref.invalidate(businessServicesProvider(created.id));
+
+          if (!mounted) return;
+          // Pantalla de "¡Tu negocio fue creado!" → de ahí a su panel
+          GoRouter.of(context).go(
+            '/business-created?name=${Uri.encodeComponent(created.name)}',
+          );
+        } else {
+          if (!mounted) return;
+          GoRouter.of(context).go('/client');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('¡Cuenta creada con éxito! 🎉'),
+              backgroundColor: const Color(0xFF00C896),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 3),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          );
+        }
       }
     } on AuthException catch (e) {
       if (!mounted) return;
@@ -1044,27 +1155,23 @@ class _StepRegistrationForm extends StatelessWidget {
 
                 const SizedBox(height: AppSizes.s16),
 
-                // Name row
-                Row(
+                // Nombre y Apellido (uno arriba del otro, campos anchos)
+                Column(
                   children: [
-                    Expanded(
-                      child: AppTextField(
-                        controller: firstNameController,
-                        label: AppStrings.firstName,
-                        prefixIcon: Icons.person_outline_rounded,
-                        validator: (v) =>
-                            Validators.required(v, AppStrings.firstName),
-                      ),
+                    AppTextField(
+                      controller: firstNameController,
+                      label: AppStrings.firstName,
+                      prefixIcon: Icons.person_outline_rounded,
+                      validator: (v) =>
+                          Validators.required(v, AppStrings.firstName),
                     ),
-                    const SizedBox(width: AppSizes.s12),
-                    Expanded(
-                      child: AppTextField(
-                        controller: lastNameController,
-                        label: AppStrings.lastName,
-                        prefixIcon: Icons.person_outline_rounded,
-                        validator: (v) =>
-                            Validators.required(v, AppStrings.lastName),
-                      ),
+                    const SizedBox(height: AppSizes.s16),
+                    AppTextField(
+                      controller: lastNameController,
+                      label: AppStrings.lastName,
+                      prefixIcon: Icons.person_outline_rounded,
+                      validator: (v) =>
+                          Validators.required(v, AppStrings.lastName),
                     ),
                   ],
                 )
@@ -1089,53 +1196,48 @@ class _StepRegistrationForm extends StatelessWidget {
 
                 const SizedBox(height: AppSizes.s16),
 
-                // Password row
-                Row(
+                // Password (campo completo, a lo ancho)
+                Column(
                   children: [
-                    Expanded(
-                      child: AppTextField(
-                        controller: passwordController,
-                        label: AppStrings.password,
-                        hint: '••••••••',
-                        prefixIcon: Icons.lock_outline_rounded,
-                        obscureText: obscurePassword,
-                        validator: Validators.password,
-                        suffix: IconButton(
-                          icon: Icon(
-                            obscurePassword
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                            size: 20,
-                            color:
-                                colorScheme.onSurface.withValues(alpha: 0.5),
-                          ),
-                          onPressed: onTogglePassword,
+                    AppTextField(
+                      controller: passwordController,
+                      label: AppStrings.password,
+                      hint: '••••••••',
+                      prefixIcon: Icons.lock_outline_rounded,
+                      obscureText: obscurePassword,
+                      validator: Validators.password,
+                      suffix: IconButton(
+                        icon: Icon(
+                          obscurePassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          size: 20,
+                          color: colorScheme.onSurface.withValues(alpha: 0.5),
                         ),
+                        onPressed: onTogglePassword,
                       ),
                     ),
-                    const SizedBox(width: AppSizes.s12),
-                    Expanded(
-                      child: AppTextField(
-                        controller: confirmPasswordController,
-                        label: AppStrings.confirmPassword,
-                        hint: '••••••••',
-                        prefixIcon: Icons.lock_outline_rounded,
-                        obscureText: obscureConfirm,
-                        validator: (v) => Validators.confirmPassword(
-                          v,
-                          passwordController.text,
+                    const SizedBox(height: AppSizes.s16),
+                    // Confirmar contraseña (abajo, a lo ancho)
+                    AppTextField(
+                      controller: confirmPasswordController,
+                      label: AppStrings.confirmPassword,
+                      hint: '••••••••',
+                      prefixIcon: Icons.lock_outline_rounded,
+                      obscureText: obscureConfirm,
+                      validator: (v) => Validators.confirmPassword(
+                        v,
+                        passwordController.text,
+                      ),
+                      suffix: IconButton(
+                        icon: Icon(
+                          obscureConfirm
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          size: 20,
+                          color: colorScheme.onSurface.withValues(alpha: 0.5),
                         ),
-                        suffix: IconButton(
-                          icon: Icon(
-                            obscureConfirm
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                            size: 20,
-                            color:
-                                colorScheme.onSurface.withValues(alpha: 0.5),
-                          ),
-                          onPressed: onToggleConfirm,
-                        ),
+                        onPressed: onToggleConfirm,
                       ),
                     ),
                   ],

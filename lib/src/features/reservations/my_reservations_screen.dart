@@ -186,47 +186,55 @@ class MyReservationsScreen extends ConsumerWidget {
           'Cancelados', _ReservationFilter.cancelled, Icons.cancel_outlined),
     ];
 
-    return Wrap(
-      spacing: AppSizes.s8,
-      runSpacing: AppSizes.s8,
-      children: chips.map((chip) {
-        final isSelected = current == chip.filter;
-        return FilterChip(
-          selected: isSelected,
-          label: Text(
-            chip.label,
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+    // Scroll horizontal en una sola fila — evita que los chips se partan
+    // a una segunda fila en pantallas chicas.
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.zero,
+        itemCount: chips.length,
+        separatorBuilder: (_, _) => const SizedBox(width: AppSizes.s8),
+        itemBuilder: (context, index) {
+          final chip = chips[index];
+          final isSelected = current == chip.filter;
+          return FilterChip(
+            selected: isSelected,
+            label: Text(
+              chip.label,
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                color: isSelected
+                    ? Colors.white
+                    : AppColors.accent.withValues(alpha: 0.7),
+              ),
+            ),
+            avatar: Icon(
+              chip.icon,
+              size: 16,
               color: isSelected
                   ? Colors.white
-                  : AppColors.accent.withValues(alpha: 0.7),
+                  : AppColors.accent.withValues(alpha: 0.5),
             ),
-          ),
-          avatar: Icon(
-            chip.icon,
-            size: 16,
-            color: isSelected
-                ? Colors.white
-                : AppColors.accent.withValues(alpha: 0.5),
-          ),
-          selectedColor: AppColors.primary,
-          backgroundColor: Colors.white,
-          side: BorderSide(
-            color: isSelected
-                ? AppColors.primary
-                : AppColors.divider.withValues(alpha: 0.3),
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-          ),
-          showCheckmark: false,
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          onSelected: (_) {
-            ref.read(_reservationFilterProvider.notifier).state = chip.filter;
-          },
-        );
-      }).toList(),
+            selectedColor: AppColors.primary,
+            backgroundColor: Colors.white,
+            side: BorderSide(
+              color: isSelected
+                  ? AppColors.primary
+                  : AppColors.divider.withValues(alpha: 0.3),
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+            ),
+            showCheckmark: false,
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            onSelected: (_) {
+              ref.read(_reservationFilterProvider.notifier).state = chip.filter;
+            },
+          );
+        },
+      ),
     );
   }
 
@@ -455,65 +463,56 @@ class _StatCardState extends State<_StatCard> {
                 ]
               : [],
         ),
+        // Layout VERTICAL: ícono arriba, número grande, label abajo.
+        // Así el contenido cabe limpio aunque la card sea angosta en mobile.
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
-              padding: const EdgeInsets.all(AppSizes.s16),
-              child: Row(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSizes.s12, AppSizes.s16, AppSizes.s12, AppSizes.s16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.value,
-                          style: GoogleFonts.inter(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w900,
-                            color: widget.color,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          widget.label,
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.accent.withValues(alpha: 0.6),
-                          ),
-                        ),
-                      ],
+                  // ícono circular sutil
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: widget.color.withValues(alpha: 0.14),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(widget.icon, size: 18, color: widget.color),
+                  ),
+                  const SizedBox(height: AppSizes.s12),
+                  // número grande
+                  Text(
+                    widget.value,
+                    style: GoogleFonts.inter(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w900,
+                      color: widget.color,
+                      height: 1,
                     ),
                   ),
-                  // Gradient icon
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          widget.color,
-                          Color.lerp(widget.color, Colors.white, 0.3)!,
-                        ],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: widget.color.withValues(alpha: 0.3),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+                  const SizedBox(height: AppSizes.s4),
+                  // label — una sola línea, recorta con … si fuera muy largo
+                  Text(
+                    widget.label,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.accent.withValues(alpha: 0.7),
                     ),
-                    child: Icon(widget.icon, size: 22, color: Colors.white),
                   ),
                 ],
               ),
             ),
-            // Bottom gradient bar
+            // Barra inferior con gradiente del color del card
             Container(
               height: 4,
               decoration: BoxDecoration(

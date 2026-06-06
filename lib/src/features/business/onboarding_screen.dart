@@ -39,6 +39,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   // ─── Step 0 state ──────────────────────────────────────
   String? _selectedCategoryId;
+  // Rubro guardado en el registro, pendiente de aplicar cuando carguen las categorías
+  String? _pendingCategoryId;
   final _businessNameController = TextEditingController();
   final _businessRepo = BusinessRepository();
 
@@ -325,12 +327,55 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   };
 
   @override
+  void initState() {
+    super.initState();
+    // Pre-cargar nombre + rubro del negocio guardados en el registro,
+    // así el usuario no tiene que volver a escribirlos.
+    final meta = SupabaseConfig.client.auth.currentUser?.userMetadata;
+    if (meta != null) {
+      final savedName = meta['business_name'] as String?;
+      if (savedName != null && savedName.trim().isNotEmpty) {
+        _businessNameController.text = savedName.trim();
+      }
+      final savedCategoryId = meta['category_id'] as String?;
+      if (savedCategoryId != null && savedCategoryId.trim().isNotEmpty) {
+        _pendingCategoryId = savedCategoryId.trim();
+      }
+    }
+  }
+
+  @override
   void dispose() {
     _pageController.dispose();
     _serviceNameController.dispose();
     _serviceDescController.dispose();
     _servicePriceController.dispose();
     super.dispose();
+  }
+
+  /// Aplica el rubro guardado en el registro una vez que cargaron las categorías.
+  void _applyPendingCategory(List<BusinessCategory> categories) {
+    if (_pendingCategoryId == null ||
+        _selectedCategoryId != null ||
+        categories.isEmpty) {
+      return;
+    }
+    final pending = _pendingCategoryId!;
+    BusinessCategory? match;
+    for (final c in categories) {
+      if (c.id == pending) {
+        match = c;
+        break;
+      }
+    }
+    if (match != null) {
+      final found = match;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _pendingCategoryId = null;
+        _selectCategory(found);
+      });
+    }
   }
 
   // ─── Navigation ────────────────────────────────────────
@@ -569,16 +614,32 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           ? _businessNameController.text.trim()
           : '${user?.firstName ?? 'Mi'} Business';
 
-      final created = await _businessRepo.create(Business(
-        id: '',
-        ownerId: authUser.id, // auth.uid() — never from provider
-        categoryId: _selectedCategoryId ?? '',
-        name: businessName,
-        openingTime: _openingTime,
-        closingTime: _closingTime,
-        slotDurationMinutes: _slotDurationMinutes,
-        createdAt: DateTime.now(),
-      ));
+      // ¿Ya existe un negocio de este dueño? (creado en el registro)
+      // Si existe, lo ACTUALIZAMOS en vez de crear uno nuevo (evita duplicados).
+      final existing = await _businessRepo.getByOwner(authUser.id);
+      final Business created;
+      if (existing.isNotEmpty) {
+        final biz = existing.first;
+        created = biz.copyWith(
+          categoryId: _selectedCategoryId ?? biz.categoryId,
+          name: businessName,
+          openingTime: _openingTime,
+          closingTime: _closingTime,
+          slotDurationMinutes: _slotDurationMinutes,
+        );
+        await _businessRepo.update(created);
+      } else {
+        created = await _businessRepo.create(Business(
+          id: '',
+          ownerId: authUser.id, // auth.uid() — never from provider
+          categoryId: _selectedCategoryId ?? '',
+          name: businessName,
+          openingTime: _openingTime,
+          closingTime: _closingTime,
+          slotDurationMinutes: _slotDurationMinutes,
+          createdAt: DateTime.now(),
+        ));
+      }
 
       // ── Persist services to Supabase ──
       final serviceRepo = ServiceRepository();
@@ -678,6 +739,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       if (b.name == 'Otros') return -1;
       return a.name.toLowerCase().compareTo(b.name.toLowerCase());
     });
+
+    // Aplicar el rubro guardado en el registro (pre-carga automática)
+    _applyPendingCategory(categories);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSizes.s24),

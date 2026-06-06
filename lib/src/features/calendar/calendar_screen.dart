@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:reservpy/src/shared/models/models.dart';
@@ -26,9 +27,16 @@ class CalendarScreen extends ConsumerStatefulWidget {
   ConsumerState<CalendarScreen> createState() => _CalendarScreenState();
 }
 
+enum _CalView { day, week, month }
+
 class _CalendarScreenState extends ConsumerState<CalendarScreen> {
-  /// Whether viewing in day (true) or week (false) mode.
-  bool _isDayView = true;
+  /// Vista actual del calendario: día, semana o mes.
+  _CalView _view = _CalView.day;
+
+  // Helpers para mantener compatibilidad con el código existente
+  bool get _isDayView => _view == _CalView.day;
+  bool get _isWeekView => _view == _CalView.week;
+  bool get _isMonthView => _view == _CalView.month;
 
   /// Currently selected date.
   late DateTime _selectedDate;
@@ -75,63 +83,79 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 AppSizes.s24,
                 AppSizes.s4,
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    AppStrings.calendar,
-                    style: theme.textTheme.headlineLarge,
-                  ),
-                  const SizedBox(width: AppSizes.s12),
-                  // Today button
-                  if (!AppDateUtils.isToday(_selectedDate))
-                    SizedBox(
-                      height: 32,
-                      width: 70,
-                      child: OutlinedButton(
-                        onPressed: () {
-                          final now = DateTime.now();
-                          setState(() => _selectedDate = DateTime(now.year, now.month, now.day));
-                        },
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.primary,
-                          side: const BorderSide(color: AppColors.primary, width: 1.5),
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                  // Fila 1: título + botón "Hoy" (lo que SIEMPRE entra)
+                  Row(
+                    children: [
+                      Text(
+                        AppStrings.calendar,
+                        style: theme.textTheme.headlineLarge,
+                      ),
+                      const SizedBox(width: AppSizes.s12),
+                      if (!AppDateUtils.isToday(_selectedDate))
+                        SizedBox(
+                          height: 32,
+                          child: OutlinedButton(
+                            onPressed: () {
+                              final now = DateTime.now();
+                              setState(() => _selectedDate =
+                                  DateTime(now.year, now.month, now.day));
+                            },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.primary,
+                              side: const BorderSide(
+                                  color: AppColors.primary, width: 1.5),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(AppSizes.radiusMd),
+                              ),
+                            ),
+                            child: Text(
+                              'Hoy',
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
                           ),
                         ),
-                        child: Text(
-                          'Hoy',
-                          style: GoogleFonts.inter(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ),
-                  const Spacer(),
-                  // Day/Week toggle
-                  SegmentedButton<bool>(
-                    segments: const [
-                      ButtonSegment(
-                        value: true,
-                        label: Text(AppStrings.dayView),
-                        icon: Icon(Icons.view_day_rounded, size: 18),
-                      ),
-                      ButtonSegment(
-                        value: false,
-                        label: Text(AppStrings.weekView),
-                        icon: Icon(Icons.view_week_rounded, size: 18),
-                      ),
                     ],
-                    selected: {_isDayView},
-                    onSelectionChanged: (selection) {
-                      setState(() => _isDayView = selection.first);
-                    },
-                    style: ButtonStyle(
-                      visualDensity: VisualDensity.compact,
-                      textStyle: WidgetStatePropertyAll(
-                        theme.textTheme.labelMedium,
+                  ),
+                  const SizedBox(height: AppSizes.s12),
+                  // Fila 2: toggle Día / Semana / Mes (siempre cabe)
+                  SizedBox(
+                    width: double.infinity,
+                    child: SegmentedButton<_CalView>(
+                      segments: const [
+                        ButtonSegment(
+                          value: _CalView.day,
+                          label: Text('Día'),
+                          icon: Icon(Icons.view_day_rounded, size: 18),
+                        ),
+                        ButtonSegment(
+                          value: _CalView.week,
+                          label: Text('Semana'),
+                          icon: Icon(Icons.view_week_rounded, size: 18),
+                        ),
+                        ButtonSegment(
+                          value: _CalView.month,
+                          label: Text('Mes'),
+                          icon: Icon(Icons.calendar_month_rounded, size: 18),
+                        ),
+                      ],
+                      selected: {_view},
+                      onSelectionChanged: (selection) {
+                        setState(() => _view = selection.first);
+                      },
+                      style: ButtonStyle(
+                        visualDensity: VisualDensity.compact,
+                        textStyle: WidgetStatePropertyAll(
+                          theme.textTheme.labelMedium,
+                        ),
                       ),
                     ),
                   ),
@@ -192,34 +216,64 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                         reservations: reservations,
                         blockedSlots: businessBlocked,
                       )
-                    : _WeekView(
-                        key: const ValueKey('week'),
-                        weekDays: _weekDays,
-                        selectedDate: _selectedDate,
-                        reservations: reservations,
-                        onDayTap: (day) {
-                          setState(() {
-                            _selectedDate = day;
-                            _isDayView = true;
-                          });
-                        },
-                      ),
+                    : _isWeekView
+                        ? _WeekView(
+                            key: const ValueKey('week'),
+                            weekDays: _weekDays,
+                            selectedDate: _selectedDate,
+                            reservations: reservations,
+                            onDayTap: (day) {
+                              setState(() {
+                                _selectedDate = day;
+                                _view = _CalView.day;
+                              });
+                            },
+                          )
+                        : _MonthView(
+                            key: ValueKey(
+                                'month-${_selectedDate.year}-${_selectedDate.month}'),
+                            selectedDate: _selectedDate,
+                            reservations: reservations,
+                            onDayTap: (day) =>
+                                _showMonthDaySheet(day, reservations),
+                          ),
               ),
             ),
           ],
         ),
 
-        // ── FAB overlay ──
+        // ── FABs overlay (solo en vista Día) ──
         if (_isDayView)
           Positioned(
             right: AppSizes.s24,
             bottom: AppSizes.s24,
-            child: FloatingActionButton.extended(
-              heroTag: 'calendar_fab',
-              onPressed: () => _showBlockTimeDialog(
-                  context, ref, business),
-              icon: const Icon(Icons.block_rounded),
-              label: const Text(AppStrings.blockTime),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                // Mini-FAB: bloquear horario
+                FloatingActionButton.small(
+                  heroTag: 'calendar_fab_block',
+                  backgroundColor:
+                      Theme.of(context).colorScheme.surface,
+                  foregroundColor:
+                      Theme.of(context).colorScheme.onSurface,
+                  elevation: 2,
+                  onPressed: () =>
+                      _showBlockTimeDialog(context, ref, business),
+                  child: const Icon(Icons.block_rounded, size: 20),
+                ),
+                const SizedBox(height: AppSizes.s12),
+                // FAB principal: agregar turno manual
+                FloatingActionButton.extended(
+                  heroTag: 'calendar_fab_add',
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  onPressed: () => _showManualReservationForm(_selectedDate),
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Agregar turno'),
+                ),
+              ],
             ),
           ),
         ],
@@ -238,6 +292,362 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             r.startTime.isAfter(dayStart.subtract(const Duration(seconds: 1))) &&
             r.startTime.isBefore(dayEnd))
         .length;
+  }
+
+  /// Abre un popup (bottom sheet) al tocar un día en la vista Mes.
+  /// Muestra las reservas de ese día y permite ir a la agenda o bloquear horario.
+  void _showMonthDaySheet(
+    DateTime day,
+    List<Reservation> allReservations,
+  ) {
+    final dayReservations = allReservations.where((r) {
+      return r.startTime.year == day.year &&
+          r.startTime.month == day.month &&
+          r.startTime.day == day.day;
+    }).toList()
+      ..sort((a, b) => a.startTime.compareTo(b.startTime));
+
+    final df = DateFormat('EEEE d \'de\' MMMM', 'es');
+    final dayLabel = df.format(day);
+    final capitalized = dayLabel[0].toUpperCase() + dayLabel.substring(1);
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        final theme = Theme.of(sheetCtx);
+        return DraggableScrollableSheet(
+          initialChildSize: 0.55,
+          minChildSize: 0.3,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (_, scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: theme.scaffoldBackgroundColor,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
+              ),
+              child: Column(
+                children: [
+                  // Handle bar
+                  Container(
+                    margin: const EdgeInsets.only(top: 10, bottom: 8),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.outline.withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  // Header con la fecha
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${day.day}',
+                              style: GoogleFonts.inter(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                capitalized,
+                                style: GoogleFonts.inter(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                dayReservations.isEmpty
+                                    ? 'Sin reservas'
+                                    : '${dayReservations.length} reserva${dayReservations.length == 1 ? '' : 's'}',
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  color: theme.colorScheme.onSurface
+                                      .withValues(alpha: 0.55),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded),
+                          onPressed: () => Navigator.of(sheetCtx).pop(),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Divider(
+                    height: 1,
+                    color: theme.colorScheme.outline.withValues(alpha: 0.1),
+                  ),
+                  // Lista de reservas o estado vacío
+                  Expanded(
+                    child: dayReservations.isEmpty
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.event_available_rounded,
+                                    size: 48,
+                                    color: theme.colorScheme.outline
+                                        .withValues(alpha: 0.4),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'No hay reservas en este día',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.55),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : ListView.separated(
+                            controller: scrollController,
+                            padding: const EdgeInsets.all(16),
+                            itemCount: dayReservations.length,
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(height: 8),
+                            itemBuilder: (_, i) {
+                              final r = dayReservations[i];
+                              final timeStr = DateFormat('HH:mm').format(
+                                r.startTime,
+                              );
+                              return Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: theme.cardTheme.color,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: theme.colorScheme.outline
+                                        .withValues(alpha: 0.1),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 4,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary,
+                                        borderRadius:
+                                            BorderRadius.circular(2),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            timeStr,
+                                            style: GoogleFonts.inter(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppColors.primary,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'Reserva',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 13,
+                                              color: theme.colorScheme.onSurface
+                                                  .withValues(alpha: 0.7),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                  // Botones de acción al pie
+                  SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // CTA principal: agregar turno manual
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              onPressed: () {
+                                Navigator.of(sheetCtx).pop();
+                                _showManualReservationForm(day);
+                              },
+                              icon: const Icon(Icons.add_rounded, size: 20),
+                              label: const Text('Agregar turno'),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                textStyle: GoogleFonts.inter(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          // Acciones secundarias
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: () {
+                                    Navigator.of(sheetCtx).pop();
+                                    setState(() {
+                                      _selectedDate = day;
+                                      _view = _CalView.day;
+                                    });
+                                  },
+                                  icon: const Icon(
+                                      Icons.view_agenda_rounded,
+                                      size: 18),
+                                  label: const Text('Ver agenda'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppColors.primary,
+                                    side: BorderSide(
+                                        color: AppColors.primary
+                                            .withValues(alpha: 0.5),
+                                        width: 1),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: () {
+                                    Navigator.of(sheetCtx).pop();
+                                    setState(() {
+                                      _selectedDate = day;
+                                      _view = _CalView.day;
+                                    });
+                                  },
+                                  icon: const Icon(Icons.block_rounded,
+                                      size: 18),
+                                  label: const Text('Bloquear'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor:
+                                        theme.colorScheme.onSurface
+                                            .withValues(alpha: 0.7),
+                                    side: BorderSide(
+                                        color: theme.colorScheme.outline
+                                            .withValues(alpha: 0.3),
+                                        width: 1),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Abre el formulario para agregar una reserva manual (cliente cargado
+  /// a mano por el dueño — útil para turnos recibidos por WhatsApp,
+  /// teléfono o en persona).
+  void _showManualReservationForm(DateTime day) {
+    final business = ref.read(currentBusinessProvider);
+    if (business == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo cargar tu negocio.')),
+      );
+      return;
+    }
+    final servicesAsync = ref.read(businessServicesProvider(business.id));
+    final services = servicesAsync.value ?? [];
+    if (services.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Primero creá un servicio en la pestaña "Servicios".'),
+        ),
+      );
+      return;
+    }
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(sheetCtx).viewInsets.bottom,
+          ),
+          child: _ManualReservationForm(
+            day: day,
+            business: business,
+            services: services,
+            onCreated: () {
+              // Refrescamos para que la nueva reserva aparezca
+              ref.invalidate(businessReservationsProvider);
+            },
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildDaySummary(ThemeData theme, List<Reservation> reservations) {
@@ -1106,8 +1516,12 @@ class _WeekView extends ConsumerWidget {
                                 child: Text(
                                   '${hour.toString().padLeft(2, '0')}:00',
                                   style: theme.textTheme.labelSmall?.copyWith(
-                                    color: colorScheme.outline,
-                                    fontWeight: FontWeight.w600,
+                                    // Horas más oscuras para que sean legibles
+                                    // (antes usaba `outline` que era casi blanco).
+                                    color: colorScheme.onSurface
+                                        .withValues(alpha: 0.65),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
                                   ),
                                 ),
                               ),
@@ -1616,6 +2030,556 @@ class _DetailRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MONTH VIEW — Grilla del mes con días + contador de reservas
+// ═══════════════════════════════════════════════════════════════════
+class _MonthView extends StatelessWidget {
+  final DateTime selectedDate;
+  final List<Reservation> reservations;
+  final ValueChanged<DateTime> onDayTap;
+
+  const _MonthView({
+    super.key,
+    required this.selectedDate,
+    required this.reservations,
+    required this.onDayTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final monthLabel = DateFormat('MMMM yyyy', 'es').format(selectedDate);
+
+    // Primer día del mes y cuántos días tiene
+    final firstOfMonth = DateTime(selectedDate.year, selectedDate.month, 1);
+    final daysInMonth = DateUtils.getDaysInMonth(
+      selectedDate.year,
+      selectedDate.month,
+    );
+
+    // Día de la semana del primer día (1=lun ... 7=dom). Lo necesitamos
+    // para empezar la grilla en el lugar correcto (lunes-domingo).
+    final firstWeekday = firstOfMonth.weekday; // 1 = lunes
+
+    // Contamos reservas por día del mes (clave = día)
+    final reservationCountByDay = <int, int>{};
+    for (final r in reservations) {
+      if (r.startTime.year == selectedDate.year &&
+          r.startTime.month == selectedDate.month) {
+        reservationCountByDay[r.startTime.day] =
+            (reservationCountByDay[r.startTime.day] ?? 0) + 1;
+      }
+    }
+
+    const dayLabels = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+    final today = DateTime.now();
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSizes.s16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Título del mes
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: AppSizes.s12),
+            child: Text(
+              monthLabel[0].toUpperCase() + monthLabel.substring(1),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+
+          // Cabecera de días de la semana (L M M J V S D)
+          Row(
+            children: dayLabels.map((d) {
+              return Expanded(
+                child: Center(
+                  child: Text(
+                    d,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: colorScheme.onSurface.withValues(alpha: 0.5),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: AppSizes.s8),
+
+          // Grilla del mes
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 7,
+              mainAxisSpacing: 6,
+              crossAxisSpacing: 6,
+              childAspectRatio: 0.9,
+            ),
+            // Slots vacíos antes del día 1 + días del mes
+            itemCount: (firstWeekday - 1) + daysInMonth,
+            itemBuilder: (context, index) {
+              final dayNumber = index - (firstWeekday - 1) + 1;
+              if (dayNumber < 1) return const SizedBox.shrink();
+
+              final dayDate = DateTime(
+                  selectedDate.year, selectedDate.month, dayNumber);
+              final count = reservationCountByDay[dayNumber] ?? 0;
+              final isSelected = dayDate.year == selectedDate.year &&
+                  dayDate.month == selectedDate.month &&
+                  dayDate.day == selectedDate.day;
+              final isToday = dayDate.year == today.year &&
+                  dayDate.month == today.month &&
+                  dayDate.day == today.day;
+              final hasReservations = count > 0;
+
+              return InkWell(
+                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                onTap: () => onDayTap(dayDate),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppColors.primary
+                        : isToday
+                            ? AppColors.primary.withValues(alpha: 0.10)
+                            : Colors.transparent,
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                    border: Border.all(
+                      color: isSelected
+                          ? AppColors.primary
+                          : colorScheme.outline.withValues(alpha: 0.12),
+                      width: isSelected ? 0 : 1,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '$dayNumber',
+                        style: GoogleFonts.inter(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: isSelected
+                              ? Colors.white
+                              : isToday
+                                  ? AppColors.primary
+                                  : colorScheme.onSurface
+                                      .withValues(alpha: 0.85),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      // Indicador de reservas
+                      if (hasReservations)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? Colors.white.withValues(alpha: 0.25)
+                                : AppColors.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '$count',
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: isSelected
+                                  ? Colors.white
+                                  : AppColors.primary,
+                            ),
+                          ),
+                        )
+                      else
+                        const SizedBox(height: 14),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(height: AppSizes.s16),
+
+          // Leyenda
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Hoy',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Día seleccionado',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FORM: Agregar reserva manual (cliente cargado a mano por el dueño)
+// ═══════════════════════════════════════════════════════════════════
+class _ManualReservationForm extends StatefulWidget {
+  final DateTime day;
+  final Business business;
+  final List<ServiceModel> services;
+  final VoidCallback onCreated;
+
+  const _ManualReservationForm({
+    required this.day,
+    required this.business,
+    required this.services,
+    required this.onCreated,
+  });
+
+  @override
+  State<_ManualReservationForm> createState() =>
+      _ManualReservationFormState();
+}
+
+class _ManualReservationFormState extends State<_ManualReservationForm> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
+  final _notesCtrl = TextEditingController();
+
+  ServiceModel? _selectedService;
+  TimeOfDay _selectedTime = const TimeOfDay(hour: 9, minute: 0);
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.services.isNotEmpty) {
+      _selectedService = widget.services.first;
+    }
+    // Por defecto: la hora de apertura del negocio
+    _selectedTime = widget.business.openingTime;
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _phoneCtrl.dispose();
+    _notesCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _selectedTime,
+    );
+    if (picked != null && mounted) {
+      setState(() => _selectedTime = picked);
+    }
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    final svc = _selectedService;
+    if (svc == null) return;
+
+    setState(() => _isSaving = true);
+    try {
+      final startTime = DateTime(
+        widget.day.year,
+        widget.day.month,
+        widget.day.day,
+        _selectedTime.hour,
+        _selectedTime.minute,
+      );
+      final endTime =
+          startTime.add(Duration(minutes: svc.durationMinutes));
+
+      // Nota descriptiva con los datos del cliente manual
+      final clientName = _nameCtrl.text.trim();
+      final clientPhone = _phoneCtrl.text.trim();
+      final extraNotes = _notesCtrl.text.trim();
+      final notesParts = <String>[
+        'Cliente: $clientName',
+        if (clientPhone.isNotEmpty) 'Tel: $clientPhone',
+        if (extraNotes.isNotEmpty) 'Notas: $extraNotes',
+      ];
+
+      // Como cliente manual, usamos al dueño del negocio como clientId
+      // (workaround para no romper la FK a profiles). El nombre real
+      // del cliente va en notes y en clientName.
+      final reservation = Reservation(
+        id: '',
+        businessId: widget.business.id,
+        clientId: widget.business.ownerId,
+        serviceId: svc.id,
+        startTime: startTime,
+        endTime: endTime,
+        status: ReservationStatus.confirmed,
+        notes: notesParts.join(' · '),
+        createdAt: DateTime.now(),
+        clientName: clientName,
+        serviceName: svc.name,
+      );
+
+      await ReservationRepository().create(reservation);
+
+      widget.onCreated();
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.success,
+          content: Text('Turno agregado: $clientName a las '
+              '${_selectedTime.format(context)}'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.error,
+          content: Text('Error al guardar: $e'),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final df = DateFormat('EEEE d \'de\' MMMM', 'es');
+    final dayLabel = df.format(widget.day);
+    final capitalized = dayLabel[0].toUpperCase() + dayLabel.substring(1);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.scaffoldBackgroundColor,
+        borderRadius:
+            const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle bar
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color:
+                          theme.colorScheme.outline.withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Header
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.add_rounded,
+                          color: AppColors.primary, size: 20),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Agregar turno',
+                            style: GoogleFonts.inter(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          Text(
+                            capitalized,
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.6),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                // Nombre del cliente (obligatorio)
+                TextFormField(
+                  controller: _nameCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Nombre del cliente *',
+                    hintText: 'Ej: Juan Pérez',
+                    prefixIcon: Icon(Icons.person_outline_rounded),
+                    border: OutlineInputBorder(),
+                  ),
+                  textInputAction: TextInputAction.next,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return 'Ingresá el nombre del cliente';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                // Teléfono (opcional)
+                TextFormField(
+                  controller: _phoneCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Teléfono (opcional)',
+                    hintText: 'Ej: 0981 123 456',
+                    prefixIcon: Icon(Icons.phone_outlined),
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.phone,
+                  textInputAction: TextInputAction.next,
+                ),
+                const SizedBox(height: 12),
+                // Servicio (dropdown)
+                DropdownButtonFormField<ServiceModel>(
+                  initialValue: _selectedService,
+                  decoration: const InputDecoration(
+                    labelText: 'Servicio *',
+                    prefixIcon: Icon(Icons.design_services_outlined),
+                    border: OutlineInputBorder(),
+                  ),
+                  items: widget.services.map((s) {
+                    return DropdownMenuItem(
+                      value: s,
+                      child: Text(
+                        '${s.name} (${s.durationMinutes} min)',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (v) => setState(() => _selectedService = v),
+                  validator: (v) =>
+                      v == null ? 'Elegí un servicio' : null,
+                ),
+                const SizedBox(height: 12),
+                // Hora (tile clickeable que abre TimePicker)
+                InkWell(
+                  onTap: _pickTime,
+                  borderRadius: BorderRadius.circular(8),
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Hora del turno *',
+                      prefixIcon: Icon(Icons.schedule_rounded),
+                      border: OutlineInputBorder(),
+                    ),
+                    child: Text(
+                      _selectedTime.format(context),
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Notas (opcional)
+                TextFormField(
+                  controller: _notesCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Notas (opcional)',
+                    hintText: 'Detalles del turno',
+                    prefixIcon: Icon(Icons.notes_rounded),
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 18),
+                // Botón guardar
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _isSaving ? null : _save,
+                    icon: _isSaving
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.check_rounded),
+                    label: Text(_isSaving ? 'Guardando...' : 'Guardar turno'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      textStyle: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

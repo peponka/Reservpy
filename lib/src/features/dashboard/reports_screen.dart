@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:math' as math;
 import 'dart:convert';
+import 'dart:io';
 import 'dart:ui' as dart_ui;
-import 'package:web/web.dart' as web;
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
 import '../../core/widgets/widgets.dart';
@@ -1476,11 +1478,11 @@ class _ExportSection extends StatelessWidget {
   }
 
   /// Generate and download a CSV with all reservation details.
-  void _exportCsv(
+  Future<void> _exportCsv(
     BuildContext context,
     List<Reservation> reservations,
     List<ServiceModel> services,
-  ) {
+  ) async {
     try {
       final dateFormat = DateFormat('dd/MM/yyyy');
       final timeFormat = DateFormat('HH:mm');
@@ -1514,14 +1516,14 @@ class _ExportSection extends StatelessWidget {
       final base64Data = base64Encode(bytes);
       final dataUri = 'data:text/csv;charset=utf-8;base64,$base64Data';
 
-      final anchor = web.document.createElement('a') as web.HTMLAnchorElement;
-      anchor.href = dataUri;
-      anchor.download = 'reservas_reporte.csv';
-      anchor.click();
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/reservas_reporte.csv');
+      await file.writeAsBytes(bytes);
+      await Share.shareXFiles([XFile(file.path)], text: 'Reporte de reservas');
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('✅ Archivo CSV descargado'),
+          content: Text('✅ Archivo CSV listo para compartir'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -1533,11 +1535,11 @@ class _ExportSection extends StatelessWidget {
   }
 
   /// Generate a summary CSV grouped by service.
-  void _exportServicesSummary(
+  Future<void> _exportServicesSummary(
     BuildContext context,
     List<Reservation> reservations,
     List<ServiceModel> services,
-  ) {
+  ) async {
     try {
       final priceMap = <String, double>{};
       for (final s in services) {
@@ -1589,14 +1591,14 @@ class _ExportSection extends StatelessWidget {
       final base64Data = base64Encode(bytes);
       final dataUri = 'data:text/csv;charset=utf-8;base64,$base64Data';
 
-      final anchor = web.document.createElement('a') as web.HTMLAnchorElement;
-      anchor.href = dataUri;
-      anchor.download = 'resumen_servicios.csv';
-      anchor.click();
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/resumen_servicios.csv');
+      await file.writeAsBytes(bytes);
+      await Share.shareXFiles([XFile(file.path)], text: 'Resumen de servicios');
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('✅ Resumen de servicios descargado'),
+          content: Text('✅ Resumen de servicios listo para compartir'),
           behavior: SnackBarBehavior.floating,
         ),
       );

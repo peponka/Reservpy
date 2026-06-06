@@ -323,25 +323,28 @@ class BusinessShell extends ConsumerWidget {
     final safeMobileIndex = mobileIndex >= 0 ? mobileIndex : (isFromMoreSheet ? 4 : 0);
 
     return Scaffold(
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (Widget child, Animation<double> animation) {
-          return FadeTransition(
-            opacity: animation,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0.0, 0.015),
-                end: Offset.zero,
-              ).animate(animation),
-              child: child,
-            ),
-          );
-        },
-        child: KeyedSubtree(
-          key: ValueKey<int>(currentIndex),
-          child: _buildActiveTab(currentIndex, ref),
+      body: SafeArea(
+        bottom: false,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          transitionBuilder: (Widget child, Animation<double> animation) {
+            return FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0.0, 0.015),
+                  end: Offset.zero,
+                ).animate(animation),
+                child: child,
+              ),
+            );
+          },
+          child: KeyedSubtree(
+            key: ValueKey<int>(currentIndex),
+            child: _buildActiveTab(currentIndex, ref),
+          ),
         ),
       ),
       bottomNavigationBar: NavigationBar(

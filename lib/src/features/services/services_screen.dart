@@ -462,11 +462,18 @@ class _ServiceKpi extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Text(
-            value,
-            style: theme.textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              fontSize: 22,
+          // FittedBox para que valores largos (₲ 1.234.567) se ajusten solos
+          // y no se corten.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: theme.textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                fontSize: 22,
+              ),
+              maxLines: 1,
             ),
           ),
         ],

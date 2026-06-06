@@ -18,7 +18,8 @@ import '../../features/business/clients_screen.dart';
 import '../../features/business/services_screen.dart';
 import '../../features/business/availability_screen.dart';
 import '../../features/dashboard/reports_screen.dart';
-import '../../features/landing/landing_page.dart';
+import '../../features/auth/welcome_screen.dart';
+import '../../features/auth/business_created_screen.dart';
 import '../../features/reservations/select_service_screen.dart';
 import '../../features/reservations/select_time_screen.dart';
 import '../../features/reservations/confirm_reservation_screen.dart';
@@ -106,12 +107,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      // ─── Landing Page (public) ────────────────────────
+      // ─── Welcome Screen (entrada app mobile) ─────────
       GoRoute(
         path: '/',
         pageBuilder: (context, state) => _buildPage(
           state,
-          const LandingPage(),
+          const WelcomeScreen(),
         ),
       ),
 
@@ -145,6 +146,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           state,
           const RoleSelectorScreen(),
         ),
+      ),
+
+      // ─── Negocio Creado (éxito tras registro) ─────────
+      GoRoute(
+        path: '/business-created',
+        pageBuilder: (context, state) {
+          final name = state.uri.queryParameters['name'] ?? '';
+          return _buildPage(
+            state,
+            BusinessCreatedScreen(businessName: name),
+          );
+        },
       ),
 
       // ─── Business Onboarding ──────────────────────────

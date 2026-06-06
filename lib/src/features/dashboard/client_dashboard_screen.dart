@@ -106,7 +106,12 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                 // ═══════════════════════════════════════════════════════════
                 // 1. GREETING HEADER — green gradient card
                 // ═══════════════════════════════════════════════════════════
-                _buildGreetingHeader(theme, colorScheme, userName),
+                _buildGreetingHeader(
+                  theme,
+                  colorScheme,
+                  userName,
+                  upcoming.isNotEmpty ? upcoming.first : null,
+                ),
                 const SizedBox(height: AppSizes.s24),
 
                 // ═══════════════════════════════════════════════════════════
@@ -147,176 +152,217 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
   }
 
   // ───────────────────────────────────────────────────────────────────
-  // 1. GREETING HEADER
+  // 1. GREETING HEADER (rediseño premium)
+  //   - Saludo + nombre con avatar circular con la inicial
+  //   - Línea inferior contextual:
+  //       · si hay próxima reserva → la muestra
+  //       · si no → CTA de reservar
   // ───────────────────────────────────────────────────────────────────
   Widget _buildGreetingHeader(
     ThemeData theme,
     ColorScheme colorScheme,
     String userName,
+    Reservation? nextReservation,
   ) {
+    final initial =
+        userName.trim().isNotEmpty ? userName.trim()[0].toUpperCase() : '?';
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppSizes.radiusXl),
       child: Stack(
         children: [
-          // Gradient background
+          // Fondo con gradiente más sutil (sólo dos paradas, sin azul oscuro
+          // al final — eso lo hacía verse "plástico").
           Container(
-            padding: const EdgeInsets.all(AppSizes.s24),
+            padding: const EdgeInsets.fromLTRB(
+                AppSizes.s24, AppSizes.s24, AppSizes.s24, AppSizes.s24),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [
                   Color(0xFF00C896),
-                  Color(0xFF00A67E),
-                  Color(0xFF0A2540),
+                  Color(0xFF00926E),
                 ],
-                stops: [0.0, 0.45, 1.0],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.30),
+                  color: AppColors.primary.withValues(alpha: 0.25),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
               ],
             ),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final isWide = constraints.maxWidth > 520;
-
-                final greeting = Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Fila superior: saludo + avatar circular con inicial
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${_greetingTitle()},',
+                            style: GoogleFonts.inter(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white.withValues(alpha: 0.85),
+                              height: 1.1,
+                            ),
+                          ),
+                          const SizedBox(height: AppSizes.s4),
+                          Text(
+                            userName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              fontSize: 30,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              height: 1.1,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppSizes.s12),
+                    // Avatar con inicial (toque humano, no IA)
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSizes.s12,
-                        vertical: AppSizes.s4,
-                      ),
+                      width: 56,
+                      height: 56,
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-                      ),
-                      child: Text(
-                        _greetingLabel(),
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          letterSpacing: 1.4,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: AppSizes.s12),
-                    Text(
-                      '${_greetingTitle()}, 👋 $userName',
-                      style: GoogleFonts.inter(
-                        fontSize: isWide ? 30 : 22,
-                        fontWeight: FontWeight.w800,
                         color: Colors.white,
-                        height: 1.2,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.15),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: AppSizes.s8),
-                    Text(
-                      'Bienvenido. Reservá tu primer turno en segundos.',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.white.withValues(alpha: 0.82),
-                        height: 1.4,
+                      child: Center(
+                        child: Text(
+                          initial,
+                          style: GoogleFonts.inter(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primary,
+                          ),
+                        ),
                       ),
                     ),
                   ],
-                );
+                ),
 
-                final clock = Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSizes.s20,
-                    vertical: AppSizes.s16,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(AppSizes.radiusLg),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.20),
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _formattedClock(),
-                        style: GoogleFonts.inter(
-                          fontSize: isWide ? 34 : 26,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      const SizedBox(height: AppSizes.s4),
-                      Text(
-                        'HORA LOCAL',
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white.withValues(alpha: 0.70),
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
+                const SizedBox(height: AppSizes.s20),
 
-                if (isWide) {
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(child: greeting),
-                      const SizedBox(width: AppSizes.s24),
-                      clock,
-                    ],
-                  );
-                }
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    greeting,
-                    const SizedBox(height: AppSizes.s16),
-                    Align(alignment: Alignment.centerLeft, child: clock),
-                  ],
-                );
-              },
+                // Línea inferior: contextual
+                _buildHeroContextLine(nextReservation),
+              ],
             ),
           ),
-          // Decorative circle — top right
+          // Círculo decorativo arriba a la derecha (más sutil)
           Positioned(
-            top: -30,
-            right: -30,
-            child: Container(
-              width: 150,
-              height: 150,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.06),
-              ),
-            ),
-          ),
-          // Decorative circle — bottom left
-          Positioned(
-            bottom: -20,
-            left: -20,
-            child: Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.04),
+            top: -40,
+            right: -40,
+            child: IgnorePointer(
+              child: Container(
+                width: 140,
+                height: 140,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.07),
+                ),
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  /// Pill informativa al pie del hero:
+  ///   · con próxima reserva → "Tu próximo turno · martes 14:30"
+  ///   · sin reservas       → "Listo para reservar tu próximo turno"
+  Widget _buildHeroContextLine(Reservation? next) {
+    if (next != null) {
+      final df = DateFormat('EEEE d MMM · HH:mm', 'es');
+      final dateStr = df.format(next.startTime);
+      return Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSizes.s12,
+          vertical: AppSizes.s12,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.event_rounded, color: Colors.white, size: 18),
+            const SizedBox(width: AppSizes.s8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'TU PRÓXIMO TURNO',
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white.withValues(alpha: 0.75),
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    dateStr,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.14),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.bolt_rounded,
+              color: Colors.white, size: 18),
+        ),
+        const SizedBox(width: AppSizes.s12),
+        Expanded(
+          child: Text(
+            'Listo para reservar tu próximo turno',
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Colors.white.withValues(alpha: 0.92),
+              height: 1.3,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -351,44 +397,32 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
       ),
     ];
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth > 560) {
-          return Row(
-            children: items.asMap().entries.map((entry) {
-              return Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(
-                    left: entry.key == 0 ? 0 : AppSizes.s8,
-                    right: entry.key == items.length - 1 ? 0 : AppSizes.s8,
-                  ),
-                  child:
-                      _buildStatCard(theme, colorScheme, entry.value),
-                ),
-              );
-            }).toList(),
-          );
-        }
-        // Stack vertically on narrow screens
-        return Column(
-          children: items
-              .map((item) => Padding(
-                    padding: const EdgeInsets.only(bottom: AppSizes.s12),
-                    child: _buildStatCard(theme, colorScheme, item),
-                  ))
-              .toList(),
+    // Siempre 3 columnas (también en mobile) — más limpio que apilar.
+    return Row(
+      children: items.asMap().entries.map((entry) {
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: entry.key == 0 ? 0 : AppSizes.s12,
+              right: entry.key == items.length - 1 ? 0 : AppSizes.s12,
+            ),
+            child: _buildStatCard(theme, colorScheme, entry.value),
+          ),
         );
-      },
+      }).toList(),
     );
   }
 
+  /// Stat card compacta y vertical (ícono pill arriba, número grande, label).
+  /// Diseño limpio sin tanto adorno — entra siempre en una fila aunque
+  /// la pantalla sea angosta.
   Widget _buildStatCard(
     ThemeData theme,
     ColorScheme colorScheme,
     _StatItem item,
   ) {
     return Container(
-      padding: const EdgeInsets.all(AppSizes.s20),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: theme.cardTheme.color,
         borderRadius: BorderRadius.circular(AppSizes.radiusLg),
@@ -405,66 +439,58 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
       ),
       child: Column(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.label,
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textSecondary,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                    const SizedBox(height: AppSizes.s8),
-                    Text(
-                      item.value,
-                      style: GoogleFonts.inter(
-                        fontSize: 36,
-                        fontWeight: FontWeight.w900,
-                        color: colorScheme.onSurface,
-                        height: 1.0,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(AppSizes.s12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [item.color, item.color.withValues(alpha: 0.7)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSizes.s12, AppSizes.s16, AppSizes.s12, AppSizes.s12),
+            child: Column(
+              children: [
+                // Ícono circular sutil con el color del item
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: item.color.withValues(alpha: 0.14),
+                    shape: BoxShape.circle,
                   ),
-                  borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                  boxShadow: [
-                    BoxShadow(
-                      color: item.color.withValues(alpha: 0.25),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
+                  child: Icon(item.icon, color: item.color, size: 16),
                 ),
-                child: Icon(item.icon, color: Colors.white, size: 24),
-              ),
-            ],
+                const SizedBox(height: AppSizes.s8),
+                // Número (grande, dominante)
+                Text(
+                  item.value,
+                  style: GoogleFonts.inter(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    color: colorScheme.onSurface,
+                    height: 1.0,
+                  ),
+                ),
+                const SizedBox(height: AppSizes.s4),
+                // Label (chico, una sola línea, recorta con …)
+                Text(
+                  item.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textSecondary,
+                    letterSpacing: 0.6,
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: AppSizes.s12),
+          // Acento inferior con color del item
           Container(
-            height: 4,
+            height: 3,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  item.color.withValues(alpha: 0.4),
-                  item.color.withValues(alpha: 0.05),
+                  item.color.withValues(alpha: 0.5),
+                  item.color.withValues(alpha: 0.08),
                 ],
               ),
-              borderRadius: BorderRadius.circular(2),
             ),
           ),
         ],
