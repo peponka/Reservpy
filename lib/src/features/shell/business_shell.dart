@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -756,7 +756,7 @@ class _DesktopSidebar extends ConsumerWidget {
                         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                         alignment: Alignment.centerLeft,
                         minimumSize: const Size(double.infinity, 40),
-                        backgroundColor: const Color(0xFF00C896).withValues(alpha: 0.08),
+                        backgroundColor: const Color(0xFF25D366).withValues(alpha: 0.08),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                         ),
@@ -765,12 +765,12 @@ class _DesktopSidebar extends ConsumerWidget {
                         ref.read(activeRoleProvider.notifier).state = UserRole.client;
                         GoRouter.of(context).go('/client');
                       },
-                      icon: const Icon(Icons.person_search_rounded, size: 18, color: Color(0xFF00C896)),
+                      icon: const Icon(Icons.person_search_rounded, size: 18, color: Color(0xFF25D366)),
                       label: Text(
                         'Ver como cliente',
                         style: GoogleFonts.inter(
                           fontSize: 12,
-                          color: const Color(0xFF00C896),
+                          color: const Color(0xFF25D366),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -780,7 +780,7 @@ class _DesktopSidebar extends ConsumerWidget {
                   return Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF00C896).withValues(alpha: 0.08),
+                      color: const Color(0xFF25D366).withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                     ),
                     child: Column(
@@ -811,7 +811,7 @@ class _DesktopSidebar extends ConsumerWidget {
                             child: Container(
                               padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
                               decoration: BoxDecoration(
-                                color: isActive ? const Color(0xFF00C896).withValues(alpha: 0.15) : Colors.transparent,
+                                color: isActive ? const Color(0xFF25D366).withValues(alpha: 0.15) : Colors.transparent,
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Row(
@@ -822,7 +822,7 @@ class _DesktopSidebar extends ConsumerWidget {
                                     role == UserRole.admin ? Icons.admin_panel_settings_rounded :
                                     Icons.person_rounded,
                                     size: 16,
-                                    color: isActive ? const Color(0xFF00C896) : Colors.grey.shade400,
+                                    color: isActive ? const Color(0xFF25D366) : Colors.grey.shade400,
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
@@ -830,12 +830,12 @@ class _DesktopSidebar extends ConsumerWidget {
                                     style: GoogleFonts.inter(
                                       fontSize: 12,
                                       fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                                      color: isActive ? const Color(0xFF00C896) : Colors.grey.shade600,
+                                      color: isActive ? const Color(0xFF25D366) : Colors.grey.shade600,
                                     ),
                                   ),
                                   if (isActive) ...[
                                     const Spacer(),
-                                    const Icon(Icons.check_rounded, size: 14, color: Color(0xFF00C896)),
+                                    const Icon(Icons.check_rounded, size: 14, color: Color(0xFF25D366)),
                                   ],
                                 ],
                               ),

@@ -1,4 +1,4 @@
-
+﻿
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -354,7 +354,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: const Text('¡Cuenta creada con éxito! 🎉'),
-              backgroundColor: const Color(0xFF00C896),
+              backgroundColor: const Color(0xFF25D366),
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 3),
               shape: RoundedRectangleBorder(

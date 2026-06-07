@@ -1,4 +1,4 @@
-import 'package:reservpy/src/core/supabase/supabase_config.dart';
+﻿import 'package:reservpy/src/core/supabase/supabase_config.dart';
 import 'package:reservpy/src/shared/models/models.dart';
 
 class CategoryRepository {
@@ -14,7 +14,7 @@ class CategoryRepository {
   }
 
   /// Create a new category
-  Future<BusinessCategory> create(String name, {String icon = 'category', String color = '#00C896'}) async {
+  Future<BusinessCategory> create(String name, {String icon = 'category', String color = '#25D366'}) async {
     final data = await _client
         .from('categories')
         .insert({'name': name, 'icon': icon, 'color': color, 'sort_order': 50})

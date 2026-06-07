@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -217,7 +217,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   gradient: const LinearGradient(
                     colors: [
                       AppColors.primary,
-                      Color(0xFF00926E),
+                      Color(0xFF1DA851),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,

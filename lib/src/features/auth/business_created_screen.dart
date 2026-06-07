@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -15,7 +15,7 @@ class BusinessCreatedScreen extends StatefulWidget {
 
 class _BusinessCreatedScreenState extends State<BusinessCreatedScreen>
     with SingleTickerProviderStateMixin {
-  static const Color _primary = Color(0xFF00C896);
+  static const Color _primary = Color(0xFF25D366);
   static const Color _textPrimary = Color(0xFF1A1A2E);
 
   late AnimationController _controller;

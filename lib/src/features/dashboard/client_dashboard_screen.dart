@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -204,8 +204,8 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [
-                  Color(0xFF00C896),
-                  Color(0xFF00926E),
+                  Color(0xFF25D366),
+                  Color(0xFF1DA851),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,

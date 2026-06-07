@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -240,14 +240,14 @@ class _CategoriesPage extends ConsumerWidget {
       padding: const EdgeInsets.all(AppSizes.s24),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF00C896), Color(0xFF00A87A)],
+          colors: [Color(0xFF25D366), Color(0xFF1DA851)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(AppSizes.radiusXl),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF00C896).withValues(alpha: 0.35),
+            color: const Color(0xFF25D366).withValues(alpha: 0.35),
             blurRadius: 24,
             offset: const Offset(0, 10),
           ),
@@ -319,7 +319,7 @@ class _CategoriesPage extends ConsumerWidget {
                 hintStyle: GoogleFonts.inter(
                     fontSize: 14, color: AppColors.textSecondary),
                 prefixIcon: const Icon(Icons.search_rounded,
-                    color: Color(0xFF00C896), size: 22),
+                    color: Color(0xFF25D366), size: 22),
                 suffixIcon: searchController.text.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear_rounded,
@@ -342,7 +342,7 @@ class _CategoriesPage extends ConsumerWidget {
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                   borderSide:
-                      const BorderSide(color: Color(0xFF00C896), width: 2),
+                      const BorderSide(color: Color(0xFF25D366), width: 2),
                 ),
               ),
             ),
@@ -364,11 +364,11 @@ class _CategoriesPage extends ConsumerWidget {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: const Color(0xFF00C896).withValues(alpha: 0.08),
+                color: const Color(0xFF25D366).withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.search_off_rounded,
-                  size: 40, color: Color(0xFF00C896)),
+                  size: 40, color: Color(0xFF25D366)),
             ),
             const SizedBox(height: AppSizes.s20),
             Text(
@@ -939,7 +939,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF00C896),
+                    backgroundColor: const Color(0xFF25D366),
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
@@ -979,12 +979,12 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                     height: 40,
                     decoration: BoxDecoration(
                       color:
-                          const Color(0xFF00C896).withValues(alpha: 0.1),
+                          const Color(0xFF25D366).withValues(alpha: 0.1),
                       borderRadius:
                           BorderRadius.circular(AppSizes.radiusMd),
                     ),
                     child: const Icon(Icons.add_circle_outline_rounded,
-                        color: Color(0xFF00C896), size: 22),
+                        color: Color(0xFF25D366), size: 22),
                   ),
                   const SizedBox(width: AppSizes.s12),
                   Expanded(
@@ -1032,7 +1032,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                       filled: true,
                       fillColor: Colors.grey.shade50,
                       prefixIcon: const Icon(Icons.category_rounded,
-                          color: Color(0xFF00C896), size: 20),
+                          color: Color(0xFF25D366), size: 20),
                       border: OutlineInputBorder(
                         borderRadius:
                             BorderRadius.circular(AppSizes.radiusMd),
@@ -1047,7 +1047,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                         borderRadius:
                             BorderRadius.circular(AppSizes.radiusMd),
                         borderSide: const BorderSide(
-                            color: Color(0xFF00C896), width: 2),
+                            color: Color(0xFF25D366), width: 2),
                       ),
                       errorBorder: OutlineInputBorder(
                         borderRadius:
@@ -1145,7 +1145,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                                 ),
                               ],
                             ),
-                            backgroundColor: const Color(0xFF00C896),
+                            backgroundColor: const Color(0xFF25D366),
                             behavior: SnackBarBehavior.floating,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(
@@ -1169,7 +1169,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF00C896),
+                    backgroundColor: const Color(0xFF25D366),
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(

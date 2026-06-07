@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
@@ -195,7 +195,7 @@ class _RoleCardState extends State<_RoleCard> {
     switch (widget.role) {
       case UserRole.businessOwner:
       case UserRole.business:
-        return const Color(0xFF00C896);
+        return const Color(0xFF25D366);
       case UserRole.employee:
         return const Color(0xFF6366F1);
       case UserRole.admin:

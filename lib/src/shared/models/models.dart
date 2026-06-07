@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 /// Helper to parse TimeOfDay from 'HH:mm' or 'HH:mm:ss' string.
 TimeOfDay _timeFromString(String time) {
@@ -150,7 +150,7 @@ class BusinessCategory {
     id: json['id'] as String,
     name: json['name'] as String,
     icon: _iconFromString(json['icon'] as String? ?? 'category'),
-    color: _colorFromHex(json['color'] as String? ?? '#00C896'),
+    color: _colorFromHex(json['color'] as String? ?? '#25D366'),
   );
 
   Map<String, dynamic> toJson() => {
