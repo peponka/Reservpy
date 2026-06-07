@@ -165,6 +165,36 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
 
       if (!mounted) return;
 
+      // CN-008: Si Supabase requiere confirmación de email, la sesión
+      // llega null. En ese caso mostramos el aviso y no entramos a la app.
+      if (response.user != null && response.session == null) {
+        setState(() => _isLoading = false);
+        if (!mounted) return;
+        await showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => AlertDialog(
+            title: const Text('Revisá tu email'),
+            content: Text(
+              'Te enviamos un enlace de confirmación a '
+              '${_emailController.text.trim()}.\n\n'
+              'Hacé clic en el enlace para activar tu cuenta '
+              'y luego iniciá sesión.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  context.go('/login');
+                },
+                child: const Text('Ir al login'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+
       if (response.user != null) {
         // Update profile with correct role and data
         try {

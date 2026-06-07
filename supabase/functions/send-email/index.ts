@@ -1,6 +1,8 @@
 // supabase/functions/send-email/index.ts
 // Supabase Edge Function — send transactional emails via Resend.
+// CN-006: requiere JWT de Supabase válido en el header Authorization.
 
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getEmailTemplate } from "./templates.ts";
 
 const corsHeaders: Record<string, string> = {
@@ -23,6 +25,37 @@ Deno.serve(async (req: Request): Promise<Response> => {
       { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
+
+  // ── CN-006: Verificar JWT de Supabase ─────────────────────────────
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return new Response(
+      JSON.stringify({ error: "Unauthorized" }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return new Response(
+      JSON.stringify({ error: "Server misconfiguration" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return new Response(
+      JSON.stringify({ error: "Unauthorized" }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+  // ── Fin verificación JWT ──────────────────────────────────────────
 
   try {
     // ── Parse request body ────────────────────────────────────────────
