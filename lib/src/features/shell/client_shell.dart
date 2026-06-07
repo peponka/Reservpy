@@ -229,11 +229,11 @@ class _ClientDesktopSidebar extends ConsumerWidget {
               children: [
                 // ── Logo branded ──
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(10),
                   child: Image.asset(
                     'assets/images/logo.png',
-                    width: 32,
-                    height: 32,
+                    width: 42,
+                    height: 42,
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -242,12 +242,26 @@ class _ClientDesktopSidebar extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'ReservPy',
-                        style: GoogleFonts.inter(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: colorScheme.onSurface,
+                      Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: 'Reserv',
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: colorScheme.onSurface,
+                              ),
+                            ),
+                            TextSpan(
+                              text: 'Py',
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       Text(
