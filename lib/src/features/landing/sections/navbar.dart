@@ -228,14 +228,11 @@ class _Logo extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: Image.asset(
-            'assets/images/logo.png',
-            width: 40,
-            height: 40,
-            fit: BoxFit.cover,
-          ),
+        Image.asset(
+          'assets/images/icon.png',
+          width: 40,
+          height: 40,
+          fit: BoxFit.contain,
         ),
         const SizedBox(width: 10),
         Text.rich(
