@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'dart:math' as math;
 import 'dart:convert';
 import 'dart:io';
@@ -124,15 +125,7 @@ class _PremiumGate extends StatelessWidget {
           const SizedBox(height: AppSizes.s32),
           // CTA button
           FilledButton.icon(
-            onPressed: () {
-              // TODO: navegar a pantalla de upgrade cuando esté disponible
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('¡Próximamente podrás upgradear desde la app!'),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
+            onPressed: () => context.push('/upgrade'),
             icon: const Icon(Icons.rocket_launch_rounded),
             label: const Text('Upgradear a Pro'),
             style: FilledButton.styleFrom(

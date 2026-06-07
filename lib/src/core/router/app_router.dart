@@ -29,6 +29,8 @@ import '../../features/reservations/reservation_success_screen.dart';
 import '../../features/reservations/business_detail_screen.dart';
 import '../../features/shell/client_shell.dart';
 import '../../features/shell/business_shell.dart';
+import '../../features/subscription/upgrade_screen.dart';
+import '../../features/subscription/bancard_payment_screen.dart';
 import '../../shared/providers/providers.dart';
 import '../../shared/models/models.dart';
 
@@ -360,6 +362,29 @@ final routerProvider = Provider<GoRouter>((ref) {
             ),
           );
         },
+      ),
+
+      // ─── Subscription / Upgrade ───────────────────────────
+      GoRoute(
+        path: '/upgrade',
+        pageBuilder: (context, state) => _buildPage(
+          state,
+          const UpgradeScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/upgrade/payment',
+        pageBuilder: (context, state) => _buildPage(
+          state,
+          const BancardPaymentScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/upgrade/success',
+        pageBuilder: (context, state) => _buildPage(
+          state,
+          const PaymentSuccessScreen(),
+        ),
       ),
     ],
   );
