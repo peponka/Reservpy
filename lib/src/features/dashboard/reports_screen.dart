@@ -1285,11 +1285,11 @@ _ClientStatsData _computeClientStats(
 
   final inPeriod =
       reservations.where((r) => r.createdAt.isAfter(cutoff)).toList();
-  final allClientIds = inPeriod.map((r) => r.clientId).toSet();
+  final allClientIds = inPeriod.map((r) => r.clientId).whereType<String>().toSet();
 
   // Consider "new" if the client has no reservations before the cutoff.
   final prePeriod = reservations.where((r) => r.createdAt.isBefore(cutoff));
-  final oldClientIds = prePeriod.map((r) => r.clientId).toSet();
+  final oldClientIds = prePeriod.map((r) => r.clientId).whereType<String>().toSet();
 
   final newClients =
       allClientIds.where((id) => !oldClientIds.contains(id)).length;
@@ -1319,10 +1319,13 @@ List<_TopClientRow> _computeTopClients(
 
   for (final r in reservations) {
     if (r.status == ReservationStatus.cancelled) continue;
-    visits[r.clientId] = (visits[r.clientId] ?? 0) + 1;
+    // Reservas manuales (clientId null) se excluyen del ranking de clientes
+    final cid = r.clientId;
+    if (cid == null) continue;
+    visits[cid] = (visits[cid] ?? 0) + 1;
     final svc = serviceMap[r.serviceId];
-    spent[r.clientId] = (spent[r.clientId] ?? 0) + (svc?.price ?? 0);
-    if (r.clientName != null) names[r.clientId] = r.clientName!;
+    spent[cid] = (spent[cid] ?? 0) + (svc?.price ?? 0);
+    if (r.clientName != null) names[cid] = r.clientName!;
   }
 
   if (visits.isEmpty) return [];

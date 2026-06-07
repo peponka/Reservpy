@@ -1350,7 +1350,7 @@ class _DayView extends ConsumerWidget {
       // Send cancellation email if status changed to cancelled
       if (newStatus == ReservationStatus.cancelled) {
         final business = ref.read(currentBusinessProvider);
-        ProfileRepository().getProfile(reservation.clientId).then((client) {
+        if (reservation.clientId != null) ProfileRepository().getProfile(reservation.clientId!).then((client) {
           if (client != null && business != null) {
             EmailService.enviarEmailCancelacionTurnoCliente(
               clientEmail: client.email,
@@ -1835,7 +1835,7 @@ class _WeekView extends ConsumerWidget {
       // Send cancellation email if status changed to cancelled
       if (newStatus == ReservationStatus.cancelled) {
         final business = ref.read(currentBusinessProvider);
-        ProfileRepository().getProfile(reservation.clientId).then((client) {
+        if (reservation.clientId != null) ProfileRepository().getProfile(reservation.clientId!).then((client) {
           if (client != null && business != null) {
             EmailService.enviarEmailCancelacionTurnoCliente(
               clientEmail: client.email,

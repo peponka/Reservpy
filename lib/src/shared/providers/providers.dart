@@ -123,6 +123,7 @@ final dashboardStatsProvider = Provider<DashboardStats>((ref) {
   final uniqueClients = reservations
       .where((r) => r.status != ReservationStatus.cancelled)
       .map((r) => r.clientId)
+      .whereType<String>()
       .toSet();
 
   // Calculate occupancy based on slots
