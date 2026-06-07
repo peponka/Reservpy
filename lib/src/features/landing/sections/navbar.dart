@@ -228,18 +228,36 @@ class _Logo extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(
-          Icons.calendar_month_rounded,
-          color: LandingColors.primary,
-          size: 28,
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Image.asset(
+            'assets/images/logo.png',
+            width: 40,
+            height: 40,
+            fit: BoxFit.cover,
+          ),
         ),
-        const SizedBox(width: 8),
-        Text(
-          'ReservPy',
-          style: GoogleFonts.inter(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: LandingColors.textPrimary,
+        const SizedBox(width: 10),
+        Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: 'Reserv',
+                style: GoogleFonts.inter(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: LandingColors.textPrimary,
+                ),
+              ),
+              TextSpan(
+                text: 'Py',
+                style: GoogleFonts.inter(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: LandingColors.primary,
+                ),
+              ),
+            ],
           ),
         ),
       ],
