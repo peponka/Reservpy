@@ -233,7 +233,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                             key: ValueKey(
                                 'month-${_selectedDate.year}-${_selectedDate.month}'),
                             selectedDate: _selectedDate,
-                            reservations: reservations,
                             onDayTap: (day) =>
                                 _showMonthDaySheet(day, reservations),
                           ),
@@ -2037,23 +2036,25 @@ class _DetailRow extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════
 // MONTH VIEW — Grilla del mes con días + contador de reservas
 // ═══════════════════════════════════════════════════════════════════
-class _MonthView extends StatelessWidget {
+class _MonthView extends ConsumerWidget {
   final DateTime selectedDate;
-  final List<Reservation> reservations;
   final ValueChanged<DateTime> onDayTap;
 
   const _MonthView({
     super.key,
     required this.selectedDate,
-    required this.reservations,
     required this.onDayTap,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final monthLabel = DateFormat('MMMM yyyy', 'es').format(selectedDate);
+
+    // Escuchamos el provider directo — así cuando se agrega una reserva
+    // el chip de cantidad se actualiza solo (refresh automático).
+    final reservations = ref.watch(businessReservationsProvider).value ?? [];
 
     // Primer día del mes y cuántos días tiene
     final firstOfMonth = DateTime(selectedDate.year, selectedDate.month, 1);
