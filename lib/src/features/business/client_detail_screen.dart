@@ -77,10 +77,19 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
             .reduce((a, b) => a.isBefore(b) ? a : b)
         : null;
 
-    // ─── Mock contact info derived from clientId ────────────────
-    final clientPhone = '+595 981 ${widget.clientId.hashCode.abs() % 900000 + 100000}';
+    // ─── Contact info REAL desde profiles (RLS expone solo lo necesario) ─
+    // Si el cliente no tiene perfil cargado o la RLS no permite leerlo,
+    // mostramos placeholders en lugar de inventar datos.
+    final clientProfile =
+        ref.watch(profileByIdProvider(widget.clientId)).value;
+    final clientPhone =
+        (clientProfile?.phone != null && clientProfile!.phone!.trim().isNotEmpty)
+            ? clientProfile.phone!
+            : 'Sin teléfono';
     final clientEmail =
-        '${clientName.toLowerCase().replaceAll(' ', '.')}@gmail.com';
+        clientProfile?.email != null && clientProfile!.email.trim().isNotEmpty
+            ? clientProfile.email
+            : 'Sin email';
 
     return Scaffold(
       body: CustomScrollView(

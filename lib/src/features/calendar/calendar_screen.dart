@@ -2332,29 +2332,23 @@ class _ManualReservationFormState extends State<_ManualReservationForm> {
       final endTime =
           startTime.add(Duration(minutes: svc.durationMinutes));
 
-      // Nota descriptiva con los datos del cliente manual
-      final clientName = _nameCtrl.text.trim();
+      final clientName  = _nameCtrl.text.trim();
       final clientPhone = _phoneCtrl.text.trim();
-      final extraNotes = _notesCtrl.text.trim();
-      final notesParts = <String>[
-        'Cliente: $clientName',
-        if (clientPhone.isNotEmpty) 'Tel: $clientPhone',
-        if (extraNotes.isNotEmpty) 'Notas: $extraNotes',
-      ];
+      final extraNotes  = _notesCtrl.text.trim();
 
-      // Como cliente manual, usamos al dueño del negocio como clientId
-      // (workaround para no romper la FK a profiles). El nombre real
-      // del cliente va en notes y en clientName.
       final reservation = Reservation(
         id: '',
         businessId: widget.business.id,
-        clientId: widget.business.ownerId,
+        // clientId queda null — reserva manual cargada por el dueño (CN-005)
         serviceId: svc.id,
         startTime: startTime,
         endTime: endTime,
         status: ReservationStatus.confirmed,
-        notes: notesParts.join(' · '),
+        notes: extraNotes.isNotEmpty ? extraNotes : null,
         createdAt: DateTime.now(),
+        isManual: true,
+        manualClientName:  clientName.isNotEmpty  ? clientName  : null,
+        manualClientPhone: clientPhone.isNotEmpty ? clientPhone : null,
         clientName: clientName,
         serviceName: svc.name,
       );

@@ -5,6 +5,7 @@ import 'package:reservpy/src/core/supabase/supabase_config.dart';
 import '../mock_data.dart';
 import 'package:reservpy/src/data/repositories/category_repository.dart';
 import 'package:reservpy/src/data/repositories/business_repository.dart';
+import 'package:reservpy/src/data/repositories/profile_repository.dart';
 import 'package:reservpy/src/data/repositories/service_repository.dart';
 import 'package:reservpy/src/data/repositories/reports_repository.dart';
 import 'package:reservpy/src/data/repositories/employee_repository.dart';
@@ -19,6 +20,16 @@ import 'package:reservpy/src/shared/models/employee.dart';
 
 // ─── Theme ───────────────────────────────────────────────
 final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.light);
+
+// ─── Profile lookups ─────────────────────────────────────
+/// Obtiene el perfil real de un usuario por su ID (email, telefono, nombre).
+/// Devuelve null si no existe o si la RLS no permite verlo.
+/// Usado por la pantalla de detalle de cliente para mostrar info real.
+final profileByIdProvider =
+    FutureProvider.family<AppUser?, String>((ref, userId) async {
+  if (userId.isEmpty) return null;
+  return ProfileRepository().getProfile(userId);
+});
 
 // ─── Auth ────────────────────────────────────────────────
 final isLoggedInProvider = StateProvider<bool>((ref) => false);

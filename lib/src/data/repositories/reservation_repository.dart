@@ -8,7 +8,7 @@ class ReservationRepository {
   Future<List<Reservation>> getByBusiness(String businessId) async {
     final data = await _client
         .from('reservations')
-        .select('*, profiles!client_id(first_name, last_name), services(name), businesses(name)')
+        .select('*, profiles!client_id(first_name, last_name), services(name), businesses(name), is_manual, manual_client_name, manual_client_phone')
         .eq('business_id', businessId)
         .order('start_time', ascending: false);
     return data.map((json) => Reservation.fromJson(json)).toList();
@@ -30,7 +30,7 @@ class ReservationRepository {
     final endOfDay = startOfDay.add(const Duration(days: 1));
     final data = await _client
         .from('reservations')
-        .select('*, profiles!client_id(first_name, last_name), services(name)')
+        .select('*, profiles!client_id(first_name, last_name), services(name), is_manual, manual_client_name, manual_client_phone')
         .eq('business_id', businessId)
         .gte('start_time', startOfDay.toIso8601String())
         .lt('start_time', endOfDay.toIso8601String())
@@ -43,7 +43,7 @@ class ReservationRepository {
     final data = await _client
         .from('reservations')
         .insert(reservation.toJson())
-        .select('*, profiles!client_id(first_name, last_name), services(name), businesses(name)')
+        .select('*, profiles!client_id(first_name, last_name), services(name), businesses(name), is_manual, manual_client_name, manual_client_phone')
         .single();
     return Reservation.fromJson(data);
   }

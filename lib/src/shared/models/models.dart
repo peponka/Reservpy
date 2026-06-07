@@ -487,7 +487,7 @@ class ServiceModel {
 class Reservation {
   final String id;
   final String businessId;
-  final String clientId;
+  final String? clientId;        // null para reservas manuales (CN-005)
   final String serviceId;
   final DateTime startTime;
   final DateTime endTime;
@@ -495,6 +495,11 @@ class Reservation {
   final String? notes;
   final String? cancellationReason;
   final DateTime createdAt;
+
+  // Reservas manuales (cargadas por el dueño — CN-005)
+  final bool isManual;
+  final String? manualClientName;
+  final String? manualClientPhone;
 
   // Joined data (for display)
   final String? clientName;
@@ -506,7 +511,7 @@ class Reservation {
   const Reservation({
     required this.id,
     required this.businessId,
-    required this.clientId,
+    this.clientId,
     required this.serviceId,
     required this.startTime,
     required this.endTime,
@@ -514,6 +519,9 @@ class Reservation {
     this.notes,
     this.cancellationReason,
     required this.createdAt,
+    this.isManual = false,
+    this.manualClientName,
+    this.manualClientPhone,
     this.clientName,
     this.serviceName,
     this.businessName,
@@ -521,40 +529,60 @@ class Reservation {
     this.employeeName,
   });
 
-  factory Reservation.fromJson(Map<String, dynamic> json) => Reservation(
-    id: json['id'] as String,
-    businessId: json['business_id'] as String,
-    clientId: json['client_id'] as String,
-    serviceId: json['service_id'] as String,
-    startTime: DateTime.parse(json['start_time'] as String),
-    endTime: DateTime.parse(json['end_time'] as String),
-    status: ReservationStatus.values.firstWhere(
-      (s) => s.name == (json['status'] as String? ?? 'pending'),
-      orElse: () => ReservationStatus.pending,
-    ),
-    notes: json['notes'] as String?,
-    cancellationReason: json['cancellation_reason'] as String?,
-    createdAt: DateTime.parse(json['created_at'] as String),
-    // Joined data from relations
-    clientName: json['profiles'] != null ? '${json['profiles']['first_name']} ${json['profiles']['last_name']}' : null,
-    serviceName: json['services'] != null ? json['services']['name'] as String? : null,
-    businessName: json['businesses'] != null ? json['businesses']['name'] as String? : null,
-    employeeId: json['employee_id'] as String?,
-    employeeName: json['employee_name'] as String?,
-  );
+  factory Reservation.fromJson(Map<String, dynamic> json) {
+    // Para reservas manuales el nombre viene de manual_client_name;
+    // para reservas normales viene del join con profiles.
+    final profilesMap = json['profiles'] as Map<String, dynamic>?;
+    final joinedName = profilesMap != null
+        ? '${profilesMap['first_name']} ${profilesMap['last_name']}'
+        : null;
+    final manualName = json['manual_client_name'] as String?;
 
-  Map<String, dynamic> toJson() => {
-    'business_id': businessId,
-    'client_id': clientId,
-    'service_id': serviceId,
-    'start_time': startTime.toIso8601String(),
-    'end_time': endTime.toIso8601String(),
-    'status': status.name,
-    'notes': notes,
-    'cancellation_reason': cancellationReason,
-    'employee_id': employeeId,
-    'employee_name': employeeName,
-  };
+    return Reservation(
+      id: json['id'] as String,
+      businessId: json['business_id'] as String,
+      clientId: json['client_id'] as String?,
+      serviceId: json['service_id'] as String,
+      startTime: DateTime.parse(json['start_time'] as String),
+      endTime: DateTime.parse(json['end_time'] as String),
+      status: ReservationStatus.values.firstWhere(
+        (s) => s.name == (json['status'] as String? ?? 'pending'),
+        orElse: () => ReservationStatus.pending,
+      ),
+      notes: json['notes'] as String?,
+      cancellationReason: json['cancellation_reason'] as String?,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      isManual: (json['is_manual'] as bool?) ?? false,
+      manualClientName: manualName,
+      manualClientPhone: json['manual_client_phone'] as String?,
+      // Nombre para mostrar: join > manual > null
+      clientName: joinedName ?? manualName,
+      serviceName: json['services'] != null ? json['services']['name'] as String? : null,
+      businessName: json['businesses'] != null ? json['businesses']['name'] as String? : null,
+      employeeId: json['employee_id'] as String?,
+      employeeName: json['employee_name'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    final map = <String, dynamic>{
+      'business_id': businessId,
+      'service_id': serviceId,
+      'start_time': startTime.toIso8601String(),
+      'end_time': endTime.toIso8601String(),
+      'status': status.name,
+      'notes': notes,
+      'cancellation_reason': cancellationReason,
+      'employee_id': employeeId,
+      'employee_name': employeeName,
+      'is_manual': isManual,
+      'manual_client_name': manualClientName,
+      'manual_client_phone': manualClientPhone,
+    };
+    // Solo incluir client_id si tiene valor (reservas normales)
+    if (clientId != null) map['client_id'] = clientId;
+    return map;
+  }
 
   Reservation copyWith({ReservationStatus? status, String? cancellationReason}) {
     return Reservation(
@@ -568,6 +596,9 @@ class Reservation {
       notes: notes,
       cancellationReason: cancellationReason ?? this.cancellationReason,
       createdAt: createdAt,
+      isManual: isManual,
+      manualClientName: manualClientName,
+      manualClientPhone: manualClientPhone,
       clientName: clientName,
       serviceName: serviceName,
       businessName: businessName,
