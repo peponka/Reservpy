@@ -1,0 +1,9 @@
+{
+  "buildCommand": "git clone https://github.com/flutter/flutter.git -b stable --depth 1 _flutter && _flutter/bin/flutter config --enable-web && _flutter/bin/flutter build web --release --web-renderer canvaskit",
+  "outputDirectory": "build/web",
+  "framework": null,
+  "installCommand": "echo 'skip-install'",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

@@ -20,6 +20,8 @@ import '../../features/business/availability_screen.dart';
 import '../../features/dashboard/reports_screen.dart';
 import '../../features/auth/welcome_screen.dart';
 import '../../features/auth/business_created_screen.dart';
+import '../../features/landing/landing_page.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../features/reservations/select_service_screen.dart';
 import '../../features/reservations/select_time_screen.dart';
 import '../../features/reservations/confirm_reservation_screen.dart';
@@ -107,12 +109,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      // ─── Welcome Screen (entrada app mobile) ─────────
+      // ─── Entrada raíz ─────────────────────────────────
+      //   Web   → landing comercial (hero, features, pricing, etc.)
+      //   Mobile → pantalla de bienvenida simple
       GoRoute(
         path: '/',
         pageBuilder: (context, state) => _buildPage(
           state,
-          const WelcomeScreen(),
+          kIsWeb ? const LandingPage() : const WelcomeScreen(),
         ),
       ),
 
