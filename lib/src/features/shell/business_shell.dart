@@ -43,18 +43,18 @@ class BusinessShell extends ConsumerWidget {
   static const _mobileNavItems = <_SidebarNavItem>[
     _SidebarNavItem(icon: Icons.grid_view_outlined, activeIcon: Icons.grid_view_rounded, label: 'Dashboard'),
     _SidebarNavItem(icon: Icons.calendar_today_outlined, activeIcon: Icons.calendar_today_rounded, label: 'Calendario'),
-    _SidebarNavItem(icon: Icons.groups_outlined, activeIcon: Icons.groups_rounded, label: 'Equipo'),
+    _SidebarNavItem(icon: Icons.people_outline_rounded, activeIcon: Icons.people_rounded, label: 'Clientes'),
     _SidebarNavItem(icon: Icons.storefront_outlined, activeIcon: Icons.storefront_rounded, label: 'Servicios'),
     _SidebarNavItem(icon: Icons.menu_rounded, activeIcon: Icons.menu_rounded, label: 'Más'),
   ];
 
   /// Maps mobile nav index to sidebar index (index 4 = "Más" handled separately).
-  static const _mobileToSidebarIndex = [0, 4, 5, 2]; // Dashboard, Calendario, Equipo, Servicios
+  static const _mobileToSidebarIndex = [0, 4, 1, 2]; // Dashboard, Calendario, Clientes, Servicios
 
   /// Items shown inside the "Más" bottom sheet, with their _buildActiveTab indices.
   static const _moreSheetItems = <({IconData icon, String label, int tabIndex, Color color})>[
-    (icon: Icons.people_rounded, label: 'Clientes', tabIndex: 1, color: Color(0xFF6366F1)),
     (icon: Icons.event_available_rounded, label: 'Disponibilidad', tabIndex: 3, color: Color(0xFF0EA5E9)),
+    (icon: Icons.groups_rounded, label: 'Equipo', tabIndex: 5, color: Color(0xFF6366F1)),
     (icon: Icons.bar_chart_rounded, label: 'Reportes', tabIndex: 6, color: Color(0xFFF59E0B)),
     (icon: Icons.diamond_rounded, label: 'Planes', tabIndex: 7, color: Color(0xFFEC4899)),
     (icon: Icons.settings_rounded, label: 'Configuración', tabIndex: 8, color: Color(0xFF8B5CF6)),
@@ -573,14 +573,36 @@ class _DesktopSidebar extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
             child: Row(
               children: [
+                // ── Logo branded (gradiente + "R") ──
                 Container(
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: colorScheme.primary,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF00C896), Color(0xFF00926E)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
                     borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF00C896).withValues(alpha: 0.35),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                  child: const Icon(Icons.calendar_month_rounded, color: Colors.white, size: 18),
+                  child: Center(
+                    child: Text(
+                      'R',
+                      style: GoogleFonts.inter(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Column(

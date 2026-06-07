@@ -21,9 +21,9 @@ class ClientShell extends ConsumerWidget {
 
   static const _navItems = <_NavItem>[
     _NavItem(icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Inicio'),
-    _NavItem(icon: Icons.add_circle_outline, activeIcon: Icons.add_circle_rounded, label: 'Turnos'),
+    _NavItem(icon: Icons.event_available_outlined, activeIcon: Icons.event_available_rounded, label: 'Reservar'),
     _NavItem(icon: Icons.explore_outlined, activeIcon: Icons.explore_rounded, label: 'Explorar'),
-    _NavItem(icon: Icons.calendar_today_outlined, activeIcon: Icons.calendar_today_rounded, label: 'Reservas'),
+    _NavItem(icon: Icons.calendar_month_outlined, activeIcon: Icons.calendar_month_rounded, label: 'Mis turnos'),
     _NavItem(icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded, label: 'Perfil'),
   ];
 
@@ -227,14 +227,36 @@ class _ClientDesktopSidebar extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
             child: Row(
               children: [
+                // ── Logo branded (gradiente + "R") ──
                 Container(
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: colorScheme.primary,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF00C896), Color(0xFF00926E)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
                     borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF00C896).withValues(alpha: 0.35),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                  child: const Icon(Icons.calendar_month_rounded, color: Colors.white, size: 18),
+                  child: Center(
+                    child: Text(
+                      'R',
+                      style: GoogleFonts.inter(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(

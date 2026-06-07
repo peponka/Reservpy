@@ -91,6 +91,23 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
         .toList()
       ..sort((a, b) => a.startTime.compareTo(b.startTime));
 
+    // Reservations tomorrow (for reminder banner)
+    final dayAfterTomorrow = tomorrow.add(const Duration(days: 1));
+    final tomorrowReservations = myReservations
+        .where((r) =>
+            r.startTime.isAfter(tomorrow) &&
+            r.startTime.isBefore(dayAfterTomorrow) &&
+            r.status != ReservationStatus.cancelled)
+        .toList()
+      ..sort((a, b) => a.startTime.compareTo(b.startTime));
+
+    // Unique businesses visited (completed only)
+    final businessesCount = myReservations
+        .where((r) => r.status == ReservationStatus.completed)
+        .map((r) => r.businessId)
+        .toSet()
+        .length;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         return SingleChildScrollView(
@@ -115,6 +132,14 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                 const SizedBox(height: AppSizes.s24),
 
                 // ═══════════════════════════════════════════════════════════
+                // 1b. REMINDER BANNER — only if there's a reservation tomorrow
+                // ═══════════════════════════════════════════════════════════
+                if (tomorrowReservations.isNotEmpty) ...[
+                  _buildTomorrowBanner(theme, colorScheme, tomorrowReservations.first),
+                  const SizedBox(height: AppSizes.s16),
+                ],
+
+                // ═══════════════════════════════════════════════════════════
                 // 2. STATS ROW — 3 KPI cards
                 // ═══════════════════════════════════════════════════════════
                 _buildStatsRow(
@@ -122,7 +147,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                   colorScheme,
                   upcomingCount: upcoming.length,
                   completedCount: completedCount,
-                  totalCount: myReservations.length,
+                  businessesCount: businessesCount,
                 ),
                 const SizedBox(height: AppSizes.s24),
 
@@ -374,7 +399,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
     ColorScheme colorScheme, {
     required int upcomingCount,
     required int completedCount,
-    required int totalCount,
+    required int businessesCount,
   }) {
     final items = [
       _StatItem(
@@ -390,9 +415,9 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
         color: AppColors.warning,
       ),
       _StatItem(
-        label: 'TOTAL',
-        value: '$totalCount',
-        icon: Icons.receipt_long_rounded,
+        label: 'NEGOCIOS',
+        value: '$businessesCount',
+        icon: Icons.storefront_rounded,
         color: AppColors.info,
       ),
     ];
@@ -1123,6 +1148,90 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
   }
 
   // ───────────────────────────────────────────────────────────────────
+  // 1b. TOMORROW REMINDER BANNER
+  // ───────────────────────────────────────────────────────────────────
+  Widget _buildTomorrowBanner(
+    ThemeData theme,
+    ColorScheme colorScheme,
+    Reservation r,
+  ) {
+    final timeStr = DateFormat('HH:mm').format(r.startTime);
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSizes.s16,
+        vertical: AppSizes.s12,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: AppColors.warning,
+              borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.warning.withValues(alpha: 0.3),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: const Icon(Icons.alarm_rounded, color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: AppSizes.s12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Recordatorio — turno mañana',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${r.serviceName ?? 'Servicio'} · ${r.businessName ?? 'el negocio'} · $timeStr hs',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSizes.s8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.warning.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              'Mañana',
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: AppColors.warning,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ───────────────────────────────────────────────────────────────────
   // 5. QUICK ACTIONS
   // ───────────────────────────────────────────────────────────────────
   Widget _buildQuickActions(ThemeData theme, ColorScheme colorScheme) {
@@ -1142,8 +1251,8 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
         tabIndex: 2,
       ),
       _QuickAction(
-        icon: Icons.calendar_today_rounded,
-        label: 'Mis reservas',
+        icon: Icons.calendar_month_rounded,
+        label: 'Mis turnos',
         subtitle: 'Historial completo',
         color: AppColors.accent,
         tabIndex: 3,
