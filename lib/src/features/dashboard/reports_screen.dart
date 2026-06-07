@@ -39,6 +39,13 @@ class ReportsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final business = ref.watch(currentBusinessProvider);
+
+    // ── Premium gate ──────────────────────────────────────────
+    if (business != null && !business.isPro) {
+      return const _PremiumGate();
+    }
+
     final period = ref.watch(_selectedPeriodProvider);
     final periodDays = _periodToDays(period);
     final reportsAsync = ref.watch(reportsDataProvider(periodDays));
@@ -63,6 +70,122 @@ class ReportsScreen extends ConsumerWidget {
         period: period,
         reservations: data.reservations,
         services: data.services,
+      ),
+    );
+  }
+}
+
+// ─── Premium Gate ─────────────────────────────────────────────
+class _PremiumGate extends StatelessWidget {
+  const _PremiumGate();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSizes.s24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: AppSizes.s32),
+          // Icon
+          Center(
+            child: Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF8E1),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFFFE082), width: 2),
+              ),
+              child: const Icon(Icons.lock_outline_rounded,
+                  size: 40, color: Color(0xFFFFA000)),
+            ),
+          ),
+          const SizedBox(height: AppSizes.s24),
+          Text('Reportes y Métricas',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: AppSizes.s8),
+          Text(
+            'Esta sección es exclusiva del plan Pro.\nUplgradá para acceder a todos tus reportes, métricas de ingresos, clientes frecuentes y más.',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium
+                ?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.6)),
+          ),
+          const SizedBox(height: AppSizes.s32),
+          // Feature list
+          _FeatureRow(icon: Icons.trending_up_rounded, label: 'Ingresos y gráficos por período'),
+          _FeatureRow(icon: Icons.star_rounded, label: 'Servicios más populares'),
+          _FeatureRow(icon: Icons.access_time_rounded, label: 'Horarios pico de tu negocio'),
+          _FeatureRow(icon: Icons.people_outline_rounded, label: 'Clientes frecuentes y nuevos'),
+          _FeatureRow(icon: Icons.download_rounded, label: 'Exportar a Excel para tu contador'),
+          const SizedBox(height: AppSizes.s32),
+          // CTA button
+          FilledButton.icon(
+            onPressed: () {
+              // TODO: navegar a pantalla de upgrade cuando esté disponible
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('¡Próximamente podrás upgradear desde la app!'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            icon: const Icon(Icons.rocket_launch_rounded),
+            label: const Text('Upgradear a Pro'),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFFFA000),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              textStyle: const TextStyle(
+                  fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(height: AppSizes.s16),
+          Center(
+            child: Text(
+              'Plan Pro — Reservas ilimitadas + reportes + soporte prioritario',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.45)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FeatureRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _FeatureRow({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 16, color: AppColors.primary),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(label,
+                style: Theme.of(context).textTheme.bodyMedium),
+          ),
+          const Icon(Icons.check_circle_rounded,
+              size: 18, color: AppColors.primary),
+        ],
       ),
     );
   }
