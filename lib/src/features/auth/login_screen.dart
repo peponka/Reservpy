@@ -306,7 +306,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       hint: '••••••••',
                       icon: Icons.lock_outline_rounded,
                       obscure: _obscurePassword,
-                      validator: Validators.password,
+                      validator: (v) => (v == null || v.isEmpty) ? 'Ingresá tu contraseña' : null,
                       suffix: IconButton(
                         icon: Icon(
                           _obscurePassword
