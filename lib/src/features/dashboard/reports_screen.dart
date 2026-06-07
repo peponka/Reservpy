@@ -232,6 +232,8 @@ class _ReportsBody extends ConsumerWidget {
     final heatmapData = _computeHeatmap(reservations);
     final clientStats = _computeClientStats(reservations, period);
     final topClients = _computeTopClients(reservations, services);
+    final kpiSummary = _computeKpiSummary(reservations, services);
+    final insights = _computeBusinessInsights(reservations, services);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -250,6 +252,10 @@ class _ReportsBody extends ConsumerWidget {
                 _Header(period: period),
                 const SizedBox(height: AppSizes.s16),
 
+                // ── KPI Summary ──
+                _KpiSummarySection(kpi: kpiSummary),
+                const SizedBox(height: AppSizes.s24),
+
                 // ── Export Excel/CSV ──
                 _ExportSection(reservations: reservations, services: services),
                 const SizedBox(height: AppSizes.s24),
@@ -264,6 +270,10 @@ class _ReportsBody extends ConsumerWidget {
 
                 // ── 4. Peak Hours Heatmap ──
                 _PeakHoursSection(heatmap: heatmapData),
+                const SizedBox(height: AppSizes.s24),
+
+                // ── Business Insights ──
+                _InsightsSection(insights: insights),
                 const SizedBox(height: AppSizes.s24),
 
                 // ── 5. Client Stats ──
@@ -834,6 +844,307 @@ class _GradientProgressPainter extends CustomPainter {
 }
 
 // ═══════════════════════════════════════════════════════════
+//  KPI SUMMARY CARDS
+// ═══════════════════════════════════════════════════════════
+
+class _KpiSummaryData {
+  final int totalBookings;
+  final int completedBookings;
+  final double avgTicket;
+  final double retentionRate;
+  const _KpiSummaryData({
+    required this.totalBookings,
+    required this.completedBookings,
+    required this.avgTicket,
+    required this.retentionRate,
+  });
+  double get completionRate =>
+      totalBookings > 0 ? completedBookings / totalBookings * 100 : 0;
+}
+
+class _KpiSummarySection extends StatelessWidget {
+  final _KpiSummaryData kpi;
+  const _KpiSummarySection({required this.kpi});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionHeader(title: 'Resumen del período'),
+        const SizedBox(height: AppSizes.s8),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: AppSizes.s12,
+          mainAxisSpacing: AppSizes.s12,
+          childAspectRatio: 1.55,
+          children: [
+            _KpiCard(
+              icon: Icons.event_available_rounded,
+              color: AppColors.primary,
+              label: 'Reservas totales',
+              value: '${kpi.totalBookings}',
+              subtitle: '${kpi.completedBookings} completadas',
+            ),
+            _KpiCard(
+              icon: Icons.receipt_long_rounded,
+              color: AppColors.info,
+              label: 'Ticket promedio',
+              value: _formatGuaranies(kpi.avgTicket),
+              subtitle: 'por reserva',
+            ),
+            _KpiCard(
+              icon: Icons.check_circle_outline_rounded,
+              color: AppColors.success,
+              label: 'Completación',
+              value: '${kpi.completionRate.toStringAsFixed(1)}%',
+              subtitle: 'reservas cumplidas',
+              showBar: true,
+              barValue: kpi.completionRate / 100,
+              barColor: AppColors.success,
+            ),
+            _KpiCard(
+              icon: Icons.loop_rounded,
+              color: const Color(0xFFFFA000),
+              label: 'Retención',
+              value: '${kpi.retentionRate.toStringAsFixed(1)}%',
+              subtitle: 'clientes recurrentes',
+              showBar: true,
+              barValue: kpi.retentionRate / 100,
+              barColor: const Color(0xFFFFA000),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _KpiCard extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String label;
+  final String value;
+  final String subtitle;
+  final bool showBar;
+  final double barValue;
+  final Color? barColor;
+
+  const _KpiCard({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.value,
+    required this.subtitle,
+    this.showBar = false,
+    this.barValue = 0,
+    this.barColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AppCard(
+      padding: const EdgeInsets.all(AppSizes.s12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(AppSizes.s6),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+            ),
+            child: Icon(icon, color: color, size: 15),
+          ),
+          const SizedBox(height: AppSizes.s6),
+          Text(
+            value,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          Text(
+            subtitle,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppColors.textMuted,
+              fontSize: 10,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          if (showBar) ...[
+            const SizedBox(height: AppSizes.s6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+              child: LinearProgressIndicator(
+                value: barValue.clamp(0.0, 1.0),
+                minHeight: 4,
+                backgroundColor:
+                    (barColor ?? color).withValues(alpha: 0.15),
+                valueColor: AlwaysStoppedAnimation(barColor ?? color),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  BUSINESS INSIGHTS
+// ═══════════════════════════════════════════════════════════
+
+class _BusinessInsights {
+  final String bestDay;
+  final String bestHour;
+  final String topService;
+  final int peakBookings;
+  const _BusinessInsights({
+    required this.bestDay,
+    required this.bestHour,
+    required this.topService,
+    required this.peakBookings,
+  });
+  bool get hasData => peakBookings > 0;
+}
+
+class _InsightsSection extends StatelessWidget {
+  final _BusinessInsights insights;
+  const _InsightsSection({required this.insights});
+
+  @override
+  Widget build(BuildContext context) {
+    if (!insights.hasData) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionHeader(title: 'Insights del negocio'),
+        const SizedBox(height: AppSizes.s8),
+        AppCard(
+          padding: const EdgeInsets.all(AppSizes.s16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Datos clave del período seleccionado',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: AppColors.textMuted,
+                ),
+              ),
+              const SizedBox(height: AppSizes.s12),
+              Wrap(
+                spacing: AppSizes.s8,
+                runSpacing: AppSizes.s8,
+                children: [
+                  _InsightChip(
+                    icon: Icons.calendar_today_rounded,
+                    label: 'Mejor día',
+                    value: insights.bestDay,
+                    color: AppColors.primary,
+                  ),
+                  _InsightChip(
+                    icon: Icons.schedule_rounded,
+                    label: 'Hora pico',
+                    value: insights.bestHour,
+                    color: AppColors.info,
+                  ),
+                  _InsightChip(
+                    icon: Icons.star_rounded,
+                    label: 'Servicio top',
+                    value: insights.topService,
+                    color: const Color(0xFFFFA000),
+                  ),
+                  _InsightChip(
+                    icon: Icons.bar_chart_rounded,
+                    label: 'Citas en pico',
+                    value: '${insights.peakBookings}',
+                    color: AppColors.success,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _InsightChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+
+  const _InsightChip({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 9,
+                  color: color.withValues(alpha: 0.8),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: color,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
 //  4. PEAK HOURS HEATMAP
 // ═══════════════════════════════════════════════════════════
 
@@ -995,10 +1306,12 @@ class _ClientStatsData {
   final int newClients;
   final int returningClients;
   final double cancellationRate;
+  final double retentionRate;
   const _ClientStatsData({
     required this.newClients,
     required this.returningClients,
     required this.cancellationRate,
+    required this.retentionRate,
   });
 }
 
@@ -1043,10 +1356,13 @@ class _ClientStatsSection extends StatelessWidget {
               indicatorColor: AppColors.error,
             ),
             _StatMiniCard(
-              icon: Icons.groups_rounded,
-              color: AppColors.primary,
-              label: 'Total clientes',
-              value: '${stats.newClients + stats.returningClients}',
+              icon: Icons.loop_rounded,
+              color: AppColors.success,
+              label: 'Retención',
+              value: '${stats.retentionRate.toStringAsFixed(1)}%',
+              showIndicator: true,
+              indicatorValue: stats.retentionRate / 100,
+              indicatorColor: AppColors.success,
             ),
           ],
         ),
@@ -1392,6 +1708,7 @@ _ClientStatsData _computeClientStats(
       newClients: 0,
       returningClients: 0,
       cancellationRate: 0,
+      retentionRate: 0,
     );
   }
 
@@ -1417,10 +1734,16 @@ _ClientStatsData _computeClientStats(
       .length;
   final cancellationRate = cancelledInPeriod / totalInPeriod * 100;
 
+  final totalClients = allClientIds.length;
+  final retentionRate = totalClients > 0
+      ? (returning / totalClients * 100).clamp(0.0, 100.0)
+      : 0.0;
+
   return _ClientStatsData(
     newClients: newClients,
     returningClients: returning,
     cancellationRate: cancellationRate,
+    retentionRate: retentionRate,
   );
 }
 
@@ -1470,6 +1793,106 @@ String _extractInitials(String name) {
     return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
   }
   return name.isNotEmpty ? name[0].toUpperCase() : '?';
+}
+
+_KpiSummaryData _computeKpiSummary(
+  List<Reservation> reservations,
+  List<ServiceModel> services,
+) {
+  final serviceMap = {for (final s in services) s.id: s};
+
+  final totalBookings = reservations.length;
+  final completed = reservations
+      .where((r) => r.status != ReservationStatus.cancelled)
+      .toList();
+  final completedBookings = completed.length;
+
+  double totalRevenue = 0;
+  for (final r in completed) {
+    totalRevenue += serviceMap[r.serviceId]?.price ?? 0;
+  }
+
+  final avgTicket =
+      completedBookings > 0 ? totalRevenue / completedBookings : 0.0;
+
+  // Retention = clients with >1 visit / total unique clients
+  final clientVisits = <String, int>{};
+  for (final r in completed) {
+    if (r.clientId != null) {
+      clientVisits[r.clientId!] = (clientVisits[r.clientId!] ?? 0) + 1;
+    }
+  }
+  final totalUnique = clientVisits.length;
+  final returningCount = clientVisits.values.where((v) => v > 1).length;
+  final retentionRate =
+      totalUnique > 0 ? (returningCount / totalUnique * 100) : 0.0;
+
+  return _KpiSummaryData(
+    totalBookings: totalBookings,
+    completedBookings: completedBookings,
+    avgTicket: avgTicket,
+    retentionRate: retentionRate,
+  );
+}
+
+_BusinessInsights _computeBusinessInsights(
+  List<Reservation> reservations,
+  List<ServiceModel> services, // kept for future use
+) {
+  final completed = reservations
+      .where((r) => r.status != ReservationStatus.cancelled)
+      .toList();
+
+  if (completed.isEmpty) {
+    return const _BusinessInsights(
+      bestDay: '—',
+      bestHour: '—',
+      topService: '—',
+      peakBookings: 0,
+    );
+  }
+
+  // Best day by booking count
+  final dayCount = List<int>.filled(7, 0);
+  for (final r in completed) {
+    dayCount[r.startTime.weekday - 1]++;
+  }
+  final bestDayIndex = dayCount.indexOf(dayCount.reduce(math.max));
+  const dayNames = [
+    'Lunes', 'Martes', 'Miércoles', 'Jueves',
+    'Viernes', 'Sábado', 'Domingo'
+  ];
+
+  // Best hour by booking count
+  final hourCount = <int, int>{};
+  for (final r in completed) {
+    final h = r.startTime.hour;
+    hourCount[h] = (hourCount[h] ?? 0) + 1;
+  }
+  final bestHourEntry =
+      hourCount.entries.reduce((a, b) => a.value > b.value ? a : b);
+  final peakBookings = bestHourEntry.value;
+  final bestHour =
+      '${bestHourEntry.key.toString().padLeft(2, '0')}:00 hs';
+
+  // Top service by bookings (use stored serviceName on reservation)
+  final svcCount = <String, int>{};
+  for (final r in completed) {
+    final name = r.serviceName ?? 'Sin nombre';
+    svcCount[name] = (svcCount[name] ?? 0) + 1;
+  }
+  final rawTopService = svcCount.isEmpty
+      ? '—'
+      : svcCount.entries.reduce((a, b) => a.value > b.value ? a : b).key;
+  final topService =
+      rawTopService.length > 16 ? '${rawTopService.substring(0, 15)}…' : rawTopService;
+
+  return _BusinessInsights(
+    bestDay: dayNames[bestDayIndex],
+    bestHour: bestHour,
+    topService: topService,
+    peakBookings: peakBookings,
+  );
 }
 
 // ═══════════════════════════════════════════════════════════
