@@ -5,9 +5,9 @@ class LandingColors {
   LandingColors._();
 
   // ─── Primary (Green ReservPy) ──────────────────────────────────
-  static const Color primary = Color(0xFF25D366);
-  static const Color primaryDark = Color(0xFF1DA851);
-  static const Color primaryLight = Color(0xFF4FE082);
+  static const Color primary = Color(0xFF20A482);
+  static const Color primaryDark = Color(0xFF198A6C);
+  static const Color primaryLight = Color(0xFF3DC4A0);
   static const Color primaryBg = Color(0xFFF0FDF9);
   static const Color primaryTint = Color(0xFFE6FAF5);
 
@@ -33,7 +33,7 @@ class LandingColors {
   static const Color warningBg = Color(0xFFFFFBEB);
 
   // ─── Shadows ───────────────────────────────────────────
-  static const Color shadowPrimary = Color(0x3025D366);
+  static const Color shadowPrimary = Color(0x3020A482);
   static const Color shadowLight = Color(0x12000000);
 }
 

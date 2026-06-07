@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -36,14 +36,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   String _greeting() {
     final hour = _now.hour;
-    if (hour < 12) return 'BUENOS DÍAS';
+    if (hour < 12) return 'BUENOS D�AS';
     if (hour < 19) return 'BUENAS TARDES';
     return 'BUENAS NOCHES';
   }
 
   String _greetingTitle() {
     final hour = _now.hour;
-    if (hour < 12) return 'Buenos días';
+    if (hour < 12) return 'Buenos d�as';
     if (hour < 19) return 'Buenas tardes';
     return 'Buenas noches';
   }
@@ -114,11 +114,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════
-  // 1. GREETING HEADER (rediseño premium)
+  // -----------------------------------------------------------
+  // 1. GREETING HEADER (redise�o premium)
   //   - Saludo + nombre con avatar circular con la inicial
-  //   - Sin badge redundante, sin reloj (ya está en la barra del teléfono)
-  // ═══════════════════════════════════════════════════════════
+  //   - Sin badge redundante, sin reloj (ya est� en la barra del tel�fono)
+  // -----------------------------------------------------------
   Widget _buildGreetingHeader(
     ThemeData theme,
     ColorScheme colorScheme,
@@ -198,7 +198,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                     const SizedBox(height: AppSizes.s8),
                     Text(
-                      'Gestioná tus turnos del día',
+                      'Gestion� tus turnos del d�a',
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         color: Colors.white.withValues(alpha: 0.65),
@@ -217,7 +217,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   gradient: const LinearGradient(
                     colors: [
                       AppColors.primary,
-                      Color(0xFF1DA851),
+                      Color(0xFF198A6C),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -249,9 +249,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════
+  // -----------------------------------------------------------
   // 2. KPI CARDS
-  // ═══════════════════════════════════════════════════════════
+  // -----------------------------------------------------------
   Widget _buildKpiSection(
     ThemeData theme,
     ColorScheme colorScheme,
@@ -272,7 +272,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         color: AppColors.info,
       ),
       _KpiData(
-        label: 'Ocupación',
+        label: 'Ocupaci�n',
         value: '${stats.occupancyPercent.round()}%',
         icon: Icons.pie_chart_rounded,
         color: stats.occupancyPercent > 70
@@ -432,9 +432,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════
+  // -----------------------------------------------------------
   // 3. PENDING ALERT
-  // ═══════════════════════════════════════════════════════════
+  // -----------------------------------------------------------
   Widget _buildPendingAlert(ThemeData theme, EnhancedDashboardStats stats) {
     return Container(
       padding: const EdgeInsets.all(AppSizes.s16),
@@ -495,7 +495,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Confirmá o cancelá para mantener tu agenda al día',
+                  'Confirm� o cancel� para mantener tu agenda al d�a',
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     color: AppColors.textSecondary,
@@ -537,9 +537,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════
+  // -----------------------------------------------------------
   // 4. CHARTS + AGENDA
-  // ═══════════════════════════════════════════════════════════
+  // -----------------------------------------------------------
   Widget _buildChartsAndAgenda(
     ThemeData theme,
     ColorScheme colorScheme,
@@ -573,13 +573,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  // ── Weekly Bar Chart ──
+  // -- Weekly Bar Chart --
   Widget _buildWeeklyChart(
     ThemeData theme,
     ColorScheme colorScheme,
     EnhancedDashboardStats stats,
   ) {
-    final dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+    final dayNames = ['Lun', 'Mar', 'Mi�', 'Jue', 'Vie', 'S�b', 'Dom'];
     final breakdown = stats.weeklyBreakdown;
     final maxVal = breakdown.isEmpty
         ? 1
@@ -724,7 +724,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  // ── Today Agenda Card ──
+  // -- Today Agenda Card --
   Widget _buildTodayAgendaCard(
     ThemeData theme,
     ColorScheme colorScheme,
@@ -832,7 +832,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
           const SizedBox(height: AppSizes.s16),
           Text(
-            'Tu agenda está vacía',
+            'Tu agenda est� vac�a',
             style: GoogleFonts.inter(
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -930,9 +930,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════
+  // -----------------------------------------------------------
   // 5. BOTTOM: Services + Plan Banner
-  // ═══════════════════════════════════════════════════════════
+  // -----------------------------------------------------------
   Widget _buildBottomSection(
     ThemeData theme,
     ColorScheme colorScheme,
@@ -967,7 +967,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  // ── Top Services Card ──
+  // -- Top Services Card --
   Widget _buildTopServicesCard(
     ThemeData theme,
     ColorScheme colorScheme,
@@ -1009,7 +1009,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   size: 20, color: AppColors.success),
               const SizedBox(width: AppSizes.s8),
               Text(
-                'Servicios más populares',
+                'Servicios m�s populares',
                 style: GoogleFonts.inter(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -1025,7 +1025,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 padding:
                     const EdgeInsets.symmetric(vertical: AppSizes.s16),
                 child: Text(
-                  'Aún no hay reservas con servicios.',
+                  'A�n no hay reservas con servicios.',
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     color: AppColors.textSecondary,
@@ -1095,7 +1095,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  // ── Plan Banner ──
+  // -- Plan Banner --
   Widget _buildPlanBanner(
     ThemeData theme,
     ColorScheme colorScheme,
@@ -1105,7 +1105,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final isPro = business?.isPro ?? false;
     final isDark = theme.brightness == Brightness.dark;
 
-    // ── Pro plan: show active badge ──
+    // -- Pro plan: show active badge --
     if (isPro) {
       return Container(
         padding: const EdgeInsets.symmetric(
@@ -1150,7 +1150,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Plan Pro activo ⭐',
+                    'Plan Pro activo ?',
                     style: GoogleFonts.inter(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
@@ -1174,7 +1174,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       );
     }
 
-    // ── Free plan: show upgrade banner ──
+    // -- Free plan: show upgrade banner --
     final usage = (reservationCount / 10).clamp(0.0, 1.0);
 
     return Container(
@@ -1224,7 +1224,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Plan Free · $reservationCount/10 reservas',
+                      'Plan Free � $reservationCount/10 reservas',
                       style: GoogleFonts.inter(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
@@ -1233,7 +1233,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                     const SizedBox(height: AppSizes.s4),
                     Text(
-                      'Actualizá a Pro para turnos ilimitados',
+                      'Actualiz� a Pro para turnos ilimitados',
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         fontWeight: FontWeight.w400,
@@ -1311,7 +1311,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 }
 
-// ─── Helper data class ───────────────────────────────────
+// --- Helper data class -----------------------------------
 class _KpiData {
   final String label;
   final String value;

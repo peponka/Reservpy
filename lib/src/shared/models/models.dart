@@ -1,4 +1,4 @@
-ï»¿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 /// Helper to parse TimeOfDay from 'HH:mm' or 'HH:mm:ss' string.
 TimeOfDay _timeFromString(String time) {
@@ -62,7 +62,7 @@ String _iconToString(IconData icon) {
 /// existing DB records. The canonical value is 'businessOwner'.
 enum UserRole {
   client,
-  business,       // legacy alias â€” same as businessOwner
+  business,       // legacy alias — same as businessOwner
   businessOwner,  // canonical name
   employee,
   admin;
@@ -150,7 +150,7 @@ class BusinessCategory {
     id: json['id'] as String,
     name: json['name'] as String,
     icon: _iconFromString(json['icon'] as String? ?? 'category'),
-    color: _colorFromHex(json['color'] as String? ?? '#25D366'),
+    color: _colorFromHex(json['color'] as String? ?? '#20A482'),
   );
 
   Map<String, dynamic> toJson() => {
@@ -496,7 +496,7 @@ class Reservation {
   final String? cancellationReason;
   final DateTime createdAt;
 
-  // Reservas manuales (cargadas por el dueÃ±o â€” CN-005)
+  // Reservas manuales (cargadas por el dueño — CN-005)
   final bool isManual;
   final String? manualClientName;
   final String? manualClientPhone;

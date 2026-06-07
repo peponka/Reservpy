@@ -1,4 +1,4 @@
-ï»¿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
@@ -63,7 +63,7 @@ class RoleSelectorScreen extends ConsumerWidget {
                     const SizedBox(height: 24),
 
                     Text(
-                      'Â¡Hola, ${user?.firstName ?? ''}!',
+                      '¡Hola, ${user?.firstName ?? ''}!',
                       style: GoogleFonts.inter(
                         fontSize: 28,
                         fontWeight: FontWeight.w800,
@@ -76,7 +76,7 @@ class RoleSelectorScreen extends ConsumerWidget {
                     const SizedBox(height: 8),
 
                     Text(
-                      'Â¿CÃ³mo deseas ingresar hoy?',
+                      '¿Cómo deseas ingresar hoy?',
                       style: GoogleFonts.inter(
                         fontSize: 16,
                         color: Colors.grey.shade500,
@@ -181,13 +181,13 @@ class _RoleCardState extends State<_RoleCard> {
     switch (widget.role) {
       case UserRole.businessOwner:
       case UserRole.business:
-        return 'GestionÃ¡ tu negocio, turnos y equipo';
+        return 'Gestioná tu negocio, turnos y equipo';
       case UserRole.employee:
-        return 'MirÃ¡ tu agenda y turnos asignados';
+        return 'Mirá tu agenda y turnos asignados';
       case UserRole.admin:
-        return 'Panel de administraciÃ³n del sistema';
+        return 'Panel de administración del sistema';
       case UserRole.client:
-        return 'ReservÃ¡ turnos en negocios disponibles';
+        return 'Reservá turnos en negocios disponibles';
     }
   }
 
@@ -195,7 +195,7 @@ class _RoleCardState extends State<_RoleCard> {
     switch (widget.role) {
       case UserRole.businessOwner:
       case UserRole.business:
-        return const Color(0xFF25D366);
+        return const Color(0xFF20A482);
       case UserRole.employee:
         return const Color(0xFF6366F1);
       case UserRole.admin:

@@ -1605,7 +1605,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     child: _ShareButton(
                       icon: Icons.chat_rounded,
                       label: 'WhatsApp',
-                      color: const Color(0xFF25D366),
+                      color: const Color(0xFF20A482),
                       onTap: () {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Compartir por WhatsApp (próximamente)')),

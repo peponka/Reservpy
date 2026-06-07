@@ -1,8 +1,8 @@
-ï»¿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Pantalla de Ã©xito que se muestra justo despuÃ©s de registrar un negocio.
+/// Pantalla de éxito que se muestra justo después de registrar un negocio.
 /// Confirma que el negocio fue creado y lleva al panel del negocio.
 class BusinessCreatedScreen extends StatefulWidget {
   final String businessName;
@@ -15,7 +15,7 @@ class BusinessCreatedScreen extends StatefulWidget {
 
 class _BusinessCreatedScreenState extends State<BusinessCreatedScreen>
     with SingleTickerProviderStateMixin {
-  static const Color _primary = Color(0xFF25D366);
+  static const Color _primary = Color(0xFF20A482);
   static const Color _textPrimary = Color(0xFF1A1A2E);
 
   late AnimationController _controller;
@@ -51,7 +51,7 @@ class _BusinessCreatedScreenState extends State<BusinessCreatedScreen>
             children: [
               const Spacer(flex: 2),
 
-              // Check animado dentro de un cÃ­rculo
+              // Check animado dentro de un círculo
               ScaleTransition(
                 scale: _scale,
                 child: Container(
@@ -83,7 +83,7 @@ class _BusinessCreatedScreenState extends State<BusinessCreatedScreen>
                 child: Column(
                   children: [
                     Text(
-                      'Â¡Tu negocio fue creado! ðŸŽ‰',
+                      '¡Tu negocio fue creado! ??',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.inter(
                         fontSize: 26,
@@ -95,8 +95,8 @@ class _BusinessCreatedScreenState extends State<BusinessCreatedScreen>
                     const SizedBox(height: 12),
                     Text(
                       widget.businessName.trim().isNotEmpty
-                          ? '"${widget.businessName.trim()}" ya estÃ¡ listo para empezar a recibir reservas.'
-                          : 'Tu negocio ya estÃ¡ listo para empezar a recibir reservas.',
+                          ? '"${widget.businessName.trim()}" ya está listo para empezar a recibir reservas.'
+                          : 'Tu negocio ya está listo para empezar a recibir reservas.',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.inter(
                         fontSize: 16,
@@ -111,7 +111,7 @@ class _BusinessCreatedScreenState extends State<BusinessCreatedScreen>
 
               const Spacer(flex: 3),
 
-              // BotÃ³n â†’ panel del negocio
+              // Botón ? panel del negocio
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
@@ -124,7 +124,7 @@ class _BusinessCreatedScreenState extends State<BusinessCreatedScreen>
                     ),
                   ),
                   child: Text(
-                    'Ir a mi negocio â†’',
+                    'Ir a mi negocio ?',
                     style: GoogleFonts.inter(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,

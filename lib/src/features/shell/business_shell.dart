@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -36,7 +36,7 @@ class BusinessShell extends ConsumerWidget {
     _SidebarNavItem(icon: Icons.groups_outlined, activeIcon: Icons.groups_rounded, label: 'Equipo'),
     _SidebarNavItem(icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart_rounded, label: 'Reportes'),
     _SidebarNavItem(icon: Icons.credit_card_outlined, activeIcon: Icons.credit_card_rounded, label: 'Planes'),
-    _SidebarNavItem(icon: Icons.settings_outlined, activeIcon: Icons.settings_rounded, label: 'Configuración'),
+    _SidebarNavItem(icon: Icons.settings_outlined, activeIcon: Icons.settings_rounded, label: 'Configuraci�n'),
   ];
 
   /// Mobile-only bottom nav items (subset of sidebar for compact display).
@@ -45,19 +45,19 @@ class BusinessShell extends ConsumerWidget {
     _SidebarNavItem(icon: Icons.calendar_today_outlined, activeIcon: Icons.calendar_today_rounded, label: 'Calendario'),
     _SidebarNavItem(icon: Icons.people_outline_rounded, activeIcon: Icons.people_rounded, label: 'Clientes'),
     _SidebarNavItem(icon: Icons.storefront_outlined, activeIcon: Icons.storefront_rounded, label: 'Servicios'),
-    _SidebarNavItem(icon: Icons.menu_rounded, activeIcon: Icons.menu_rounded, label: 'Más'),
+    _SidebarNavItem(icon: Icons.menu_rounded, activeIcon: Icons.menu_rounded, label: 'M�s'),
   ];
 
-  /// Maps mobile nav index to sidebar index (index 4 = "Más" handled separately).
+  /// Maps mobile nav index to sidebar index (index 4 = "M�s" handled separately).
   static const _mobileToSidebarIndex = [0, 4, 1, 2]; // Dashboard, Calendario, Clientes, Servicios
 
-  /// Items shown inside the "Más" bottom sheet, with their _buildActiveTab indices.
+  /// Items shown inside the "M�s" bottom sheet, with their _buildActiveTab indices.
   static const _moreSheetItems = <({IconData icon, String label, int tabIndex, Color color})>[
     (icon: Icons.event_available_rounded, label: 'Disponibilidad', tabIndex: 3, color: Color(0xFF0EA5E9)),
     (icon: Icons.groups_rounded, label: 'Equipo', tabIndex: 5, color: Color(0xFF6366F1)),
     (icon: Icons.bar_chart_rounded, label: 'Reportes', tabIndex: 6, color: Color(0xFFF59E0B)),
     (icon: Icons.diamond_rounded, label: 'Planes', tabIndex: 7, color: Color(0xFFEC4899)),
-    (icon: Icons.settings_rounded, label: 'Configuración', tabIndex: 8, color: Color(0xFF8B5CF6)),
+    (icon: Icons.settings_rounded, label: 'Configuraci�n', tabIndex: 8, color: Color(0xFF8B5CF6)),
     (icon: Icons.person_rounded, label: 'Perfil', tabIndex: 9, color: Color(0xFF14B8A6)),
   ];
 
@@ -90,7 +90,7 @@ class BusinessShell extends ConsumerWidget {
       );
     }
 
-    // Show error with retry — prevents false "Crear mi negocio" on network failure
+    // Show error with retry � prevents false "Crear mi negocio" on network failure
     if (ownerBizAsync.hasError) {
       return Scaffold(
         body: Center(
@@ -109,7 +109,7 @@ class BusinessShell extends ConsumerWidget {
               ),
               const SizedBox(height: AppSizes.s8),
               Text(
-                'Verificá tu conexión a internet e intentá de nuevo.',
+                'Verific� tu conexi�n a internet e intent� de nuevo.',
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
@@ -141,7 +141,7 @@ class BusinessShell extends ConsumerWidget {
 
     final currentBusiness = ref.watch(currentBusinessProvider);
 
-    // No business found → show create business prompt
+    // No business found ? show create business prompt
     if (currentBusiness == null) {
       return Scaffold(
         body: Center(
@@ -164,7 +164,7 @@ class BusinessShell extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSizes.s24),
                 Text(
-                  '¡Bienvenido a ReservPy!',
+                  '�Bienvenido a ReservPy!',
                   style: GoogleFonts.inter(
                     fontSize: 28,
                     fontWeight: FontWeight.w800,
@@ -173,7 +173,7 @@ class BusinessShell extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSizes.s12),
                 Text(
-                  'Todavía no tenés un negocio creado.\nConfigurá tu negocio para empezar a recibir reservas.',
+                  'Todav�a no ten�s un negocio creado.\nConfigur� tu negocio para empezar a recibir reservas.',
                   style: GoogleFonts.inter(
                     fontSize: 16,
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
@@ -212,7 +212,7 @@ class BusinessShell extends ConsumerWidget {
                     GoRouter.of(context).go('/client');
                   },
                   child: Text(
-                    'Explorar como cliente →',
+                    'Explorar como cliente ?',
                     style: GoogleFonts.inter(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -230,7 +230,7 @@ class BusinessShell extends ConsumerWidget {
                   },
                   icon: const Icon(Icons.logout_rounded, size: 18, color: AppColors.error),
                   label: Text(
-                    'Cerrar sesión',
+                    'Cerrar sesi�n',
                     style: GoogleFonts.inter(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -249,20 +249,20 @@ class BusinessShell extends ConsumerWidget {
       return Scaffold(
         body: Row(
           children: [
-            // ── Left Sidebar ──
+            // -- Left Sidebar --
             _DesktopSidebar(
               currentIndex: currentIndex,
               onIndexChanged: (index) {
                 ref.read(businessNavIndexProvider.notifier).state = index;
               },
             ),
-            // ── Vertical Divider ──
+            // -- Vertical Divider --
             VerticalDivider(
               width: 1,
               thickness: 1,
               color: theme.colorScheme.outline.withValues(alpha: 0.08),
             ),
-            // ── Main Content ──
+            // -- Main Content --
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -315,10 +315,10 @@ class BusinessShell extends ConsumerWidget {
       );
     }
 
-    // ── Mobile: Bottom Navigation ──
+    // -- Mobile: Bottom Navigation --
     // Map sidebar index back to mobile nav index
     final mobileIndex = _mobileToSidebarIndex.indexOf(currentIndex);
-    // If currentIndex is from a "Más" sheet item, highlight the "Más" tab (index 4)
+    // If currentIndex is from a "M�s" sheet item, highlight the "M�s" tab (index 4)
     final isFromMoreSheet = _moreSheetItems.any((item) => item.tabIndex == currentIndex);
     final safeMobileIndex = mobileIndex >= 0 ? mobileIndex : (isFromMoreSheet ? 4 : 0);
 
@@ -351,7 +351,7 @@ class BusinessShell extends ConsumerWidget {
         selectedIndex: safeMobileIndex,
         onDestinationSelected: (index) {
           if (index == 4) {
-            // "Más" tapped → show bottom sheet with hidden sections
+            // "M�s" tapped ? show bottom sheet with hidden sections
             _showMoreSheet(context, ref, currentIndex);
           } else {
             ref.read(businessNavIndexProvider.notifier).state = _mobileToSidebarIndex[index];
@@ -377,7 +377,7 @@ class BusinessShell extends ConsumerWidget {
     );
   }
 
-  /// Shows the "Más" modal bottom sheet with hidden navigation sections.
+  /// Shows the "M�s" modal bottom sheet with hidden navigation sections.
   void _showMoreSheet(BuildContext context, WidgetRef ref, int currentIndex) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -397,7 +397,7 @@ class BusinessShell extends ConsumerWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // ── Drag Handle ──
+                // -- Drag Handle --
                 Padding(
                   padding: const EdgeInsets.only(top: 12, bottom: 4),
                   child: Container(
@@ -409,13 +409,13 @@ class BusinessShell extends ConsumerWidget {
                     ),
                   ),
                 ),
-                // ── Header ──
+                // -- Header --
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
                   child: Row(
                     children: [
                       Text(
-                        'Más opciones',
+                        'M�s opciones',
                         style: GoogleFonts.inter(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
@@ -441,7 +441,7 @@ class BusinessShell extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                // ── Navigation Items ──
+                // -- Navigation Items --
                 ..._moreSheetItems.map((item) {
                   final isActive = currentIndex == item.tabIndex;
                   return Material(
@@ -568,12 +568,12 @@ class _DesktopSidebar extends ConsumerWidget {
       color: theme.scaffoldBackgroundColor,
       child: Column(
         children: [
-          // ── Brand Header ──
+          // -- Brand Header --
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
             child: Row(
               children: [
-                // ── Logo branded ──
+                // -- Logo branded --
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: Image.asset(
@@ -610,7 +610,7 @@ class _DesktopSidebar extends ConsumerWidget {
                       ),
                     ),
                     Text(
-                      'Gestión de turnos',
+                      'Gesti�n de turnos',
                       style: GoogleFonts.inter(
                         fontSize: 10,
                         color: colorScheme.primary,
@@ -625,7 +625,7 @@ class _DesktopSidebar extends ConsumerWidget {
 
           const SizedBox(height: 16),
 
-          // ── Navigation Items ──
+          // -- Navigation Items --
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -681,7 +681,7 @@ class _DesktopSidebar extends ConsumerWidget {
             ),
           ),
 
-          // ── User Info & Logout ──
+          // -- User Info & Logout --
           Container(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
             decoration: BoxDecoration(
@@ -745,18 +745,18 @@ class _DesktopSidebar extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                // ── Role switcher ──
+                // -- Role switcher --
                 Builder(builder: (context) {
                   final user = ref.watch(currentUserProvider);
                   final currentRole = ref.watch(activeRoleProvider);
                   if (user == null || !user.isMultiRole) {
-                    // Single role → simple button to switch to client
+                    // Single role ? simple button to switch to client
                     return TextButton.icon(
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                         alignment: Alignment.centerLeft,
                         minimumSize: const Size(double.infinity, 40),
-                        backgroundColor: const Color(0xFF25D366).withValues(alpha: 0.08),
+                        backgroundColor: const Color(0xFF20A482).withValues(alpha: 0.08),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                         ),
@@ -765,22 +765,22 @@ class _DesktopSidebar extends ConsumerWidget {
                         ref.read(activeRoleProvider.notifier).state = UserRole.client;
                         GoRouter.of(context).go('/client');
                       },
-                      icon: const Icon(Icons.person_search_rounded, size: 18, color: Color(0xFF25D366)),
+                      icon: const Icon(Icons.person_search_rounded, size: 18, color: Color(0xFF20A482)),
                       label: Text(
                         'Ver como cliente',
                         style: GoogleFonts.inter(
                           fontSize: 12,
-                          color: const Color(0xFF25D366),
+                          color: const Color(0xFF20A482),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     );
                   }
-                  // Multi-role → show dropdown
+                  // Multi-role ? show dropdown
                   return Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF25D366).withValues(alpha: 0.08),
+                      color: const Color(0xFF20A482).withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                     ),
                     child: Column(
@@ -811,7 +811,7 @@ class _DesktopSidebar extends ConsumerWidget {
                             child: Container(
                               padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
                               decoration: BoxDecoration(
-                                color: isActive ? const Color(0xFF25D366).withValues(alpha: 0.15) : Colors.transparent,
+                                color: isActive ? const Color(0xFF20A482).withValues(alpha: 0.15) : Colors.transparent,
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Row(
@@ -822,7 +822,7 @@ class _DesktopSidebar extends ConsumerWidget {
                                     role == UserRole.admin ? Icons.admin_panel_settings_rounded :
                                     Icons.person_rounded,
                                     size: 16,
-                                    color: isActive ? const Color(0xFF25D366) : Colors.grey.shade400,
+                                    color: isActive ? const Color(0xFF20A482) : Colors.grey.shade400,
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
@@ -830,12 +830,12 @@ class _DesktopSidebar extends ConsumerWidget {
                                     style: GoogleFonts.inter(
                                       fontSize: 12,
                                       fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                                      color: isActive ? const Color(0xFF25D366) : Colors.grey.shade600,
+                                      color: isActive ? const Color(0xFF20A482) : Colors.grey.shade600,
                                     ),
                                   ),
                                   if (isActive) ...[
                                     const Spacer(),
-                                    const Icon(Icons.check_rounded, size: 14, color: Color(0xFF25D366)),
+                                    const Icon(Icons.check_rounded, size: 14, color: Color(0xFF20A482)),
                                   ],
                                 ],
                               ),
@@ -874,7 +874,7 @@ class _DesktopSidebar extends ConsumerWidget {
                   },
                   icon: Icon(Icons.logout_rounded, size: 18, color: colorScheme.error),
                   label: Text(
-                    'Cerrar sesión',
+                    'Cerrar sesi�n',
                     style: GoogleFonts.inter(
                       fontSize: 12,
                       color: colorScheme.error,

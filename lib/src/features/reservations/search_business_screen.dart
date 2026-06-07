@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -9,15 +9,15 @@ import 'package:reservpy/src/core/constants/app_colors.dart';
 import 'package:reservpy/src/data/repositories/category_repository.dart';
 import 'package:reservpy/src/features/favorites/favorite_button.dart';
 
-// ─── Local state ─────────────────────────────────────────────────────────────
+// --- Local state -------------------------------------------------------------
 final _selectedCategoryProvider = StateProvider<BusinessCategory?>((ref) => null);
 final _businessFilterProvider = StateProvider<_BusinessFilter>((ref) => _BusinessFilter.all);
 
 enum _BusinessFilter { all, open, recent }
 
 /// Two-page search screen:
-///   Page 1 — Browse categories (grid with business counts)
-///   Page 2 — View businesses in the selected category (rich cards, filters)
+///   Page 1 � Browse categories (grid with business counts)
+///   Page 2 � View businesses in the selected category (rich cards, filters)
 class SearchBusinessScreen extends ConsumerStatefulWidget {
   const SearchBusinessScreen({super.key});
 
@@ -73,9 +73,9 @@ class _SearchBusinessScreenState extends ConsumerState<SearchBusinessScreen> {
   }
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
+// -----------------------------------------------------------------------------
 // PAGE 1: CATEGORIES
-// ═════════════════════════════════════════════════════════════════════════════
+// -----------------------------------------------------------------------------
 class _CategoriesPage extends ConsumerWidget {
   final TextEditingController searchController;
   final FocusNode searchFocusNode;
@@ -126,11 +126,11 @@ class _CategoriesPage extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // ── Hero Header ──
+                // -- Hero Header --
                 _buildHeader(context, totalBusinesses),
                 const SizedBox(height: AppSizes.s24),
 
-                // ── Section title ──
+                // -- Section title --
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: AppSizes.s24),
                   child: Row(
@@ -146,7 +146,7 @@ class _CategoriesPage extends ConsumerWidget {
                       const SizedBox(width: AppSizes.s12),
                       Expanded(
                         child: Text(
-                          'Categorías',
+                          'Categor�as',
                           style: GoogleFonts.inter(
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
@@ -164,7 +164,7 @@ class _CategoriesPage extends ConsumerWidget {
                               BorderRadius.circular(AppSizes.radiusFull),
                         ),
                         child: Text(
-                          '${filtered.length} categorías',
+                          '${filtered.length} categor�as',
                           style: GoogleFonts.inter(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -181,7 +181,7 @@ class _CategoriesPage extends ConsumerWidget {
                   child: Padding(
                     padding: const EdgeInsets.only(left: 16),
                     child: Text(
-                      'Elegí una categoría para ver los negocios disponibles',
+                      'Eleg� una categor�a para ver los negocios disponibles',
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         color: AppColors.textSecondary,
@@ -191,7 +191,7 @@ class _CategoriesPage extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSizes.s20),
 
-                // ── Categories Grid ──
+                // -- Categories Grid --
                 filtered.isEmpty
                     ? _buildEmptySearch(context)
                     : Padding(
@@ -240,14 +240,14 @@ class _CategoriesPage extends ConsumerWidget {
       padding: const EdgeInsets.all(AppSizes.s24),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF25D366), Color(0xFF1DA851)],
+          colors: [Color(0xFF20A482), Color(0xFF198A6C)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(AppSizes.radiusXl),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF25D366).withValues(alpha: 0.35),
+            color: const Color(0xFF20A482).withValues(alpha: 0.35),
             blurRadius: 24,
             offset: const Offset(0, 10),
           ),
@@ -315,11 +315,11 @@ class _CategoriesPage extends ConsumerWidget {
               focusNode: searchFocusNode,
               style: GoogleFonts.inter(fontSize: 15, color: AppColors.accent),
               decoration: InputDecoration(
-                hintText: 'Buscá por categoría...',
+                hintText: 'Busc� por categor�a...',
                 hintStyle: GoogleFonts.inter(
                     fontSize: 14, color: AppColors.textSecondary),
                 prefixIcon: const Icon(Icons.search_rounded,
-                    color: Color(0xFF25D366), size: 22),
+                    color: Color(0xFF20A482), size: 22),
                 suffixIcon: searchController.text.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear_rounded,
@@ -342,7 +342,7 @@ class _CategoriesPage extends ConsumerWidget {
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                   borderSide:
-                      const BorderSide(color: Color(0xFF25D366), width: 2),
+                      const BorderSide(color: Color(0xFF20A482), width: 2),
                 ),
               ),
             ),
@@ -364,15 +364,15 @@ class _CategoriesPage extends ConsumerWidget {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: const Color(0xFF25D366).withValues(alpha: 0.08),
+                color: const Color(0xFF20A482).withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.search_off_rounded,
-                  size: 40, color: Color(0xFF25D366)),
+                  size: 40, color: Color(0xFF20A482)),
             ),
             const SizedBox(height: AppSizes.s20),
             Text(
-              'No se encontraron categorías',
+              'No se encontraron categor�as',
               style: GoogleFonts.inter(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -381,7 +381,7 @@ class _CategoriesPage extends ConsumerWidget {
             ),
             const SizedBox(height: AppSizes.s8),
             Text(
-              'Probá con otro término de búsqueda',
+              'Prob� con otro t�rmino de b�squeda',
               style: GoogleFonts.inter(
                   fontSize: 14, color: AppColors.textSecondary),
               textAlign: TextAlign.center,
@@ -393,9 +393,9 @@ class _CategoriesPage extends ConsumerWidget {
   }
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// CATEGORY CARD — Enhanced with business count
-// ═════════════════════════════════════════════════════════════════════════════
+// -----------------------------------------------------------------------------
+// CATEGORY CARD � Enhanced with business count
+// -----------------------------------------------------------------------------
 class _CategoryCard extends StatefulWidget {
   final BusinessCategory category;
   final int businessCount;
@@ -496,7 +496,7 @@ class _CategoryCardState extends State<_CategoryCard> {
                 child: Text(
                   widget.businessCount > 0
                       ? '${widget.businessCount} negocio${widget.businessCount == 1 ? '' : 's'}'
-                      : 'Próximamente',
+                      : 'Pr�ximamente',
                   style: GoogleFonts.inter(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
@@ -514,9 +514,9 @@ class _CategoryCardState extends State<_CategoryCard> {
   }
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
+// -----------------------------------------------------------------------------
 // PAGE 2: BUSINESSES IN CATEGORY
-// ═════════════════════════════════════════════════════════════════════════════
+// -----------------------------------------------------------------------------
 class _BusinessListPage extends ConsumerStatefulWidget {
   final BusinessCategory category;
   final TextEditingController searchController;
@@ -602,7 +602,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
           aspectRatio = 0.75;
         } else {
           // Mobile: una sola columna, card "alta" para mostrar todo
-          // (nombre, categoría, horarios, precios y botones sin cortes).
+          // (nombre, categor�a, horarios, precios y botones sin cortes).
           crossCount = 1;
           aspectRatio = 0.85;
         }
@@ -613,12 +613,12 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // ── Category header ──
+                // -- Category header --
                 _buildCategoryHeader(context, widget.category, filtered.length),
 
                 const SizedBox(height: AppSizes.s16),
 
-                // ── Search bar ──
+                // -- Search bar --
                 Padding(
                   padding:
                       const EdgeInsets.symmetric(horizontal: AppSizes.s24),
@@ -686,12 +686,12 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
 
                 const SizedBox(height: AppSizes.s16),
 
-                // ── Filter Chips ──
+                // -- Filter Chips --
                 _buildFilterChips(ref, activeFilter),
 
                 const SizedBox(height: AppSizes.s16),
 
-                // ── Results count ──
+                // -- Results count --
                 Padding(
                   padding:
                       const EdgeInsets.symmetric(horizontal: AppSizes.s24),
@@ -706,7 +706,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
 
                 const SizedBox(height: AppSizes.s16),
 
-                // ── Business cards or empty state ──
+                // -- Business cards or empty state --
                 if (filtered.isEmpty)
                   _buildEmptyState(context, widget.category)
                 else
@@ -720,7 +720,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                           SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: crossCount,
                         crossAxisSpacing: AppSizes.s20,
-                        // Más respiración entre cards (antes pegadas)
+                        // M�s respiraci�n entre cards (antes pegadas)
                         mainAxisSpacing: AppSizes.s24,
                         childAspectRatio: aspectRatio,
                       ),
@@ -743,7 +743,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
     );
   }
 
-  // ── Filter Chips Row ──
+  // -- Filter Chips Row --
   Widget _buildFilterChips(WidgetRef ref, _BusinessFilter active) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSizes.s24),
@@ -829,7 +829,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
               const SizedBox(width: AppSizes.s12),
               Expanded(
                 child: Text(
-                  'Volver a categorías',
+                  'Volver a categor�as',
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
@@ -907,8 +907,8 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
             const SizedBox(height: AppSizes.s20),
             Text(
               isOtros
-                  ? '¿No encontrás tu categoría?'
-                  : 'Todavía no hay negocios',
+                  ? '�No encontr�s tu categor�a?'
+                  : 'Todav�a no hay negocios',
               style: GoogleFonts.inter(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -918,8 +918,8 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
             const SizedBox(height: AppSizes.s8),
             Text(
               isOtros
-                  ? 'Creá una nueva categoría para tu tipo de negocio.\nSi ya existe, te avisaremos.'
-                  : 'Aún no hay negocios registrados en ${category.name}.\n¡Pronto habrá opciones disponibles!',
+                  ? 'Cre� una nueva categor�a para tu tipo de negocio.\nSi ya existe, te avisaremos.'
+                  : 'A�n no hay negocios registrados en ${category.name}.\n�Pronto habr� opciones disponibles!',
               style: GoogleFonts.inter(
                   fontSize: 14, color: AppColors.textSecondary),
               textAlign: TextAlign.center,
@@ -932,14 +932,14 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                   onPressed: () => _showCreateCategoryDialog(context),
                   icon: const Icon(Icons.add_rounded, size: 20),
                   label: Text(
-                    'Crear nueva categoría',
+                    'Crear nueva categor�a',
                     style: GoogleFonts.inter(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF25D366),
+                    backgroundColor: const Color(0xFF20A482),
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
@@ -979,17 +979,17 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                     height: 40,
                     decoration: BoxDecoration(
                       color:
-                          const Color(0xFF25D366).withValues(alpha: 0.1),
+                          const Color(0xFF20A482).withValues(alpha: 0.1),
                       borderRadius:
                           BorderRadius.circular(AppSizes.radiusMd),
                     ),
                     child: const Icon(Icons.add_circle_outline_rounded,
-                        color: Color(0xFF25D366), size: 22),
+                        color: Color(0xFF20A482), size: 22),
                   ),
                   const SizedBox(width: AppSizes.s12),
                   Expanded(
                     child: Text(
-                      'Crear nueva categoría',
+                      'Crear nueva categor�a',
                       style: GoogleFonts.inter(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
@@ -1004,7 +1004,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    '¿No encontrás la categoría que buscás?\nCreá una nueva para tu tipo de negocio.',
+                    '�No encontr�s la categor�a que busc�s?\nCre� una nueva para tu tipo de negocio.',
                     style: GoogleFonts.inter(
                       fontSize: 13,
                       color: AppColors.textSecondary,
@@ -1019,7 +1019,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                     style: GoogleFonts.inter(
                         fontSize: 15, color: AppColors.accent),
                     decoration: InputDecoration(
-                      labelText: 'Nombre de la categoría',
+                      labelText: 'Nombre de la categor�a',
                       labelStyle: GoogleFonts.inter(
                           fontSize: 14,
                           color: AppColors.textSecondary),
@@ -1032,7 +1032,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                       filled: true,
                       fillColor: Colors.grey.shade50,
                       prefixIcon: const Icon(Icons.category_rounded,
-                          color: Color(0xFF25D366), size: 20),
+                          color: Color(0xFF20A482), size: 20),
                       border: OutlineInputBorder(
                         borderRadius:
                             BorderRadius.circular(AppSizes.radiusMd),
@@ -1047,7 +1047,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                         borderRadius:
                             BorderRadius.circular(AppSizes.radiusMd),
                         borderSide: const BorderSide(
-                            color: Color(0xFF25D366), width: 2),
+                            color: Color(0xFF20A482), width: 2),
                       ),
                       errorBorder: OutlineInputBorder(
                         borderRadius:
@@ -1082,7 +1082,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                     if (name.isEmpty) {
                       setDialogState(() {
                         _categoryError =
-                            'Ingresá un nombre para la categoría';
+                            'Ingres� un nombre para la categor�a';
                       });
                       return;
                     }
@@ -1103,7 +1103,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                     if (exists) {
                       setDialogState(() {
                         _categoryError =
-                            'Ya existe una categoría con ese nombre';
+                            'Ya existe una categor�a con ese nombre';
                       });
                       return;
                     }
@@ -1139,13 +1139,13 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                                     color: Colors.white, size: 20),
                                 const SizedBox(width: 8),
                                 Text(
-                                  'Categoría "$name" creada exitosamente',
+                                  'Categor�a "$name" creada exitosamente',
                                   style: GoogleFonts.inter(
                                       fontWeight: FontWeight.w500),
                                 ),
                               ],
                             ),
-                            backgroundColor: const Color(0xFF25D366),
+                            backgroundColor: const Color(0xFF20A482),
                             behavior: SnackBarBehavior.floating,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(
@@ -1162,14 +1162,14 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                   },
                   icon: const Icon(Icons.add_rounded, size: 18),
                   label: Text(
-                    'Crear categoría',
+                    'Crear categor�a',
                     style: GoogleFonts.inter(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF25D366),
+                    backgroundColor: const Color(0xFF20A482),
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
@@ -1189,9 +1189,9 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
   }
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
+// -----------------------------------------------------------------------------
 // FILTER CHIP BUTTON
-// ═════════════════════════════════════════════════════════════════════════════
+// -----------------------------------------------------------------------------
 class _FilterChipButton extends StatefulWidget {
   final String label;
   final IconData icon;
@@ -1269,9 +1269,9 @@ class _FilterChipButtonState extends State<_FilterChipButton> {
   }
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// PREMIUM BUSINESS CARD — Enhanced with services, prices, badges, dual CTA
-// ═════════════════════════════════════════════════════════════════════════════
+// -----------------------------------------------------------------------------
+// PREMIUM BUSINESS CARD � Enhanced with services, prices, badges, dual CTA
+// -----------------------------------------------------------------------------
 class _BusinessCard extends ConsumerStatefulWidget {
   final Business business;
   final BusinessCategory category;
@@ -1339,7 +1339,7 @@ class _BusinessCardState extends ConsumerState<_BusinessCard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ── Top: Gradient Hero ──
+              // -- Top: Gradient Hero --
               Container(
                 height: 110,
                 decoration: BoxDecoration(
@@ -1480,7 +1480,7 @@ class _BusinessCardState extends ConsumerState<_BusinessCard> {
                 ),
               ),
 
-              // ── Body ──
+              // -- Body --
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(
@@ -1606,7 +1606,7 @@ class _BusinessCardState extends ConsumerState<_BusinessCard> {
                               child: Text(
                                 prices.length == 1
                                     ? _formatPrice(prices.first)
-                                    : '${_formatPrice(prices.first)} – ${_formatPrice(prices.last)}',
+                                    : '${_formatPrice(prices.first)} � ${_formatPrice(prices.last)}',
                                 style: GoogleFonts.inter(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w700,
@@ -1619,7 +1619,7 @@ class _BusinessCardState extends ConsumerState<_BusinessCard> {
 
                       const SizedBox(height: AppSizes.s12),
 
-                      // ── Dual CTA Row ──
+                      // -- Dual CTA Row --
                       Row(
                         children: [
                           // "Ver negocio" outline button

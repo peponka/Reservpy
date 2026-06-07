@@ -124,13 +124,13 @@ class WhatsAppButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextButton.icon(
       onPressed: onPressed,
-      icon: const Icon(Icons.message_rounded, size: 15, color: Color(0xFF25D366)),
+      icon: const Icon(Icons.message_rounded, size: 15, color: Color(0xFF20A482)),
       label: Text(
         label,
         style: GoogleFonts.inter(
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: const Color(0xFF25D366),
+          color: const Color(0xFF20A482),
         ),
       ),
     );
