@@ -1,7 +1,6 @@
 import 'package:reservpy/src/core/supabase/supabase_config.dart';
-import 'package:reservpy/src/shared/models/models.dart';
 
-// ── Plan prices in Guaraníes ──────────────────────────────────────────────────
+// ── Plan prices fallback ──────────────────────────────────────────────────────
 const kPlanPrices = <String, int>{
   'free':       0,
   'basic':      25000,
@@ -29,6 +28,9 @@ class AdminStats {
     required this.businessesByPlan,
     required this.mrr,
     required this.arr,
+    required this.overdueCount,
+    required this.revenueThisMonth,
+    required this.monthlyRevenue,
   });
 
   final int totalBusinesses;
@@ -45,349 +47,592 @@ class AdminStats {
   final int completedReservations;
   final int cancelledReservations;
   final Map<String, int> businessesByPlan;
-  final int mrr;  // Monthly Recurring Revenue in PYG
-  final int arr;  // Annual Recurring Revenue in PYG
+  final int mrr;
+  final int arr;
+  final int overdueCount;
+  final int revenueThisMonth;
+  final List<MonthlyRevenue> monthlyRevenue;
 
   double get churnRatePercent => totalBusinesses > 0
-      ? (inactiveBusinesses / totalBusinesses * 100)
-      : 0.0;
-
-  double get avgTicketPyg => totalReservations > 0
-      ? mrr / (totalReservations > 0 ? totalReservations : 1)
-      : 0.0;
+      ? (inactiveBusinesses / totalBusinesses * 100) : 0;
+  double get completionRate => totalReservations > 0
+      ? (completedReservations / totalReservations * 100) : 0;
 }
 
-class AuditLog {
-  const AuditLog({
-    required this.id,
-    required this.userId,
-    required this.userEmail,
-    required this.action,
-    this.entityType,
-    this.entityId,
-    this.entityName,
-    this.details,
-    required this.createdAt,
-  });
+class MonthlyRevenue {
+  const MonthlyRevenue({required this.month, required this.total, required this.count});
+  final DateTime month;
+  final double total;
+  final int count;
 
-  final String id;
-  final String? userId;
-  final String? userEmail;
-  final String action;
-  final String? entityType;
-  final String? entityId;
-  final String? entityName;
-  final Map<String, dynamic>? details;
-  final DateTime createdAt;
-
-  factory AuditLog.fromJson(Map<String, dynamic> json) => AuditLog(
-    id:         json['id'] as String,
-    userId:     json['user_id'] as String?,
-    userEmail:  json['user_email'] as String?,
-    action:     json['action'] as String,
-    entityType: json['entity_type'] as String?,
-    entityId:   json['entity_id'] as String?,
-    entityName: json['entity_name'] as String?,
-    details:    json['details'] as Map<String, dynamic>?,
-    createdAt:  DateTime.parse(json['created_at'] as String),
+  factory MonthlyRevenue.fromJson(Map<String, dynamic> j) => MonthlyRevenue(
+    month: DateTime.parse(j['month'] as String),
+    total: (j['total_revenue'] as num?)?.toDouble() ?? 0,
+    count: (j['payment_count'] as num?)?.toInt() ?? 0,
   );
 }
 
-class AdminTeamMember {
-  const AdminTeamMember({
+class AdminBusiness {
+  const AdminBusiness({
     required this.id,
-    required this.userId,
+    required this.name,
     required this.email,
-    required this.firstName,
-    required this.lastName,
-    required this.adminRole,
-    required this.permissions,
+    required this.plan,
     required this.isActive,
-    this.lastLogin,
     required this.createdAt,
+    this.logoUrl,
+    this.phone,
+    this.reservationCount = 0,
+    this.nextPaymentDue,
+    this.paymentStatus,
+    this.daysOverdue = 0,
   });
 
   final String id;
-  final String userId;
+  final String name;
   final String email;
-  final String firstName;
-  final String lastName;
-  final String adminRole; // super_admin | admin | manager | operator | support
-  final Map<String, dynamic> permissions;
+  final String plan;
   final bool isActive;
-  final DateTime? lastLogin;
   final DateTime createdAt;
+  final String? logoUrl;
+  final String? phone;
+  final int reservationCount;
+  final DateTime? nextPaymentDue;
+  final String? paymentStatus;
+  final int daysOverdue;
 
-  String get fullName => '$firstName $lastName'.trim();
-  String get initials =>
-      '${firstName.isNotEmpty ? firstName[0] : ''}${lastName.isNotEmpty ? lastName[0] : ''}'.toUpperCase();
+  String get initials {
+    final parts = name.split(' ');
+    if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    return name.isNotEmpty ? name[0].toUpperCase() : '?';
+  }
 
-  factory AdminTeamMember.fromJson(Map<String, dynamic> json) => AdminTeamMember(
-    id:         json['id'] as String,
-    userId:     json['user_id'] as String,
-    email:      json['email'] as String,
-    firstName:  json['first_name'] as String? ?? '',
-    lastName:   json['last_name'] as String? ?? '',
-    adminRole:  json['admin_role'] as String? ?? 'operator',
-    permissions: (json['permissions'] as Map<String, dynamic>?) ?? {},
-    isActive:   json['is_active'] as bool? ?? true,
-    lastLogin:  json['last_login'] != null ? DateTime.parse(json['last_login'] as String) : null,
-    createdAt:  DateTime.parse(json['created_at'] as String),
+  factory AdminBusiness.fromJson(Map<String, dynamic> j) => AdminBusiness(
+    id:        j['id'] as String,
+    name:      j['name'] as String? ?? '',
+    email:     j['email'] as String? ?? '',
+    plan:      j['plan'] as String? ?? 'free',
+    isActive:  j['is_active'] as bool? ?? true,
+    createdAt: DateTime.parse(j['created_at'] as String),
+    logoUrl:   j['logo_url'] as String?,
+    phone:     j['phone'] as String?,
   );
 }
 
-class BusinessBilling {
-  const BusinessBilling({
+class OverduePayment {
+  const OverduePayment({
+    required this.businessId,
+    required this.businessName,
+    required this.businessEmail,
+    required this.paymentId,
+    required this.amount,
+    required this.currency,
+    required this.dueDate,
+    required this.daysOverdue,
+    required this.severity,
+    this.currentPlan = 'free',
+    this.lastReminderSent,
+  });
+
+  final String businessId;
+  final String businessName;
+  final String businessEmail;
+  final String paymentId;
+  final double amount;
+  final String currency;
+  final DateTime dueDate;
+  final int daysOverdue;
+  final String severity; // leve | moderado | critico
+  final String currentPlan;
+  final DateTime? lastReminderSent;
+
+  factory OverduePayment.fromJson(Map<String, dynamic> j) => OverduePayment(
+    businessId:   j['business_id'] as String,
+    businessName: j['business_name'] as String? ?? '',
+    businessEmail: j['business_email'] as String? ?? '',
+    paymentId:    j['payment_id'] as String,
+    amount:       (j['amount'] as num?)?.toDouble() ?? 0,
+    currency:     j['currency'] as String? ?? 'PYG',
+    dueDate:      DateTime.parse(j['due_date'] as String),
+    daysOverdue:  (j['days_overdue'] as num?)?.toInt() ?? 0,
+    severity:     j['severity'] as String? ?? 'leve',
+    currentPlan:  j['current_plan'] as String? ?? 'free',
+    lastReminderSent: j['last_reminder_sent'] != null
+        ? DateTime.parse(j['last_reminder_sent'] as String) : null,
+  );
+}
+
+class Payment {
+  const Payment({
     required this.id,
     required this.businessId,
-    required this.plan,
+    required this.amount,
+    required this.currency,
     required this.status,
-    required this.amountGuaranies,
-    required this.billingCycle,
-    required this.startedAt,
-    this.nextBillingAt,
-    this.cancelledAt,
+    required this.dueDate,
+    this.paidAt,
+    this.planName,
+    this.paymentMethod,
+    this.reference,
     this.notes,
+    this.billingPeriodStart,
+    this.billingPeriodEnd,
   });
 
   final String id;
   final String businessId;
-  final String plan;
-  final String status; // active | pending | overdue | suspended | cancelled
-  final int amountGuaranies;
-  final String billingCycle;
-  final DateTime startedAt;
-  final DateTime? nextBillingAt;
-  final DateTime? cancelledAt;
+  final double amount;
+  final String currency;
+  final String status;
+  final DateTime dueDate;
+  final DateTime? paidAt;
+  final String? planName;
+  final String? paymentMethod;
+  final String? reference;
   final String? notes;
+  final DateTime? billingPeriodStart;
+  final DateTime? billingPeriodEnd;
 
-  bool get isOverdue => nextBillingAt != null && nextBillingAt!.isBefore(DateTime.now()) && status != 'cancelled';
-  bool get expiresIn7Days => nextBillingAt != null &&
-      nextBillingAt!.isAfter(DateTime.now()) &&
-      nextBillingAt!.isBefore(DateTime.now().add(const Duration(days: 7)));
-  bool get expiresIn3Days => nextBillingAt != null &&
-      nextBillingAt!.isAfter(DateTime.now()) &&
-      nextBillingAt!.isBefore(DateTime.now().add(const Duration(days: 3)));
+  factory Payment.fromJson(Map<String, dynamic> j) => Payment(
+    id:           j['id'] as String,
+    businessId:   j['business_id'] as String,
+    amount:       (j['amount'] as num?)?.toDouble() ?? 0,
+    currency:     j['currency'] as String? ?? 'PYG',
+    status:       j['status'] as String? ?? 'pending',
+    dueDate:      DateTime.parse(j['due_date'] as String),
+    paidAt:       j['paid_at'] != null ? DateTime.parse(j['paid_at'] as String) : null,
+    paymentMethod: j['payment_method'] as String?,
+    reference:    j['reference'] as String?,
+    notes:        j['notes'] as String?,
+    billingPeriodStart: j['billing_period_start'] != null
+        ? DateTime.parse(j['billing_period_start'] as String) : null,
+    billingPeriodEnd: j['billing_period_end'] != null
+        ? DateTime.parse(j['billing_period_end'] as String) : null,
+  );
+}
 
-  factory BusinessBilling.fromJson(Map<String, dynamic> json) => BusinessBilling(
-    id:               json['id'] as String,
-    businessId:       json['business_id'] as String,
-    plan:             json['plan'] as String? ?? 'free',
-    status:           json['status'] as String? ?? 'active',
-    amountGuaranies:  json['amount_guaranies'] as int? ?? 0,
-    billingCycle:     json['billing_cycle'] as String? ?? 'monthly',
-    startedAt:        DateTime.parse(json['started_at'] as String),
-    nextBillingAt:    json['next_billing_at'] != null
-        ? DateTime.parse(json['next_billing_at'] as String) : null,
-    cancelledAt:      json['cancelled_at'] != null
-        ? DateTime.parse(json['cancelled_at'] as String) : null,
-    notes:            json['notes'] as String?,
+class TeamMember {
+  const TeamMember({
+    required this.id,
+    required this.email,
+    required this.role,
+    required this.status,
+    this.userId,
+    this.fullName,
+    this.lastLoginAt,
+    this.acceptedAt,
+    this.invitedAt,
+  });
+
+  final String id;
+  final String email;
+  final String role; // super_admin | admin | manager | soporte
+  final String status; // active | pending | revoked
+  final String? userId;
+  final String? fullName;
+  final DateTime? lastLoginAt;
+  final DateTime? acceptedAt;
+  final DateTime? invitedAt;
+
+  String get displayName => fullName ?? email.split('@').first;
+  String get initials {
+    final n = displayName;
+    final parts = n.split(' ');
+    if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    return n.isNotEmpty ? n[0].toUpperCase() : '?';
+  }
+
+  factory TeamMember.fromJson(Map<String, dynamic> j) => TeamMember(
+    id:       j['id'] as String,
+    email:    j['email'] as String,
+    role:     j['role'] as String? ?? 'soporte',
+    status:   j['status'] as String? ?? 'pending',
+    userId:   j['user_id'] as String?,
+    fullName: j['full_name'] as String?,
+    lastLoginAt: j['last_login_at'] != null
+        ? DateTime.parse(j['last_login_at'] as String) : null,
+    acceptedAt: j['accepted_at'] != null
+        ? DateTime.parse(j['accepted_at'] as String) : null,
+    invitedAt: j['invited_at'] != null
+        ? DateTime.parse(j['invited_at'] as String) : null,
+  );
+}
+
+class Plan {
+  const Plan({
+    required this.id,
+    required this.name,
+    required this.slug,
+    required this.priceMonthly,
+    this.priceYearly,
+    this.currency = 'PYG',
+    this.features = const [],
+    this.isActive = true,
+    this.isDefault = false,
+    this.maxReservations,
+  });
+
+  final String id;
+  final String name;
+  final String slug;
+  final double priceMonthly;
+  final double? priceYearly;
+  final String currency;
+  final List<String> features;
+  final bool isActive;
+  final bool isDefault;
+  final int? maxReservations;
+
+  factory Plan.fromJson(Map<String, dynamic> j) => Plan(
+    id:            j['id'] as String,
+    name:          j['name'] as String,
+    slug:          j['slug'] as String,
+    priceMonthly:  (j['price_monthly'] as num?)?.toDouble() ?? 0,
+    priceYearly:   (j['price_yearly']  as num?)?.toDouble(),
+    currency:      j['currency'] as String? ?? 'PYG',
+    features:      (j['features'] as List?)?.cast<String>() ?? [],
+    isActive:      j['is_active'] as bool? ?? true,
+    isDefault:     j['is_default'] as bool? ?? false,
+    maxReservations: j['max_reservations'] as int?,
+  );
+}
+
+class ActivityLog {
+  const ActivityLog({
+    required this.id,
+    required this.action,
+    required this.createdAt,
+    this.userId,
+    this.userEmail,
+    this.entityType,
+    this.entityId,
+    this.entityName,
+    this.description,
+  });
+
+  final String id;
+  final String action;
+  final DateTime createdAt;
+  final String? userId;
+  final String? userEmail;
+  final String? entityType;
+  final String? entityId;
+  final String? entityName;
+  final String? description;
+
+  factory ActivityLog.fromJson(Map<String, dynamic> j) => ActivityLog(
+    id:          j['id'] as String,
+    action:      j['action'] as String,
+    createdAt:   DateTime.parse(j['created_at'] as String),
+    userId:      j['user_id'] as String?,
+    userEmail:   j['user_email'] as String?,
+    entityType:  j['entity_type'] as String?,
+    entityId:    j['entity_id'] as String?,
+    entityName:  j['entity_name'] as String?,
+    description: j['description'] as String?,
   );
 }
 
 // ── Repository ────────────────────────────────────────────────────────────────
 
 class AdminRepository {
-  final _client = SupabaseConfig.client;
+  final _db = SupabaseConfig.client;
 
   // ── Stats ──────────────────────────────────────────────────────────────────
 
   Future<AdminStats> getStats() async {
-    final now = DateTime.now();
+    final now        = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day).toIso8601String();
     final monthStart = DateTime(now.year, now.month, 1).toIso8601String();
 
     final results = await Future.wait([
-      _client.from('businesses').select('id, is_active, plan, created_at'),
-      _client.from('profiles').select('id, created_at'),
-      _client.from('reservations').select('id, status, start_time, created_at'),
+      _db.from('businesses').select('id, is_active, plan, created_at'),
+      _db.from('profiles').select('id, created_at'),
+      _db.from('reservations').select('id, status, start_time, created_at'),
     ]);
 
     final businesses = List<Map<String, dynamic>>.from(results[0] as List);
     final users      = List<Map<String, dynamic>>.from(results[1] as List);
     final reservs    = List<Map<String, dynamic>>.from(results[2] as List);
 
-    // Business stats
-    final activeB   = businesses.where((b) => b['is_active'] == true).length;
-    final newToday  = businesses.where((b) => (b['created_at'] as String).compareTo(todayStart) >= 0).length;
-    final newMonth  = businesses.where((b) => (b['created_at'] as String).compareTo(monthStart) >= 0).length;
+    final activeB  = businesses.where((b) => b['is_active'] == true).length;
+    final newToday = businesses.where((b) =>
+        (b['created_at'] as String).compareTo(todayStart) >= 0).length;
+    final newMonth = businesses.where((b) =>
+        (b['created_at'] as String).compareTo(monthStart) >= 0).length;
 
-    // Plan counts & MRR
     final planCounts = <String, int>{};
     for (final b in businesses) {
       final plan = b['plan'] as String? ?? 'free';
       planCounts[plan] = (planCounts[plan] ?? 0) + 1;
     }
+
     var mrr = 0;
-    for (final entry in planCounts.entries) {
-      mrr += (kPlanPrices[entry.key] ?? 0) * entry.value;
+    for (final e in planCounts.entries) {
+      mrr += (kPlanPrices[e.key] ?? 0) * e.value;
     }
 
-    // User stats
-    final newUsersToday  = users.where((u) => (u['created_at'] as String).compareTo(todayStart) >= 0).length;
-    final newUsersMonth  = users.where((u) => (u['created_at'] as String).compareTo(monthStart) >= 0).length;
-
-    // Reservation stats
-    final totalR     = reservs.length;
-    final todayR     = reservs.where((r) {
+    final completedR = reservs.where((r) => r['status'] == 'completed').length;
+    final cancelledR = reservs.where((r) => r['status'] == 'cancelled').length;
+    final todayR = reservs.where((r) {
       final st = r['start_time'] as String? ?? r['created_at'] as String? ?? '';
       return st.compareTo(todayStart) >= 0;
     }).length;
-    final monthR     = reservs.where((r) {
+    final monthR = reservs.where((r) {
       final st = r['start_time'] as String? ?? r['created_at'] as String? ?? '';
       return st.compareTo(monthStart) >= 0;
     }).length;
-    final completedR = reservs.where((r) => r['status'] == 'completed').length;
-    final cancelledR = reservs.where((r) => r['status'] == 'cancelled').length;
+
+    // Overdue count from payments table (with fallback to 0 if table doesn't exist)
+    int overdueCount = 0;
+    int revenueThisMonth = 0;
+    List<MonthlyRevenue> monthlyRevenue = [];
+    try {
+      final overdueData = await _db
+          .from('payments')
+          .select('id')
+          .eq('status', 'overdue');
+      overdueCount = (overdueData as List).length;
+
+      final revenueData = await _db
+          .from('payments')
+          .select('amount')
+          .eq('status', 'paid')
+          .gte('paid_at', monthStart);
+      for (final r in revenueData as List) {
+        revenueThisMonth += ((r['amount'] as num?)?.toInt() ?? 0);
+      }
+
+      final revData = await _db
+          .from('v_monthly_revenue')
+          .select()
+          .limit(12);
+      monthlyRevenue = (revData as List)
+          .map((j) => MonthlyRevenue.fromJson(j))
+          .toList();
+    } catch (_) {}
 
     return AdminStats(
-      totalBusinesses:       businesses.length,
-      activeBusinesses:      activeB,
-      inactiveBusinesses:    businesses.length - activeB,
-      newBusinessesToday:    newToday,
+      totalBusinesses:        businesses.length,
+      activeBusinesses:       activeB,
+      inactiveBusinesses:     businesses.length - activeB,
+      newBusinessesToday:     newToday,
       newBusinessesThisMonth: newMonth,
-      totalUsers:            users.length,
-      newUsersToday:         newUsersToday,
-      newUsersThisMonth:     newUsersMonth,
-      totalReservations:     totalR,
-      reservationsToday:     todayR,
-      reservationsThisMonth: monthR,
-      completedReservations: completedR,
-      cancelledReservations: cancelledR,
-      businessesByPlan:      planCounts,
-      mrr:                   mrr,
-      arr:                   mrr * 12,
+      totalUsers:             users.length,
+      newUsersToday:          users.where((u) =>
+          (u['created_at'] as String).compareTo(todayStart) >= 0).length,
+      newUsersThisMonth:      users.where((u) =>
+          (u['created_at'] as String).compareTo(monthStart) >= 0).length,
+      totalReservations:      reservs.length,
+      reservationsToday:      todayR,
+      reservationsThisMonth:  monthR,
+      completedReservations:  completedR,
+      cancelledReservations:  cancelledR,
+      businessesByPlan:       planCounts,
+      mrr:                    mrr,
+      arr:                    mrr * 12,
+      overdueCount:           overdueCount,
+      revenueThisMonth:       revenueThisMonth,
+      monthlyRevenue:         monthlyRevenue,
     );
   }
 
   // ── Businesses ─────────────────────────────────────────────────────────────
 
-  Future<List<Business>> getAllBusinessesAdmin() async {
-    final data = await _client
+  Future<List<AdminBusiness>> getAllBusinesses() async {
+    final data = await _db
         .from('businesses')
         .select()
         .order('created_at', ascending: false);
-    return data.map((json) => Business.fromJson(json)).toList();
+    return (data as List).map((j) => AdminBusiness.fromJson(j)).toList();
+  }
+
+  Future<AdminBusiness?> getBusinessById(String id) async {
+    final data = await _db
+        .from('businesses')
+        .select()
+        .eq('id', id)
+        .maybeSingle();
+    if (data == null) return null;
+    return AdminBusiness.fromJson(data);
   }
 
   Future<void> setBusinessActive(String id, bool active) async {
-    await _client.from('businesses').update({'is_active': active}).eq('id', id);
+    await _db.from('businesses').update({'is_active': active}).eq('id', id);
+    await logAction(
+      action: 'business.${active ? 'activate' : 'deactivate'}',
+      entityType: 'business', entityId: id,
+    );
   }
 
   Future<void> changeBusinessPlan(String id, String plan) async {
-    await _client.from('businesses').update({
+    await _db.from('businesses').update({
       'plan': plan,
       'plan_activated_at': DateTime.now().toIso8601String(),
     }).eq('id', id);
+    await logAction(
+      action: 'business.plan_change', entityType: 'business', entityId: id,
+      details: {'new_plan': plan},
+    );
   }
 
-  // ── Users ──────────────────────────────────────────────────────────────────
-
-  Future<List<AppUser>> getAllUsers() async {
-    final data = await _client
-        .from('profiles')
-        .select()
-        .order('created_at', ascending: false);
-    return data.map((json) => AppUser.fromJson(json)).toList();
-  }
-
-  // ── Team ───────────────────────────────────────────────────────────────────
-
-  Future<List<AdminTeamMember>> getTeamMembers() async {
+  Future<List<Map<String, dynamic>>> getBusinessReservations(String businessId, {int limit = 50}) async {
     try {
-      final data = await _client
-          .from('admin_team_members')
+      final data = await _db
+          .from('reservations')
           .select()
-          .order('created_at', ascending: false);
-      return data.map((json) => AdminTeamMember.fromJson(json)).toList();
-    } catch (_) {
-      return [];
-    }
+          .eq('business_id', businessId)
+          .order('start_time', ascending: false)
+          .limit(limit);
+      return List<Map<String, dynamic>>.from(data as List);
+    } catch (_) { return []; }
   }
 
-  Future<void> addTeamMember({
-    required String userId,
-    required String email,
-    required String firstName,
-    required String lastName,
-    required String adminRole,
-    required Map<String, dynamic> permissions,
-  }) async {
-    await _client.from('admin_team_members').upsert({
-      'user_id':    userId,
-      'email':      email,
-      'first_name': firstName,
-      'last_name':  lastName,
-      'admin_role': adminRole,
-      'permissions': permissions,
-      'is_active':  true,
-    });
-    await _client.from('user_roles').upsert({'user_id': userId, 'role': 'admin'});
-  }
+  // ── Payments ────────────────────────────────────────────────────────────────
 
-  Future<void> updateTeamMember(String id, {
-    String? adminRole,
-    Map<String, dynamic>? permissions,
-    bool? isActive,
-  }) async {
-    final update = <String, dynamic>{};
-    if (adminRole != null)    update['admin_role']  = adminRole;
-    if (permissions != null)  update['permissions'] = permissions;
-    if (isActive != null)     update['is_active']   = isActive;
-    await _client.from('admin_team_members').update(update).eq('id', id);
-  }
-
-  Future<void> deleteTeamMember(String id, String userId) async {
-    await _client.from('admin_team_members').delete().eq('id', id);
-    await _client.from('user_roles').delete().eq('user_id', userId).eq('role', 'admin');
-  }
-
-  // ── Billing ────────────────────────────────────────────────────────────────
-
-  Future<List<BusinessBilling>> getBillingRecords() async {
+  Future<List<OverduePayment>> getOverduePayments() async {
     try {
-      final data = await _client
-          .from('business_billing')
+      final data = await _db
+          .from('v_overdue_payments')
           .select()
-          .order('next_billing_at', ascending: true);
-      return data.map((json) => BusinessBilling.fromJson(json)).toList();
-    } catch (_) {
-      return [];
-    }
+          .order('days_overdue', ascending: false);
+      return (data as List).map((j) => OverduePayment.fromJson(j)).toList();
+    } catch (_) { return []; }
   }
 
-  Future<void> upsertBilling({
+  Future<List<Payment>> getBusinessPayments(String businessId) async {
+    try {
+      final data = await _db
+          .from('payments')
+          .select()
+          .eq('business_id', businessId)
+          .order('due_date', ascending: false);
+      return (data as List).map((j) => Payment.fromJson(j)).toList();
+    } catch (_) { return []; }
+  }
+
+  Future<void> registerPayment({
     required String businessId,
-    required String plan,
+    required double amount,
+    required String currency,
     required String status,
-    required int amountGuaranies,
-    DateTime? nextBillingAt,
+    required DateTime dueDate,
+    String? planId,
+    String? paymentMethod,
+    String? reference,
     String? notes,
+    DateTime? billingPeriodStart,
+    DateTime? billingPeriodEnd,
   }) async {
-    await _client.from('business_billing').upsert({
-      'business_id':       businessId,
-      'plan':              plan,
-      'status':            status,
-      'amount_guaranies':  amountGuaranies,
-      'next_billing_at':   nextBillingAt?.toIso8601String(),
-      'notes':             notes,
-      'updated_at':        DateTime.now().toIso8601String(),
-    }, onConflict: 'business_id');
+    await _db.from('payments').insert({
+      'business_id':          businessId,
+      'plan_id':              planId,
+      'amount':               amount,
+      'currency':             currency,
+      'status':               status,
+      'due_date':             dueDate.toIso8601String().substring(0, 10),
+      'paid_at':              status == 'paid' ? DateTime.now().toIso8601String() : null,
+      'payment_method':       paymentMethod,
+      'reference':            reference,
+      'notes':                notes,
+      'billing_period_start': billingPeriodStart?.toIso8601String().substring(0, 10),
+      'billing_period_end':   billingPeriodEnd?.toIso8601String().substring(0, 10),
+      'registered_by':        _db.auth.currentUser?.id,
+    });
+    await logAction(
+      action: 'billing.payment_registered', entityType: 'business', entityId: businessId,
+      details: {'amount': amount, 'status': status},
+    );
   }
 
-  // ── Audit Logs ─────────────────────────────────────────────────────────────
+  Future<void> updatePaymentStatus(String paymentId, String status) async {
+    await _db.from('payments').update({
+      'status':  status,
+      'paid_at': status == 'paid' ? DateTime.now().toIso8601String() : null,
+    }).eq('id', paymentId);
+  }
 
-  Future<List<AuditLog>> getAuditLogs({int limit = 100}) async {
+  Future<void> sendReminder(String businessId, String paymentId) async {
+    await _db.from('payment_reminders').insert({
+      'business_id': businessId,
+      'payment_id':  paymentId,
+      'sent_by':     _db.auth.currentUser?.id,
+      'method':      'email',
+    });
+    await logAction(
+      action: 'billing.reminder_sent', entityType: 'business', entityId: businessId,
+    );
+  }
+
+  // ── Team ────────────────────────────────────────────────────────────────────
+
+  Future<List<TeamMember>> getTeamMembers() async {
     try {
-      final data = await _client
-          .from('audit_logs')
+      final data = await _db
+          .from('team_members')
+          .select()
+          .order('created_at');
+      return (data as List).map((j) => TeamMember.fromJson(j)).toList();
+    } catch (_) { return []; }
+  }
+
+  Future<void> inviteTeamMember({
+    required String email,
+    required String role,
+    String? fullName,
+  }) async {
+    await _db.from('team_members').upsert({
+      'email':      email,
+      'full_name':  fullName,
+      'role':       role,
+      'status':     'pending',
+      'invited_by': _db.auth.currentUser?.id,
+      'invited_at': DateTime.now().toIso8601String(),
+    }, onConflict: 'email');
+    await logAction(
+      action: 'team.member_invited', entityType: 'team', entityName: email,
+      details: {'role': role},
+    );
+  }
+
+  Future<void> updateTeamMemberRole(String id, String role) async {
+    await _db.from('team_members').update({'role': role}).eq('id', id);
+  }
+
+  Future<void> revokeTeamMember(String id, String email) async {
+    await _db.from('team_members').update({'status': 'revoked'}).eq('id', id);
+    await logAction(
+      action: 'team.member_revoked', entityType: 'team', entityName: email,
+    );
+  }
+
+  // ── Plans ───────────────────────────────────────────────────────────────────
+
+  Future<List<Plan>> getPlans() async {
+    try {
+      final data = await _db
+          .from('plans')
+          .select()
+          .order('sort_order');
+      return (data as List).map((j) => Plan.fromJson(j)).toList();
+    } catch (_) { return []; }
+  }
+
+  Future<void> upsertPlan(Map<String, dynamic> data) async {
+    await _db.from('plans').upsert(data, onConflict: 'slug');
+  }
+
+  // ── Activity Log ────────────────────────────────────────────────────────────
+
+  Future<List<ActivityLog>> getActivityLog({int limit = 100}) async {
+    try {
+      final data = await _db
+          .from('team_activity_log')
           .select()
           .order('created_at', ascending: false)
           .limit(limit);
-      return data.map((json) => AuditLog.fromJson(json)).toList();
-    } catch (_) {
-      return [];
-    }
+      return (data as List).map((j) => ActivityLog.fromJson(j)).toList();
+    } catch (_) { return []; }
   }
 
   Future<void> logAction({
@@ -395,21 +640,21 @@ class AdminRepository {
     String? entityType,
     String? entityId,
     String? entityName,
+    String? description,
     Map<String, dynamic>? details,
   }) async {
     try {
-      final user = _client.auth.currentUser;
-      await _client.from('audit_logs').insert({
-        'user_id':     user?.id,
-        'user_email':  user?.email,
+      final u = _db.auth.currentUser;
+      await _db.from('team_activity_log').insert({
+        'user_id':     u?.id,
+        'user_email':  u?.email,
         'action':      action,
         'entity_type': entityType,
         'entity_id':   entityId,
         'entity_name': entityName,
-        'details':     details ?? {},
+        'description': description,
+        'metadata':    details ?? {},
       });
-    } catch (_) {
-      // Silently fail — audit log shouldn't break the app
-    }
+    } catch (_) {}
   }
 }

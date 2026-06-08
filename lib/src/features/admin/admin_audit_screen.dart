@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
-import 'package:reservpy/src/core/constants/app_colors.dart';
 import 'package:reservpy/src/data/repositories/admin_repository.dart';
+import 'admin_theme.dart';
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 
-final auditLogsProvider = FutureProvider<List<AuditLog>>((ref) async {
-  return AdminRepository().getAuditLogs(limit: 200);
+final activityLogProvider = FutureProvider<List<ActivityLog>>((ref) async {
+  return AdminRepository().getActivityLog(limit: 200);
 });
 
 // ── Screen ────────────────────────────────────────────────────────────────────
@@ -22,123 +23,123 @@ class AdminAuditScreen extends ConsumerStatefulWidget {
 }
 
 class _AdminAuditScreenState extends ConsumerState<AdminAuditScreen> {
-  String _search = '';
-  String _filterType = 'all'; // all | business | user | billing | team
+  String _search     = '';
+  String _typeFilter = 'all';
 
   @override
   Widget build(BuildContext context) {
-    final logsAsync = ref.watch(auditLogsProvider);
-    final theme     = Theme.of(context);
+    final logAsync = ref.watch(activityLogProvider);
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: AC.bg,
       body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header ────────────────────────────────────────
+          // ── Header ──────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(28, 28, 28, 20),
-            child: Row(
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Auditoría', style: GoogleFonts.inter(
-                      fontSize: 24, fontWeight: FontWeight.w800,
-                      color: theme.colorScheme.onSurface,
-                    )),
-                    Text('Historial de acciones en el sistema',
-                        style: GoogleFonts.inter(fontSize: 13, color: Colors.grey.shade500)),
-                  ],
-                ),
-                const Spacer(),
-                OutlinedButton.icon(
-                  onPressed: () => ref.invalidate(auditLogsProvider),
-                  icon: const Icon(Icons.refresh_rounded, size: 16),
-                  label: const Text('Actualizar'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
-                    textStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500),
-                  ),
-                ),
-              ],
+            padding: const EdgeInsets.fromLTRB(28, 24, 28, 20),
+            child: AdminSectionHeader(
+              title:    'Auditoría',
+              subtitle: 'Registro de todas las acciones del equipo',
+              trailing: OutlinedButton.icon(
+                onPressed: () => ref.invalidate(activityLogProvider),
+                icon: const Icon(Icons.refresh_rounded, size: 15),
+                label: const Text('Actualizar'),
+              ),
             ),
           ),
 
-          // ── Search + filter ───────────────────────────────
+          // ── Filters ──────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(28, 0, 28, 12),
+            padding: const EdgeInsets.fromLTRB(28, 0, 28, 16),
             child: Row(
               children: [
                 Expanded(
                   flex: 3,
                   child: TextField(
                     onChanged: (v) => setState(() => _search = v.toLowerCase()),
+                    style: GoogleFonts.inter(fontSize: 13, color: AC.text),
                     decoration: InputDecoration(
-                      hintText:     'Buscar por usuario, acción o entidad…',
-                      prefixIcon:   const Icon(Icons.search_rounded, size: 18),
-                      border:       OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      hintText:   'Buscar por usuario, acción o entidad…',
+                      prefixIcon: const Icon(Icons.search_rounded, size: 15, color: AC.textSec),
                     ),
-                    style: GoogleFonts.inter(fontSize: 13),
                   ),
                 ),
                 const SizedBox(width: 12),
-                // Entity type filter
-                DropdownButton<String>(
-                  value: _filterType,
-                  underline: const SizedBox.shrink(),
-                  borderRadius: BorderRadius.circular(10),
-                  style: GoogleFonts.inter(fontSize: 13, color: Theme.of(context).colorScheme.onSurface),
-                  items: const [
-                    DropdownMenuItem(value: 'all',      child: Text('Todas las acciones')),
-                    DropdownMenuItem(value: 'business', child: Text('Negocios')),
-                    DropdownMenuItem(value: 'user',     child: Text('Usuarios')),
-                    DropdownMenuItem(value: 'billing',  child: Text('Facturación')),
-                    DropdownMenuItem(value: 'team',     child: Text('Equipo')),
-                  ],
-                  onChanged: (v) => setState(() => _filterType = v ?? 'all'),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color:  AC.surfaceHigh,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AC.border),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value:        _typeFilter,
+                      dropdownColor: AC.surface,
+                      style:        GoogleFonts.inter(fontSize: 13, color: AC.text),
+                      icon:         const Icon(Icons.keyboard_arrow_down_rounded,
+                          size: 15, color: AC.textSec),
+                      items: const [
+                        DropdownMenuItem(value: 'all',      child: Text('Todas')),
+                        DropdownMenuItem(value: 'business', child: Text('Negocios')),
+                        DropdownMenuItem(value: 'billing',  child: Text('Pagos')),
+                        DropdownMenuItem(value: 'team',     child: Text('Equipo')),
+                      ],
+                      onChanged: (v) { if (v != null) setState(() => _typeFilter = v); },
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
 
-          // ── Log list ──────────────────────────────────────
+          // ── Log ─────────────────────────────────────────
           Expanded(
-            child: logsAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error:   (e, _) => _EmptyState(
-                icon:    Icons.history_outlined,
-                title:   'Sin registros aún',
-                subtitle: 'Los cambios que hagas en el panel aparecerán aquí',
-              ),
+            child: logAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator(color: AC.violet)),
+              error:   (e, _) => Center(child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.history_rounded, size: 52, color: AC.textMut),
+                  const SizedBox(height: 12),
+                  Text('Sin registros aún',
+                      style: GoogleFonts.inter(fontSize: 15, color: AC.textSec)),
+                  const SizedBox(height: 6),
+                  Text('Cada acción en el panel quedará registrada aquí',
+                      style: GoogleFonts.inter(fontSize: 12, color: AC.textMut)),
+                ],
+              )),
               data: (logs) {
-                final filtered = logs.where((log) {
-                  final matchSearch = _search.isEmpty ||
-                      (log.userEmail?.toLowerCase().contains(_search) ?? false) ||
-                      log.action.toLowerCase().contains(_search) ||
-                      (log.entityName?.toLowerCase().contains(_search) ?? false) ||
-                      (log.entityType?.toLowerCase().contains(_search) ?? false);
-                  final matchType = _filterType == 'all' ||
-                      (log.entityType?.startsWith(_filterType) ?? false) ||
-                      log.action.startsWith(_filterType);
-                  return matchSearch && matchType;
+                final filtered = logs.where((l) {
+                  final ms = _search.isEmpty ||
+                      (l.userEmail?.toLowerCase().contains(_search) ?? false) ||
+                      l.action.toLowerCase().contains(_search) ||
+                      (l.entityName?.toLowerCase().contains(_search) ?? false);
+                  final mt = _typeFilter == 'all' ||
+                      (l.entityType?.startsWith(_typeFilter) ?? false) ||
+                      l.action.startsWith(_typeFilter);
+                  return ms && mt;
                 }).toList();
 
                 if (filtered.isEmpty) {
-                  return _EmptyState(
-                    icon:     Icons.search_off_rounded,
-                    title:    'Sin resultados',
-                    subtitle: 'Probá con otros términos de búsqueda',
-                  );
+                  return Center(child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.search_off_rounded, size: 44, color: AC.textMut),
+                      const SizedBox(height: 10),
+                      Text('Sin resultados', style: GoogleFonts.inter(
+                          fontSize: 14, color: AC.textSec)),
+                    ],
+                  ));
                 }
 
                 return ListView.separated(
                   padding: const EdgeInsets.fromLTRB(28, 0, 28, 28),
                   itemCount: filtered.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 4),
-                  itemBuilder: (_, i) => _AuditLogRow(log: filtered[i]),
+                  itemBuilder: (_, i) => _LogRow(log: filtered[i])
+                      .animate(delay: Duration(milliseconds: 15 * i))
+                      .fadeIn(duration: 200.ms),
                 );
               },
             ),
@@ -149,174 +150,126 @@ class _AdminAuditScreenState extends ConsumerState<AdminAuditScreen> {
   }
 }
 
-// ── Audit Log Row ─────────────────────────────────────────────────────────────
+// ── Log Row ───────────────────────────────────────────────────────────────────
 
-class _AuditLogRow extends StatelessWidget {
-  const _AuditLogRow({required this.log});
-  final AuditLog log;
+class _LogRow extends StatefulWidget {
+  const _LogRow({required this.log});
+  final ActivityLog log;
+
+  @override
+  State<_LogRow> createState() => _LogRowState();
+}
+
+class _LogRowState extends State<_LogRow> {
+  bool _hovered = false;
 
   Color get _actionColor {
-    if (log.action.contains('delete') || log.action.contains('suspend') || log.action.contains('removed')) {
-      return const Color(0xFFEF4444);
-    }
-    if (log.action.contains('create') || log.action.contains('add') || log.action.contains('registered')) {
-      return const Color(0xFF10B981);
-    }
-    if (log.action.contains('update') || log.action.contains('edit') || log.action.contains('change')) {
-      return const Color(0xFF0EA5E9);
-    }
-    return const Color(0xFF8B5CF6);
+    final a = widget.log.action;
+    if (a.contains('delete') || a.contains('suspend') || a.contains('revoke')) return AC.danger;
+    if (a.contains('create') || a.contains('add') || a.contains('register') ||
+        a.contains('invite')) return AC.success;
+    if (a.contains('update') || a.contains('change') || a.contains('edit')) return AC.info;
+    if (a.contains('reminder')) return AC.violet;
+    return AC.textSec;
   }
 
   IconData get _actionIcon {
-    if (log.action.contains('delete') || log.action.contains('removed'))   return Icons.delete_outline_rounded;
-    if (log.action.contains('suspend'))                                      return Icons.pause_circle_outline_rounded;
-    if (log.action.contains('create') || log.action.contains('add'))        return Icons.add_circle_outline_rounded;
-    if (log.action.contains('update') || log.action.contains('edit'))       return Icons.edit_outlined;
-    if (log.action.contains('payment'))                                      return Icons.payments_outlined;
-    if (log.action.contains('login'))                                        return Icons.login_rounded;
+    final a = widget.log.action;
+    if (a.contains('delete') || a.contains('revoke'))   return Icons.delete_outline_rounded;
+    if (a.contains('suspend'))                           return Icons.pause_circle_outline_rounded;
+    if (a.contains('create') || a.contains('invite'))   return Icons.add_circle_outline_rounded;
+    if (a.contains('update') || a.contains('change'))   return Icons.edit_outlined;
+    if (a.contains('payment') || a.contains('billing')) return Icons.payments_outlined;
+    if (a.contains('reminder'))                          return Icons.email_outlined;
+    if (a.contains('activate'))                          return Icons.play_circle_outline_rounded;
     return Icons.history_rounded;
   }
 
+  String _formatAction(String action) {
+    const m = <String, String>{
+      'business.deactivate':    'Negocio desactivado',
+      'business.activate':      'Negocio activado',
+      'business.plan_change':   'Plan cambiado',
+      'billing.payment_registered': 'Pago registrado',
+      'billing.reminder_sent':  'Recordatorio enviado',
+      'team.member_invited':    'Miembro invitado',
+      'team.member_revoked':    'Acceso revocado',
+      'INSERT.payments':        'Pago insertado',
+      'UPDATE.payments':        'Pago actualizado',
+    };
+    return m[action] ?? action.replaceAll('.', ' › ').replaceAll('_', ' ');
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme   = Theme.of(context);
-    final dateFmt = DateFormat('dd/MM/yyyy HH:mm');
+    final log     = widget.log;
+    final dateFmt = DateFormat('dd/MM/yy HH:mm');
     final color   = _actionColor;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        children: [
-          // Icon
-          Container(
-            padding: const EdgeInsets.all(7),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(_actionIcon, size: 14, color: color),
-          ),
-          const SizedBox(width: 12),
-
-          // Action + entity
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _formatAction(log.action),
-                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600,
-                      color: theme.colorScheme.onSurface),
-                ),
-                if (log.entityName != null) ...[
-                  const SizedBox(height: 2),
-                  Text(log.entityName!,
-                      style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade500)),
-                ],
-              ],
-            ),
-          ),
-
-          // User
-          Expanded(
-            flex: 2,
-            child: Text(
-              log.userEmail ?? '—',
-              style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-
-          // Entity type badge
-          if (log.entityType != null)
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit:  (_) => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 130),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        decoration: BoxDecoration(
+          color: _hovered ? AC.surfaceHigh : AC.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: _hovered ? AC.borderBright : AC.border),
+        ),
+        child: Row(
+          children: [
+            // Icon
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerLow,
+                color: color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(log.entityType!,
-                  style: GoogleFonts.inter(fontSize: 10, color: Colors.grey.shade500,
-                      fontWeight: FontWeight.w500)),
+              child: Icon(_actionIcon, size: 14, color: color),
             ),
-          const SizedBox(width: 12),
+            const SizedBox(width: 14),
 
-          // Date
-          Text(
-            dateFmt.format(log.createdAt.toLocal()),
-            style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade400),
-          ),
-        ],
-      ),
-    );
-  }
+            // Action
+            Expanded(
+              flex: 3,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_formatAction(log.action), style: GoogleFonts.inter(
+                      fontSize: 13, fontWeight: FontWeight.w500, color: AC.text)),
+                  if (log.entityName != null && log.entityName!.isNotEmpty)
+                    Text(log.entityName!, style: GoogleFonts.inter(
+                        fontSize: 11, color: AC.textSec)),
+                ],
+              ),
+            ),
 
-  String _formatAction(String action) {
-    // "business.deactivate" → "Negocio desactivado"
-    final parts    = action.split('.');
-    final entity   = parts.isNotEmpty ? parts[0] : '';
-    final operation = parts.length > 1 ? parts[1] : action;
+            // User
+            Expanded(
+              flex: 2,
+              child: Text(log.userEmail ?? '—', style: GoogleFonts.inter(
+                  fontSize: 12, color: AC.textSec), overflow: TextOverflow.ellipsis),
+            ),
 
-    final entityLabels = <String, String>{
-      'business': 'Negocio',
-      'user':     'Usuario',
-      'billing':  'Facturación',
-      'team':     'Equipo',
-    };
+            // Entity type
+            if (log.entityType != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AC.surfaceHigh,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(log.entityType!, style: GoogleFonts.inter(
+                    fontSize: 10, color: AC.textMut, fontWeight: FontWeight.w500)),
+              ),
+            const SizedBox(width: 12),
 
-    final opLabels = <String, String>{
-      'deactivate':         'desactivado',
-      'activate':           'activado',
-      'create':             'creado',
-      'delete':             'eliminado',
-      'update':             'actualizado',
-      'suspend':            'suspendido',
-      'reactivate':         'reactivado',
-      'payment_registered': 'pago registrado',
-      'plan_change':        'plan cambiado',
-      'member_added':       'miembro agregado',
-      'member_removed':     'miembro eliminado',
-    };
-
-    final eLabel = entityLabels[entity];
-    final oLabel = opLabels[operation] ?? operation;
-
-    if (eLabel != null) return '$eLabel $oLabel';
-    return action;
-  }
-}
-
-// ── Empty State ───────────────────────────────────────────────────────────────
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.icon, required this.title, required this.subtitle});
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 52, color: Colors.grey.shade300),
-          const SizedBox(height: 14),
-          Text(title,
-              style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade400)),
-          const SizedBox(height: 6),
-          Text(subtitle,
-              style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade400),
-              textAlign: TextAlign.center),
-        ],
+            // Time
+            Text(dateFmt.format(log.createdAt.toLocal()),
+                style: GoogleFonts.inter(fontSize: 11, color: AC.textMut)),
+          ],
+        ),
       ),
     );
   }

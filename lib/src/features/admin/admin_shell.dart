@@ -2,205 +2,307 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
-import 'package:reservpy/src/core/constants/app_colors.dart';
 import 'package:reservpy/src/data/repositories/auth_repository.dart';
 import 'package:reservpy/src/shared/providers/providers.dart';
-
+import 'admin_theme.dart';
 import 'admin_dashboard_screen.dart';
-import 'admin_businesses_screen.dart';
-import 'admin_users_screen.dart';
+import 'admin_clients_screen.dart';
 import 'admin_payments_screen.dart';
 import 'admin_team_screen.dart';
 import 'admin_audit_screen.dart';
+import 'admin_settings_screen.dart';
 
-// ── Provider ──────────────────────────────────────────────────────────────────
+// ── Providers ─────────────────────────────────────────────────────────────────
 
 final adminNavIndexProvider = StateProvider<int>((ref) => 0);
+
+// ── Nav items ─────────────────────────────────────────────────────────────────
+
+class _NavItem {
+  const _NavItem({required this.icon, required this.label, this.badge = 0});
+  final IconData icon;
+  final String label;
+  final int badge;
+}
+
+const _navItems = <_NavItem>[
+  _NavItem(icon: Icons.space_dashboard_rounded,    label: 'Dashboard'),
+  _NavItem(icon: Icons.storefront_rounded,          label: 'Clientes'),
+  _NavItem(icon: Icons.receipt_long_rounded,        label: 'Pagos'),
+  _NavItem(icon: Icons.group_rounded,               label: 'Equipo'),
+  _NavItem(icon: Icons.history_rounded,             label: 'Auditoría'),
+  _NavItem(icon: Icons.settings_rounded,            label: 'Configuración'),
+];
 
 // ── Shell ─────────────────────────────────────────────────────────────────────
 
 class AdminShell extends ConsumerWidget {
   const AdminShell({super.key});
 
-  static const _navItems = <_NavItem>[
-    _NavItem(icon: Icons.dashboard_outlined,      activeIcon: Icons.dashboard_rounded,         label: 'Dashboard',     badge: null),
-    _NavItem(icon: Icons.storefront_outlined,     activeIcon: Icons.storefront_rounded,        label: 'Negocios',      badge: null),
-    _NavItem(icon: Icons.people_outline_rounded,  activeIcon: Icons.people_rounded,            label: 'Usuarios',      badge: null),
-    _NavItem(icon: Icons.receipt_long_outlined,   activeIcon: Icons.receipt_long_rounded,      label: 'Pagos',         badge: null),
-    _NavItem(icon: Icons.group_outlined,          activeIcon: Icons.group_rounded,             label: 'Equipo',        badge: null),
-    _NavItem(icon: Icons.history_outlined,        activeIcon: Icons.history_rounded,           label: 'Auditoría',     badge: null),
-  ];
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final index = ref.watch(adminNavIndexProvider);
-    final theme  = Theme.of(context);
-    final isWide = MediaQuery.of(context).size.width > 900;
 
     final screens = [
       const AdminDashboardScreen(),
-      const AdminBusinessesScreen(),
-      const AdminUsersScreen(),
+      const AdminClientsScreen(),
       const AdminPaymentsScreen(),
       const AdminTeamScreen(),
       const AdminAuditScreen(),
+      const AdminSettingsScreen(),
     ];
 
-    if (isWide) {
-      // ── Wide layout: sidebar + content ─────────────────────────────
-      return Scaffold(
-        backgroundColor: theme.colorScheme.surface,
+    // Force dark admin theme regardless of app theme
+    return Theme(
+      data: adminTheme(),
+      child: Scaffold(
+        backgroundColor: AC.bg,
         body: Row(
           children: [
             _AdminSidebar(
               currentIndex: index,
-              items: _navItems,
               onTap: (i) => ref.read(adminNavIndexProvider.notifier).state = i,
               onLogout: () async {
                 await AuthRepository().signOut();
                 if (context.mounted) context.go('/');
               },
+              ref: ref,
             ),
-            Expanded(child: screens[index]),
+            Expanded(
+              child: Column(
+                children: [
+                  _AdminTopBar(currentIndex: index),
+                  Expanded(child: screens[index]),
+                ],
+              ),
+            ),
           ],
         ),
-      );
-    } else {
-      // ── Narrow layout: bottom nav ───────────────────────────────────
-      return Scaffold(
-        backgroundColor: theme.colorScheme.surface,
-        body: screens[index],
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: index,
-          onDestinationSelected: (i) => ref.read(adminNavIndexProvider.notifier).state = i,
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
-          destinations: _navItems.map((item) => NavigationDestination(
-            icon:          Icon(item.icon),
-            selectedIcon:  Icon(item.activeIcon),
-            label:         item.label,
-          )).toList(),
-        ),
-      );
-    }
+      ),
+    );
+  }
+}
+
+// ── Top Bar ───────────────────────────────────────────────────────────────────
+
+class _AdminTopBar extends ConsumerWidget {
+  const _AdminTopBar({required this.currentIndex});
+  final int currentIndex;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      height:      64,
+      decoration:  const BoxDecoration(
+        color:  AC.surface,
+        border: Border(bottom: BorderSide(color: AC.border)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 28),
+      child: Row(
+        children: [
+          Text(
+            _navItems[currentIndex].label,
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 18, fontWeight: FontWeight.w600, color: AC.text,
+            ),
+          ),
+          const Spacer(),
+          // Pulse indicator
+          Container(
+            width: 8, height: 8,
+            decoration: const BoxDecoration(color: AC.success, shape: BoxShape.circle),
+          ).animate(onPlay: (c) => c.repeat())
+              .then(delay: 1000.ms)
+              .fade(begin: 1, end: 0.2, duration: 800.ms)
+              .then()
+              .fade(begin: 0.2, end: 1, duration: 800.ms),
+          const SizedBox(width: 8),
+          Text('Sistema operativo', style: GoogleFonts.inter(fontSize: 12, color: AC.textSec)),
+          const SizedBox(width: 20),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color:        AC.violet.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(20),
+              border:       Border.all(color: AC.violet.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.admin_panel_settings_rounded, size: 14, color: AC.violet),
+                const SizedBox(width: 6),
+                Text('Super Admin', style: GoogleFonts.inter(
+                  fontSize: 12, fontWeight: FontWeight.w600, color: AC.violet,
+                )),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 
-class _AdminSidebar extends ConsumerWidget {
+class _AdminSidebar extends ConsumerStatefulWidget {
   const _AdminSidebar({
     required this.currentIndex,
-    required this.items,
     required this.onTap,
     required this.onLogout,
+    required this.ref,
   });
 
   final int currentIndex;
-  final List<_NavItem> items;
   final ValueChanged<int> onTap;
   final VoidCallback onLogout;
+  final WidgetRef ref;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final user  = ref.watch(currentUserProvider);
+  ConsumerState<_AdminSidebar> createState() => _AdminSidebarState();
+}
+
+class _AdminSidebarState extends ConsumerState<_AdminSidebar> {
+  int? _hovered;
+
+  @override
+  Widget build(BuildContext context) {
+    final user = ref.watch(currentUserProvider);
 
     return Container(
-      width: 228,
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        border: Border(right: BorderSide(color: theme.dividerColor.withValues(alpha: 0.3))),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(2, 0),
-          ),
-        ],
+      width: 240,
+      decoration: const BoxDecoration(
+        color:  AC.surface,
+        border: Border(right: BorderSide(color: AC.border)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Logo ─────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 6),
+          // ── Logo ──────────────────────────────────────────
+          Container(
+            padding:     const EdgeInsets.fromLTRB(20, 22, 20, 18),
+            decoration:  const BoxDecoration(
+              border: Border(bottom: BorderSide(color: AC.border)),
+            ),
             child: Row(
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.asset('assets/images/icon.png', width: 36, height: 36, fit: BoxFit.cover),
+                Container(
+                  width:  36, height: 36,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    gradient: const LinearGradient(
+                      colors: AC.gradViolet,
+                      begin: Alignment.topLeft,
+                      end:   Alignment.bottomRight,
+                    ),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.asset('assets/images/icon.png', fit: BoxFit.cover),
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Text.rich(TextSpan(children: [
-                  TextSpan(
-                    text: 'Reserv',
-                    style: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w800,
-                        color: theme.colorScheme.onSurface),
-                  ),
-                  TextSpan(
-                    text: 'Py',
-                    style: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w800,
-                        color: AppColors.primary),
-                  ),
+                  TextSpan(text: 'Reserv', style: GoogleFonts.spaceGrotesk(
+                    fontSize: 17, fontWeight: FontWeight.w800, color: AC.text,
+                  )),
+                  TextSpan(text: 'Py', style: GoogleFonts.spaceGrotesk(
+                    fontSize: 17, fontWeight: FontWeight.w800, color: AC.violet,
+                  )),
                 ])),
               ],
             ),
           ),
 
-          // ── Admin badge ───────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                'Panel de Administración',
-                style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.primary),
-              ),
-            ),
-          ),
-
-          Divider(height: 1, color: theme.dividerColor.withValues(alpha: 0.3)),
-          const SizedBox(height: 8),
-
-          // ── Nav items ─────────────────────────────────────
+          // ── Nav ───────────────────────────────────────────
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              itemCount: items.length,
-              itemBuilder: (_, i) {
-                final item   = items[i];
-                final active = i == currentIndex;
-                return _SidebarTile(
-                  icon:   active ? item.activeIcon : item.icon,
-                  label:  item.label,
-                  active: active,
-                  onTap:  () => onTap(i),
-                );
-              },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+              child: Column(
+                children: List.generate(_navItems.length, (i) {
+                  final item   = _navItems[i];
+                  final active = i == widget.currentIndex;
+                  final hov    = _hovered == i;
+                  return MouseRegion(
+                    onEnter: (_) => setState(() => _hovered = i),
+                    onExit:  (_) => setState(() => _hovered = null),
+                    cursor:  SystemMouseCursors.click,
+                    child: GestureDetector(
+                      onTap: () => widget.onTap(i),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        margin:   const EdgeInsets.only(bottom: 2),
+                        padding:  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: active
+                              ? AC.violet.withValues(alpha: 0.15)
+                              : hov
+                                  ? AC.surfaceHigh
+                                  : Colors.transparent,
+                          borderRadius: BorderRadius.circular(10),
+                          border: active
+                              ? Border.all(color: AC.violet.withValues(alpha: 0.3))
+                              : null,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(item.icon, size: 18,
+                              color: active ? AC.violet : hov ? AC.text : AC.textSec),
+                            const SizedBox(width: 11),
+                            Expanded(
+                              child: Text(item.label, style: GoogleFonts.inter(
+                                fontSize: 13,
+                                fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                                color: active ? AC.violet : hov ? AC.text : AC.textSec,
+                              )),
+                            ),
+                            if (item.badge > 0) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color:        AC.danger,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text('${item.badge}', style: GoogleFonts.inter(
+                                  fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white,
+                                )),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ),
             ),
           ),
 
-          Divider(height: 1, color: theme.dividerColor.withValues(alpha: 0.3)),
-
-          // ── User + logout ─────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.all(14),
+          // ── User / Logout ─────────────────────────────────
+          Container(
+            padding:    const EdgeInsets.all(14),
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: AC.border)),
+            ),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 17,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                  child: Text(
-                    user?.initials ?? 'A',
-                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary),
+                Container(
+                  width: 34, height: 34,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: AC.gradViolet),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Center(
+                    child: Text(
+                      user?.initials ?? 'A',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white,
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 9),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -208,23 +310,20 @@ class _AdminSidebar extends ConsumerWidget {
                     children: [
                       Text(
                         user?.fullName ?? 'Admin',
-                        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.onSurface),
+                        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AC.text),
                         overflow: TextOverflow.ellipsis,
                       ),
-                      Text(
-                        'Administrador',
-                        style: GoogleFonts.inter(fontSize: 10, color: AppColors.primary),
-                      ),
+                      Text('Super Admin',
+                          style: GoogleFonts.inter(fontSize: 10, color: AC.violet)),
                     ],
                   ),
                 ),
                 IconButton(
-                  iconSize: 17,
+                  iconSize: 16,
                   icon: const Icon(Icons.logout_rounded),
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                  color: AC.textSec,
                   tooltip: 'Cerrar sesión',
-                  onPressed: onLogout,
+                  onPressed: widget.onLogout,
                 ),
               ],
             ),
@@ -233,64 +332,4 @@ class _AdminSidebar extends ConsumerWidget {
       ),
     );
   }
-}
-
-// ── Sidebar tile ─────────────────────────────────────────────────────────────
-
-class _SidebarTile extends StatelessWidget {
-  const _SidebarTile({
-    required this.icon,
-    required this.label,
-    required this.active,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Material(
-        color: active ? AppColors.primary.withValues(alpha: 0.1) : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(10),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(
-              children: [
-                Icon(icon, size: 19,
-                  color: active ? AppColors.primary : theme.colorScheme.onSurface.withValues(alpha: 0.5)),
-                const SizedBox(width: 11),
-                Text(
-                  label,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-                    color: active ? AppColors.primary : theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Model ─────────────────────────────────────────────────────────────────────
-
-class _NavItem {
-  const _NavItem({required this.icon, required this.activeIcon, required this.label, this.badge});
-  final IconData icon;
-  final IconData activeIcon;
-  final String label;
-  final int? badge;
 }

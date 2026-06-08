@@ -2,18 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
-import 'package:reservpy/src/core/constants/app_colors.dart';
 import 'package:reservpy/src/data/repositories/admin_repository.dart';
+import 'admin_theme.dart';
 
-// ── Providers ─────────────────────────────────────────────────────────────────
+// ── Provider ──────────────────────────────────────────────────────────────────
 
-final billingListProvider = FutureProvider<List<BusinessBilling>>((ref) async {
-  return AdminRepository().getBillingRecords();
-});
-
-final businessesForBillingProvider = FutureProvider((ref) async {
-  return AdminRepository().getAllBusinessesAdmin();
+final overduePaymentsProvider = FutureProvider<List<OverduePayment>>((ref) async {
+  return AdminRepository().getOverduePayments();
 });
 
 // ── Screen ────────────────────────────────────────────────────────────────────
@@ -26,132 +23,140 @@ class AdminPaymentsScreen extends ConsumerStatefulWidget {
 }
 
 class _AdminPaymentsScreenState extends ConsumerState<AdminPaymentsScreen> {
-  String _filter = 'all'; // all | overdue | expiring | active | suspended
+  String _filter   = 'all'; // all | leve | moderado | critico
+  Set<String> _selected = {};
 
   @override
   Widget build(BuildContext context) {
-    final billingAsync    = ref.watch(billingListProvider);
-    final businessesAsync = ref.watch(businessesForBillingProvider);
-    final theme           = Theme.of(context);
+    final overdueAsync = ref.watch(overduePaymentsProvider);
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: AC.bg,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header ────────────────────────────────────────
+          // ── Header ──────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(28, 28, 28, 0),
-            child: Row(
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Pagos y Facturación', style: GoogleFonts.inter(
-                      fontSize: 24, fontWeight: FontWeight.w800,
-                      color: theme.colorScheme.onSurface,
-                    )),
-                    Text('Seguimiento de suscripciones y cobros',
-                        style: GoogleFonts.inter(fontSize: 13, color: Colors.grey.shade500)),
-                  ],
-                ),
-                const Spacer(),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    ref.invalidate(billingListProvider);
-                    ref.invalidate(businessesForBillingProvider);
-                  },
-                  icon: const Icon(Icons.refresh_rounded, size: 16),
-                  label: const Text('Actualizar'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
-                    textStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500),
-                  ),
-                ),
-              ],
+            padding: const EdgeInsets.fromLTRB(28, 24, 28, 0),
+            child: AdminSectionHeader(
+              title:    'Centro de Pagos',
+              subtitle: 'Clientes con pagos vencidos o próximos a vencer',
+              trailing: OutlinedButton.icon(
+                onPressed: () => ref.invalidate(overduePaymentsProvider),
+                icon: const Icon(Icons.refresh_rounded, size: 15),
+                label: const Text('Actualizar'),
+              ),
             ),
           ),
 
-          const SizedBox(height: 20),
-
-          // ── Alert banners ─────────────────────────────────
-          billingAsync.when(
+          // ── Summary stats ────────────────────────────────
+          overdueAsync.when(
             loading: () => const SizedBox.shrink(),
             error:   (_, __) => const SizedBox.shrink(),
-            data:    (records) {
-              final overdue    = records.where((r) => r.status == 'overdue').length;
-              final expiring3  = records.where((r) => r.expiresIn3Days).length;
-              final expiring7  = records.where((r) => r.expiresIn7Days && !r.expiresIn3Days).length;
-              return Column(
-                children: [
-                  if (overdue > 0)    _AlertBanner(label: '$overdue negocios con pago vencido',   type: 'critical'),
-                  if (expiring3 > 0)  _AlertBanner(label: '$expiring3 negocios vencen en 3 días', type: 'warning'),
-                  if (expiring7 > 0)  _AlertBanner(label: '$expiring7 negocios vencen en 7 días', type: 'info'),
-                ],
-              );
-            },
+            data:    (items) => _SummaryStrip(items: items),
           ),
 
-          // ── Filter chips ──────────────────────────────────
+          // ── Severity filter ──────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(28, 8, 28, 0),
-            child: Wrap(
-              spacing: 8,
+            padding: const EdgeInsets.fromLTRB(28, 12, 28, 8),
+            child: Row(
               children: [
-                _FilterChip(label: 'Todos',     value: 'all',      current: _filter, onTap: (v) => setState(() => _filter = v)),
-                _FilterChip(label: 'Vencidos',  value: 'overdue',  current: _filter, onTap: (v) => setState(() => _filter = v), color: const Color(0xFFEF4444)),
-                _FilterChip(label: 'Por vencer',value: 'expiring', current: _filter, onTap: (v) => setState(() => _filter = v), color: const Color(0xFFF59E0B)),
-                _FilterChip(label: 'Activos',   value: 'active',   current: _filter, onTap: (v) => setState(() => _filter = v), color: const Color(0xFF10B981)),
-                _FilterChip(label: 'Suspendidos',value: 'suspended',current: _filter, onTap: (v) => setState(() => _filter = v), color: Colors.grey),
+                _SevChip(label: 'Todos',    value: 'all',      current: _filter,
+                    onTap: (v) => setState(() => _filter = v)),
+                const SizedBox(width: 8),
+                _SevChip(label: 'Leve (1-7d)',    value: 'leve',     current: _filter,
+                    color: const Color(0xFFFFE066), onTap: (v) => setState(() => _filter = v)),
+                const SizedBox(width: 8),
+                _SevChip(label: 'Moderado (8-30d)', value: 'moderado', current: _filter,
+                    color: AC.warning, onTap: (v) => setState(() => _filter = v)),
+                const SizedBox(width: 8),
+                _SevChip(label: 'Crítico (+30d)',  value: 'critico',  current: _filter,
+                    color: AC.danger, onTap: (v) => setState(() => _filter = v)),
+                const Spacer(),
+                // Bulk action (if items selected)
+                if (_selected.isNotEmpty)
+                  FilledButton.icon(
+                    onPressed: () => _bulkReminder(),
+                    icon: const Icon(Icons.email_outlined, size: 14),
+                    label: Text('Enviar recordatorio (${_selected.length})',
+                        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600)),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AC.violet,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    ),
+                  ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
 
-          // ── Table ─────────────────────────────────────────
+          // ── Table ────────────────────────────────────────
           Expanded(
-            child: billingAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error:   (e, _) => Center(child: Text('Error: $e')),
-              data: (records) {
-                final businesses = businessesAsync.value ?? [];
-                final businessMap = {for (final b in businesses) b.id: b};
-
-                final filtered = records.where((r) {
-                  if (_filter == 'overdue')   return r.status == 'overdue' || r.isOverdue;
-                  if (_filter == 'expiring')  return r.expiresIn7Days;
-                  if (_filter == 'active')    return r.status == 'active';
-                  if (_filter == 'suspended') return r.status == 'suspended';
-                  return true;
-                }).toList();
+            child: overdueAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator(color: AC.violet)),
+              error:   (e, _) => Center(child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.receipt_long_outlined, size: 48, color: AC.textMut),
+                  const SizedBox(height: 12),
+                  Text('Sin pagos vencidos registrados aún\n'
+                      '(Las tablas de pagos deben existir en Supabase)',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(color: AC.textSec, fontSize: 13)),
+                ],
+              )),
+              data: (items) {
+                final filtered = _filter == 'all'
+                    ? items
+                    : items.where((i) => i.severity == _filter).toList();
 
                 if (filtered.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.receipt_long_rounded, size: 48, color: Colors.grey.shade300),
-                        const SizedBox(height: 12),
-                        Text('Sin registros', style: GoogleFonts.inter(color: Colors.grey.shade400, fontSize: 15)),
-                      ],
-                    ),
-                  );
+                  return Center(child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check_circle_outline_rounded, size: 52, color: AC.success),
+                      const SizedBox(height: 12),
+                      Text(_filter == 'all'
+                          ? '¡Sin pagos vencidos! 🎉'
+                          : 'Sin pagos en esta categoría',
+                          style: GoogleFonts.spaceGrotesk(fontSize: 16,
+                              fontWeight: FontWeight.w700, color: AC.text)),
+                      const SizedBox(height: 6),
+                      Text('Todos los clientes están al día con sus pagos',
+                          style: GoogleFonts.inter(fontSize: 13, color: AC.textSec)),
+                    ],
+                  ));
                 }
 
-                return ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(28, 0, 28, 28),
-                  itemCount: filtered.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (_, i) {
-                    final billing  = filtered[i];
-                    final business = businessMap[billing.businessId];
-                    return _BillingRow(
-                      billing:      billing,
-                      businessName: business?.name ?? billing.businessId,
-                      onAction:     (action) => _handleAction(action, billing),
-                    );
-                  },
+                return Column(
+                  children: [
+                    // Select all + header
+                    _TableHdr(
+                      selectedAll: _selected.length == filtered.length,
+                      onSelectAll: (v) => setState(() => v
+                          ? _selected = filtered.map((i) => i.paymentId).toSet()
+                          : _selected.clear()),
+                    ),
+                    const Divider(height: 1, color: AC.border),
+                    Expanded(
+                      child: ListView.separated(
+                        itemCount: filtered.length,
+                        padding:   EdgeInsets.zero,
+                        separatorBuilder: (_, __) => const Divider(height: 1, color: AC.border),
+                        itemBuilder: (_, i) {
+                          final item = filtered[i];
+                          return _OverdueRow(
+                            item:     item,
+                            selected: _selected.contains(item.paymentId),
+                            onSelect: (v) => setState(() => v
+                                ? _selected.add(item.paymentId)
+                                : _selected.remove(item.paymentId)),
+                            onAction: (action) => _handleAction(action, item),
+                          ).animate(delay: Duration(milliseconds: 20 * i))
+                              .fadeIn(duration: 200.ms);
+                        },
+                      ),
+                    ),
+                  ],
                 );
               },
             ),
@@ -161,243 +166,293 @@ class _AdminPaymentsScreenState extends ConsumerState<AdminPaymentsScreen> {
     );
   }
 
-  void _handleAction(String action, BusinessBilling billing) async {
+  void _bulkReminder() async {
+    final repo = AdminRepository();
+    for (final paymentId in _selected) {
+      // Find the businessId for this paymentId
+      final items = (ref.read(overduePaymentsProvider).value ?? []);
+      final item = items.where((i) => i.paymentId == paymentId).firstOrNull;
+      if (item != null) {
+        await repo.sendReminder(item.businessId, paymentId);
+      }
+    }
+    setState(() => _selected.clear());
+    ref.invalidate(overduePaymentsProvider);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: AC.success,
+        content: Text('Recordatorios enviados', style: GoogleFonts.inter(color: Colors.white)),
+      ));
+    }
+  }
+
+  Future<void> _handleAction(String action, OverduePayment item) async {
     final repo = AdminRepository();
     switch (action) {
+      case 'reminder':
+        await repo.sendReminder(item.businessId, item.paymentId);
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          backgroundColor: AC.violet,
+          content: Text('Recordatorio enviado a ${item.businessName}',
+              style: GoogleFonts.inter(color: Colors.white)),
+        ));
+        break;
+      case 'mark_paid':
+        await repo.updatePaymentStatus(item.paymentId, 'paid');
+        ref.invalidate(overduePaymentsProvider);
+        break;
       case 'suspend':
-        await repo.upsertBilling(
-          businessId: billing.businessId, plan: billing.plan,
-          status: 'suspended', amountGuaranies: billing.amountGuaranies,
-        );
-        break;
-      case 'reactivate':
-        await repo.upsertBilling(
-          businessId: billing.businessId, plan: billing.plan,
-          status: 'active', amountGuaranies: billing.amountGuaranies,
-          nextBillingAt: DateTime.now().add(const Duration(days: 30)),
-        );
-        break;
-      case 'register_payment':
-        await repo.upsertBilling(
-          businessId: billing.businessId, plan: billing.plan,
-          status: 'active', amountGuaranies: billing.amountGuaranies,
-          nextBillingAt: DateTime.now().add(const Duration(days: 30)),
-        );
-        await repo.logAction(
-          action: 'billing.payment_registered',
-          entityType: 'business',
-          entityId: billing.businessId,
-          details: {'plan': billing.plan, 'amount': billing.amountGuaranies},
-        );
+        await repo.setBusinessActive(item.businessId, false);
+        ref.invalidate(overduePaymentsProvider);
         break;
     }
-    ref.invalidate(billingListProvider);
   }
 }
 
-// ── Billing Row ───────────────────────────────────────────────────────────────
+// ── Summary Strip ─────────────────────────────────────────────────────────────
 
-class _BillingRow extends StatelessWidget {
-  const _BillingRow({
-    required this.billing,
-    required this.businessName,
-    required this.onAction,
-  });
-
-  final BusinessBilling billing;
-  final String businessName;
-  final ValueChanged<String> onAction;
-
-  Color get _statusColor {
-    switch (billing.status) {
-      case 'active':    return const Color(0xFF10B981);
-      case 'overdue':   return const Color(0xFFEF4444);
-      case 'suspended': return Colors.grey;
-      case 'pending':   return const Color(0xFFF59E0B);
-      case 'cancelled': return const Color(0xFF6B7280);
-      default:          return Colors.grey;
-    }
-  }
-
-  String get _statusLabel {
-    switch (billing.status) {
-      case 'active':    return 'Activo';
-      case 'overdue':   return 'Vencido';
-      case 'suspended': return 'Suspendido';
-      case 'pending':   return 'Pendiente';
-      case 'cancelled': return 'Cancelado';
-      default:          return billing.status;
-    }
-  }
+class _SummaryStrip extends StatelessWidget {
+  const _SummaryStrip({required this.items});
+  final List<OverduePayment> items;
 
   @override
   Widget build(BuildContext context) {
-    final theme   = Theme.of(context);
-    final fmt     = NumberFormat('#,###', 'es_PY');
-    final dateFmt = DateFormat('dd/MM/yyyy');
+    final fmt    = NumberFormat('#,###', 'es_PY');
+    final total  = items.fold(0.0, (s, i) => s + i.amount);
+    final critico = items.where((i) => i.severity == 'critico').length;
+    final avgDays = items.isEmpty ? 0
+        : (items.fold(0, (s, i) => s + i.daysOverdue) / items.length).round();
 
-    final isUrgent = billing.isOverdue || billing.expiresIn3Days;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: isUrgent
-            ? const Color(0xFFEF4444).withValues(alpha: 0.04)
-            : theme.colorScheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isUrgent
-              ? const Color(0xFFEF4444).withValues(alpha: 0.25)
-              : theme.dividerColor.withValues(alpha: 0.25),
-        ),
-      ),
-      child: Row(
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 20, 28, 0),
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
         children: [
-          // Business name + plan
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(businessName, style: GoogleFonts.inter(
-                  fontSize: 14, fontWeight: FontWeight.w600,
-                  color: theme.colorScheme.onSurface,
-                )),
-                const SizedBox(height: 2),
-                Text(billing.plan.toUpperCase(), style: GoogleFonts.inter(
-                  fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
-                )),
-              ],
-            ),
-          ),
-
-          // Amount
-          Expanded(
-            flex: 2,
-            child: Text('₲ ${fmt.format(billing.amountGuaranies)}',
-                style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.onSurface)),
-          ),
-
-          // Next billing
-          Expanded(
-            flex: 2,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Próximo venc.',
-                    style: GoogleFonts.inter(fontSize: 10, color: Colors.grey.shade400)),
-                Text(
-                  billing.nextBillingAt != null
-                      ? dateFmt.format(billing.nextBillingAt!)
-                      : '—',
-                  style: GoogleFonts.inter(
-                    fontSize: 13, fontWeight: FontWeight.w500,
-                    color: billing.isOverdue
-                        ? const Color(0xFFEF4444)
-                        : billing.expiresIn3Days
-                            ? const Color(0xFFF59E0B)
-                            : theme.colorScheme.onSurface,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Status badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: _statusColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(_statusLabel, style: GoogleFonts.inter(
-              fontSize: 11, fontWeight: FontWeight.w600, color: _statusColor,
-            )),
-          ),
-          const SizedBox(width: 12),
-
-          // Actions
-          PopupMenuButton<String>(
-            onSelected: onAction,
-            icon: Icon(Icons.more_vert_rounded, size: 18,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
-            itemBuilder: (_) => [
-              const PopupMenuItem(value: 'register_payment',
-                  child: ListTile(dense: true, leading: Icon(Icons.check_circle_outline_rounded),
-                      title: Text('Registrar pago'))),
-              const PopupMenuItem(value: 'reactivate',
-                  child: ListTile(dense: true, leading: Icon(Icons.play_circle_outline_rounded),
-                      title: Text('Reactivar'))),
-              const PopupMenuItem(value: 'suspend',
-                  child: ListTile(dense: true, leading: Icon(Icons.pause_circle_outline_rounded),
-                      title: Text('Suspender'))),
-            ],
-          ),
+          _StatChip(label: 'Total adeudado',   value: '₲ ${fmt.format(total)}',   color: AC.danger),
+          _StatChip(label: 'Clientes con deuda', value: '${items.length}',          color: AC.warning),
+          _StatChip(label: 'Críticos (+30d)',   value: '$critico',                  color: AC.danger),
+          _StatChip(label: 'Atraso promedio',   value: '$avgDays días',             color: AC.textSec),
         ],
       ),
     );
   }
 }
 
-// ── Alert Banner ─────────────────────────────────────────────────────────────
-
-class _AlertBanner extends StatelessWidget {
-  const _AlertBanner({required this.label, required this.type});
+class _StatChip extends StatelessWidget {
+  const _StatChip({required this.label, required this.value, required this.color});
   final String label;
-  final String type; // critical | warning | info
-
-  Color get _color {
-    switch (type) {
-      case 'critical': return const Color(0xFFEF4444);
-      case 'warning':  return const Color(0xFFF59E0B);
-      default:         return const Color(0xFF0EA5E9);
-    }
-  }
-
-  IconData get _icon {
-    switch (type) {
-      case 'critical': return Icons.error_rounded;
-      case 'warning':  return Icons.warning_rounded;
-      default:         return Icons.info_rounded;
-    }
-  }
+  final String value;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(28, 0, 28, 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: _color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _color.withValues(alpha: 0.25)),
+        color:  AC.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(_icon, size: 16, color: _color),
-          const SizedBox(width: 8),
-          Text(label, style: GoogleFonts.inter(
-            fontSize: 13, fontWeight: FontWeight.w500, color: _color,
-          )),
+          Text(value, style: GoogleFonts.spaceGrotesk(
+              fontSize: 18, fontWeight: FontWeight.w700, color: color)),
+          Text(label, style: GoogleFonts.inter(fontSize: 11, color: AC.textSec)),
         ],
       ),
     );
   }
 }
 
-// ── Filter Chip ───────────────────────────────────────────────────────────────
+// ── Table Header ─────────────────────────────────────────────────────────────
 
-class _FilterChip extends StatelessWidget {
-  const _FilterChip({
+class _TableHdr extends StatelessWidget {
+  const _TableHdr({required this.selectedAll, required this.onSelectAll});
+  final bool selectedAll;
+  final ValueChanged<bool> onSelectAll;
+
+  @override
+  Widget build(BuildContext context) {
+    const sty = TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
+        color: AC.textSec, letterSpacing: 0.8);
+    return Container(
+      color: AC.surface,
+      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
+      child: Row(
+        children: [
+          Checkbox(
+            value:          selectedAll,
+            onChanged:      (v) => onSelectAll(v ?? false),
+            fillColor:      WidgetStateProperty.all(AC.violet),
+            checkColor:     Colors.white,
+            side:           const BorderSide(color: AC.borderBright),
+          ),
+          const Expanded(flex: 3, child: Text('CLIENTE', style: sty)),
+          const Expanded(flex: 2, child: Text('MONTO', style: sty)),
+          const Expanded(flex: 2, child: Text('VENCIMIENTO', style: sty)),
+          const Expanded(flex: 2, child: Text('SEVERIDAD', style: sty)),
+          const SizedBox(width: 120),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Overdue Row ───────────────────────────────────────────────────────────────
+
+class _OverdueRow extends StatefulWidget {
+  const _OverdueRow({
+    required this.item,
+    required this.selected,
+    required this.onSelect,
+    required this.onAction,
+  });
+  final OverduePayment item;
+  final bool selected;
+  final ValueChanged<bool> onSelect;
+  final ValueChanged<String> onAction;
+
+  @override
+  State<_OverdueRow> createState() => _OverdueRowState();
+}
+
+class _OverdueRowState extends State<_OverdueRow> {
+  bool _hovered = false;
+
+  Color get _sevBorderColor {
+    switch (widget.item.severity) {
+      case 'critico':  return AC.danger;
+      case 'moderado': return AC.warning;
+      default:         return const Color(0xFFFFE066);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final fmt    = NumberFormat('#,###', 'es_PY');
+    final dateFmt = DateFormat('dd/MM/yyyy');
+    final item   = widget.item;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit:  (_) => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        decoration: BoxDecoration(
+          color: _hovered || widget.selected
+              ? AC.surfaceHigh : Colors.transparent,
+          border: Border(
+            left: BorderSide(color: _sevBorderColor, width: 3),
+          ),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+        child: Row(
+          children: [
+            Checkbox(
+              value:   widget.selected,
+              onChanged: (v) => widget.onSelect(v ?? false),
+              fillColor: WidgetStateProperty.all(AC.violet),
+              checkColor: Colors.white,
+              side:    const BorderSide(color: AC.borderBright),
+            ),
+            Expanded(
+              flex: 3,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(item.businessName, style: GoogleFonts.inter(
+                      fontSize: 13, fontWeight: FontWeight.w600, color: AC.text)),
+                  Text(item.businessEmail, style: GoogleFonts.inter(
+                      fontSize: 11, color: AC.textSec)),
+                ],
+              ),
+            ),
+            Expanded(
+              flex: 2,
+              child: Text('₲ ${fmt.format(item.amount)}',
+                  style: GoogleFonts.spaceGrotesk(fontSize: 14,
+                      fontWeight: FontWeight.w600, color: AC.text)),
+            ),
+            Expanded(
+              flex: 2,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(dateFmt.format(item.dueDate), style: GoogleFonts.inter(
+                      fontSize: 12, color: AC.danger)),
+                  Text('Hace ${item.daysOverdue} días', style: GoogleFonts.inter(
+                      fontSize: 11, color: AC.textSec)),
+                ],
+              ),
+            ),
+            Expanded(
+              flex: 2,
+              child: SeverityBadge(severity: item.severity),
+            ),
+            SizedBox(
+              width: 120,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (_hovered || widget.selected) ...[
+                    _QAction(icon: Icons.email_outlined,       tooltip: 'Recordatorio',
+                        color: AC.violet, onTap: () => widget.onAction('reminder')),
+                    const SizedBox(width: 4),
+                    _QAction(icon: Icons.check_circle_outline, tooltip: 'Marcar pagado',
+                        color: AC.success, onTap: () => widget.onAction('mark_paid')),
+                    const SizedBox(width: 4),
+                    _QAction(icon: Icons.block_rounded,        tooltip: 'Suspender',
+                        color: AC.danger, onTap: () => widget.onAction('suspend')),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QAction extends StatelessWidget {
+  const _QAction({required this.icon, required this.tooltip,
+      required this.color, required this.onTap});
+  final IconData icon;
+  final String tooltip;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 26, height: 26,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Icon(icon, size: 13, color: color),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Severity chip ─────────────────────────────────────────────────────────────
+
+class _SevChip extends StatelessWidget {
+  const _SevChip({
     required this.label,
     required this.value,
     required this.current,
     required this.onTap,
     this.color,
   });
-
   final String label;
   final String value;
   final String current;
@@ -407,20 +462,20 @@ class _FilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = value == current;
-    final c      = color ?? AppColors.primary;
+    final c = color ?? AC.textSec;
     return GestureDetector(
       onTap: () => onTap(value),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color:        active ? c.withValues(alpha: 0.12) : Colors.transparent,
+          color: active ? c.withValues(alpha: 0.15) : AC.surface,
           borderRadius: BorderRadius.circular(20),
-          border:       Border.all(color: active ? c : Colors.grey.shade300),
+          border: Border.all(color: active ? c.withValues(alpha: 0.4) : AC.border),
         ),
         child: Text(label, style: GoogleFonts.inter(
           fontSize: 12, fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-          color: active ? c : Colors.grey.shade500,
+          color: active ? c : AC.textSec,
         )),
       ),
     );
