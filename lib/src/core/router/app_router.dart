@@ -83,6 +83,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           state.matchedLocation == '/select-role';
 
       // ── Admin guard ────────────────────────────────────────────────────
+      // Si está logueado pero el user todavía no cargó (race condition),
+      // no redirigir — esperar al próximo refresh del refreshListenable.
+      if (isLoggedIn && user == null) return null;
+
       // Admin users are ALWAYS redirected to /admin — no role selector ever.
       if (isLoggedIn && user != null && user.hasRole(UserRole.admin)) {
         if (state.matchedLocation != '/admin') return '/admin';
@@ -91,7 +95,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Protect /admin from non-admins
       if (state.matchedLocation == '/admin') {
         if (!isLoggedIn) return '/login';
-        return '/client';
+        return '/'; // logged-in non-admin → landing, not /client
       }
 
       // Not logged in → allow public pages, redirect others to landing
