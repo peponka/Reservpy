@@ -29,6 +29,7 @@ import '../../features/reservations/reservation_success_screen.dart';
 import '../../features/reservations/business_detail_screen.dart';
 import '../../features/shell/client_shell.dart';
 import '../../features/shell/business_shell.dart';
+import '../../features/admin/admin_shell.dart';
 import '../../features/subscription/upgrade_screen.dart';
 import '../../features/subscription/bancard_payment_screen.dart';
 import '../../shared/providers/providers.dart';
@@ -81,6 +82,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           state.matchedLocation == '/onboarding' ||
           state.matchedLocation == '/select-role';
 
+      // Admin guard — only UserRole.admin can access /admin
+      if (state.matchedLocation == '/admin') {
+        if (!isLoggedIn) return '/login';
+        if (user != null && !user.hasRole(UserRole.admin)) return '/client';
+      }
+
       // Not logged in → allow public pages, redirect others to landing
       if (!isLoggedIn && !isPublicPage) return '/';
 
@@ -89,6 +96,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           state.matchedLocation == '/login' ||
           state.matchedLocation == '/register' ||
           state.matchedLocation == '/forgot-password')) {
+        // Admin goes directly to admin panel
+        if (user != null && user.hasRole(UserRole.admin)) return '/admin';
         // If multi-role and hasn't selected yet, go to selector
         if (user != null && user.isMultiRole && state.matchedLocation != '/select-role') {
           return '/select-role';
@@ -172,6 +181,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => _buildPage(
           state,
           const OnboardingScreen(),
+        ),
+      ),
+
+      // ─── Admin Shell ─────────────────────────────────
+      GoRoute(
+        path: '/admin',
+        pageBuilder: (context, state) => _buildPage(
+          state,
+          const AdminShell(),
         ),
       ),
 
