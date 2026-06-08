@@ -18,6 +18,16 @@ class RoleSelectorScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
     final roles = user?.roles ?? [UserRole.client];
 
+    // Admin â†’ skip selector and go directly to admin panel
+    if (user != null && user.hasRole(UserRole.admin)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) context.go('/admin');
+      });
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -63,7 +73,7 @@ class RoleSelectorScreen extends ConsumerWidget {
                     const SizedBox(height: 24),
 
                     Text(
-                      '¡Hola, ${user?.firstName ?? ''}!',
+                      'ï¿½Hola, ${user?.firstName ?? ''}!',
                       style: GoogleFonts.inter(
                         fontSize: 28,
                         fontWeight: FontWeight.w800,
@@ -76,7 +86,7 @@ class RoleSelectorScreen extends ConsumerWidget {
                     const SizedBox(height: 8),
 
                     Text(
-                      '¿Cómo deseas ingresar hoy?',
+                      'ï¿½Cï¿½mo deseas ingresar hoy?',
                       style: GoogleFonts.inter(
                         fontSize: 16,
                         color: Colors.grey.shade500,
@@ -92,8 +102,8 @@ class RoleSelectorScreen extends ConsumerWidget {
                     ...roles.asMap().entries.map((entry) {
                       final index = entry.key;
                       final role = entry.value;
-                      // Skip the legacy 'business' alias
-                      if (role == UserRole.business) return const SizedBox.shrink();
+                      // Skip legacy alias and admin (admin auto-redirects above)
+                      if (role == UserRole.business || role == UserRole.admin) return const SizedBox.shrink();
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 16),
                         child: _RoleCard(
@@ -110,7 +120,7 @@ class RoleSelectorScreen extends ConsumerWidget {
                                 context.go('/business'); // employees see business view
                                 break;
                               case UserRole.admin:
-                                context.go('/business'); // admin sees business view for now
+                                context.go('/admin');
                                 break;
                               case UserRole.client:
                                 context.go('/client');
@@ -181,13 +191,13 @@ class _RoleCardState extends State<_RoleCard> {
     switch (widget.role) {
       case UserRole.businessOwner:
       case UserRole.business:
-        return 'Gestioná tu negocio, turnos y equipo';
+        return 'Gestionï¿½ tu negocio, turnos y equipo';
       case UserRole.employee:
-        return 'Mirá tu agenda y turnos asignados';
+        return 'Mirï¿½ tu agenda y turnos asignados';
       case UserRole.admin:
-        return 'Panel de administración del sistema';
+        return 'Panel de administraciï¿½n del sistema';
       case UserRole.client:
-        return 'Reservá turnos en negocios disponibles';
+        return 'Reservï¿½ turnos en negocios disponibles';
     }
   }
 
