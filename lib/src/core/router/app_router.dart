@@ -82,10 +82,16 @@ final routerProvider = Provider<GoRouter>((ref) {
           state.matchedLocation == '/onboarding' ||
           state.matchedLocation == '/select-role';
 
-      // Admin guard — only UserRole.admin can access /admin
+      // ── Admin guard ────────────────────────────────────────────────────
+      // Admin users are ALWAYS redirected to /admin — no role selector ever.
+      if (isLoggedIn && user != null && user.hasRole(UserRole.admin)) {
+        if (state.matchedLocation != '/admin') return '/admin';
+        return null; // already on /admin, do nothing
+      }
+      // Protect /admin from non-admins
       if (state.matchedLocation == '/admin') {
         if (!isLoggedIn) return '/login';
-        if (user != null && !user.hasRole(UserRole.admin)) return '/client';
+        return '/client';
       }
 
       // Not logged in → allow public pages, redirect others to landing

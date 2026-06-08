@@ -4,47 +4,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import 'package:reservpy/src/core/constants/app_colors.dart';
-import 'package:reservpy/src/core/constants/app_sizes.dart';
 import 'package:reservpy/src/data/repositories/admin_repository.dart';
 
-// ── Providers ─────────────────────────────────────────────────────────────────
+// ── Provider ──────────────────────────────────────────────────────────────────
 
-final _adminStatsProvider = FutureProvider<_AdminStats>((ref) async {
-  final repo = AdminRepository();
-  final results = await Future.wait([
-    repo.getTotalBusinesses(),
-    repo.getActiveBusinesses(),
-    repo.getTotalUsers(),
-    repo.getTotalReservations(),
-    repo.getReservationsThisMonth(),
-    repo.getBusinessesByPlan(),
-  ]);
-  return _AdminStats(
-    totalBusinesses: results[0] as int,
-    activeBusinesses: results[1] as int,
-    totalUsers: results[2] as int,
-    totalReservations: results[3] as int,
-    reservationsThisMonth: results[4] as int,
-    businessesByPlan: results[5] as Map<String, int>,
-  );
+final adminStatsProvider = FutureProvider<AdminStats>((ref) async {
+  return AdminRepository().getStats();
 });
-
-class _AdminStats {
-  const _AdminStats({
-    required this.totalBusinesses,
-    required this.activeBusinesses,
-    required this.totalUsers,
-    required this.totalReservations,
-    required this.reservationsThisMonth,
-    required this.businessesByPlan,
-  });
-  final int totalBusinesses;
-  final int activeBusinesses;
-  final int totalUsers;
-  final int totalReservations;
-  final int reservationsThisMonth;
-  final Map<String, int> businessesByPlan;
-}
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
@@ -53,110 +19,331 @@ class AdminDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final statsAsync = ref.watch(_adminStatsProvider);
-    final theme = Theme.of(context);
-    final now = DateTime.now();
+    final statsAsync = ref.watch(adminStatsProvider);
+    final theme      = Theme.of(context);
+    final fmt        = NumberFormat('#,###', 'es_PY');
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Header ──────────────────────────────────────
-            Row(
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Panel de Administración',
-                      style: GoogleFonts.inter(fontSize: 26, fontWeight: FontWeight.w800,
-                          color: theme.colorScheme.onSurface),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      DateFormat("EEEE d 'de' MMMM yyyy", 'es').format(now),
-                      style: GoogleFonts.inter(fontSize: 14,
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                IconButton(
-                  onPressed: () => ref.invalidate(_adminStatsProvider),
-                  icon: const Icon(Icons.refresh_rounded),
-                  tooltip: 'Actualizar',
-                  color: AppColors.primary,
-                ),
-              ],
-            ),
+      body: statsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error:   (e, _) => Center(child: Text('Error: $e')),
+        data:    (stats) => _DashboardBody(stats: stats, fmt: fmt),
+      ),
+    );
+  }
+}
 
-            const SizedBox(height: 32),
+// ── Body ──────────────────────────────────────────────────────────────────────
 
-            // ── Stats ────────────────────────────────────────
-            statsAsync.when(
-              loading: () => const Center(
-                child: CircularProgressIndicator(color: AppColors.primary),
-              ),
-              error: (e, _) => _ErrorCard(message: e.toString()),
-              data: (stats) => Column(
+class _DashboardBody extends StatelessWidget {
+  const _DashboardBody({required this.stats, required this.fmt});
+  final AdminStats stats;
+  final NumberFormat fmt;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(28),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Header ────────────────────────────────────────
+          Row(
+            children: [
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // KPI row
-                  LayoutBuilder(builder: (_, constraints) {
-                    final cols = constraints.maxWidth > 900 ? 4 : 2;
-                    return GridView.count(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      crossAxisCount: cols,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      childAspectRatio: 1.6,
-                      children: [
-                        _KpiCard(
-                          icon: Icons.storefront_rounded,
-                          label: 'Negocios totales',
-                          value: '${stats.totalBusinesses}',
-                          sub: '${stats.activeBusinesses} activos',
-                          color: AppColors.primary,
-                        ),
-                        _KpiCard(
-                          icon: Icons.people_rounded,
-                          label: 'Usuarios',
-                          value: '${stats.totalUsers}',
-                          sub: 'Registrados',
-                          color: const Color(0xFF6366F1),
-                        ),
-                        _KpiCard(
-                          icon: Icons.event_available_rounded,
-                          label: 'Reservas totales',
-                          value: '${stats.totalReservations}',
-                          sub: '${stats.reservationsThisMonth} este mes',
-                          color: const Color(0xFFF59E0B),
-                        ),
-                        _KpiCard(
-                          icon: Icons.trending_up_rounded,
-                          label: 'Este mes',
-                          value: '${stats.reservationsThisMonth}',
-                          sub: 'Reservas nuevas',
-                          color: const Color(0xFFEC4899),
-                        ),
-                      ],
-                    );
-                  }),
-
-                  const SizedBox(height: 32),
-
-                  // Plans breakdown
+                  Text('Dashboard', style: GoogleFonts.inter(
+                    fontSize: 26, fontWeight: FontWeight.w800,
+                    color: theme.colorScheme.onSurface,
+                  )),
                   Text(
-                    'Negocios por plan',
-                    style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700,
-                        color: theme.colorScheme.onSurface),
+                    DateFormat("EEEE d 'de' MMMM, yyyy", 'es').format(DateTime.now()),
+                    style: GoogleFonts.inter(fontSize: 13, color: Colors.grey.shade500),
                   ),
-                  const SizedBox(height: 16),
-                  _PlansCard(planCounts: stats.businessesByPlan, total: stats.totalBusinesses),
+                ],
+              ),
+              const Spacer(),
+              _RefreshButton(),
+            ],
+          ),
+          const SizedBox(height: 28),
+
+          // ── Section: General ──────────────────────────────
+          _SectionTitle(title: 'General', icon: Icons.bar_chart_rounded, color: AppColors.primary),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 16,
+            runSpacing: 16,
+            children: [
+              _KpiCard(label: 'Negocios totales',    value: stats.totalBusinesses.toString(),
+                  icon: Icons.storefront_rounded,    color: AppColors.primary),
+              _KpiCard(label: 'Negocios activos',    value: stats.activeBusinesses.toString(),
+                  icon: Icons.check_circle_rounded,  color: const Color(0xFF10B981)),
+              _KpiCard(label: 'Inactivos',            value: stats.inactiveBusinesses.toString(),
+                  icon: Icons.pause_circle_rounded,  color: const Color(0xFFF59E0B)),
+              _KpiCard(label: 'Nuevos hoy',           value: stats.newBusinessesToday.toString(),
+                  icon: Icons.add_business_rounded,  color: const Color(0xFF6366F1)),
+              _KpiCard(label: 'Nuevos este mes',      value: stats.newBusinessesThisMonth.toString(),
+                  icon: Icons.trending_up_rounded,   color: const Color(0xFF0EA5E9)),
+              _KpiCard(label: 'Usuarios totales',     value: stats.totalUsers.toString(),
+                  icon: Icons.people_rounded,        color: const Color(0xFFEC4899)),
+              _KpiCard(label: 'Usuarios nuevos hoy',  value: stats.newUsersToday.toString(),
+                  icon: Icons.person_add_rounded,    color: const Color(0xFF8B5CF6)),
+              _KpiCard(label: 'Nuevos este mes',      value: stats.newUsersThisMonth.toString(),
+                  icon: Icons.person_search_rounded, color: const Color(0xFF14B8A6)),
+            ],
+          ),
+          const SizedBox(height: 32),
+
+          // ── Section: Financiero ───────────────────────────
+          _SectionTitle(title: 'Financiero', icon: Icons.attach_money_rounded, color: const Color(0xFF10B981)),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 16,
+            runSpacing: 16,
+            children: [
+              _KpiCard(
+                label: 'MRR',
+                value: '₲ ${fmt.format(stats.mrr)}',
+                sublabel: 'Ingresos Mensuales Recurrentes',
+                icon: Icons.trending_up_rounded,
+                color: const Color(0xFF10B981),
+                wide: true,
+              ),
+              _KpiCard(
+                label: 'ARR',
+                value: '₲ ${fmt.format(stats.arr)}',
+                sublabel: 'Ingresos Anuales Proyectados',
+                icon: Icons.show_chart_rounded,
+                color: AppColors.primary,
+                wide: true,
+              ),
+              _KpiCard(
+                label: 'Churn Rate',
+                value: '${stats.churnRatePercent.toStringAsFixed(1)}%',
+                sublabel: 'Tasa de negocios inactivos',
+                icon: Icons.trending_down_rounded,
+                color: stats.churnRatePercent > 15
+                    ? const Color(0xFFEF4444)
+                    : const Color(0xFFF59E0B),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          _PlanBreakdownCard(stats: stats, fmt: fmt),
+          const SizedBox(height: 32),
+
+          // ── Section: Operacional ─────────────────────────
+          _SectionTitle(title: 'Operacional', icon: Icons.calendar_month_rounded, color: const Color(0xFF6366F1)),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 16,
+            runSpacing: 16,
+            children: [
+              _KpiCard(label: 'Reservas totales',  value: stats.totalReservations.toString(),
+                  icon: Icons.event_note_rounded,  color: const Color(0xFF6366F1)),
+              _KpiCard(label: 'Reservas hoy',       value: stats.reservationsToday.toString(),
+                  icon: Icons.today_rounded,        color: const Color(0xFF0EA5E9)),
+              _KpiCard(label: 'Reservas este mes',  value: stats.reservationsThisMonth.toString(),
+                  icon: Icons.date_range_rounded,   color: AppColors.primary),
+              _KpiCard(label: 'Completadas',        value: stats.completedReservations.toString(),
+                  icon: Icons.task_alt_rounded,     color: const Color(0xFF10B981)),
+              _KpiCard(label: 'Canceladas',         value: stats.cancelledReservations.toString(),
+                  icon: Icons.cancel_rounded,       color: const Color(0xFFEF4444)),
+              _KpiCard(
+                label: 'Tasa completadas',
+                value: stats.totalReservations > 0
+                    ? '${(stats.completedReservations / stats.totalReservations * 100).toStringAsFixed(1)}%'
+                    : '—',
+                icon: Icons.percent_rounded,
+                color: const Color(0xFF8B5CF6),
+              ),
+            ],
+          ),
+          const SizedBox(height: 40),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Plan Breakdown ────────────────────────────────────────────────────────────
+
+class _PlanBreakdownCard extends StatelessWidget {
+  const _PlanBreakdownCard({required this.stats, required this.fmt});
+  final AdminStats stats;
+  final NumberFormat fmt;
+
+  static const _plans = <(String, String, Color, int)>[
+    ('free',       'Gratuito',   Color(0xFF9CA3AF), 0),
+    ('basic',      'Básico', Color(0xFF0EA5E9), 25000),
+    ('pro',        'Pro',        Color(0xFF8B5CF6), 75000),
+    ('enterprise', 'Enterprise', Color(0xFFF59E0B), 200000),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final total = stats.totalBusinesses > 0 ? stats.totalBusinesses : 1;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.3)),
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Distribución por Plan',
+              style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700,
+                  color: theme.colorScheme.onSurface)),
+          const SizedBox(height: 16),
+          for (final (key, label, color, price) in _plans) ...[
+            _PlanRow(
+              label:   label,
+              count:   stats.businessesByPlan[key] ?? 0,
+              total:   total,
+              color:   color,
+              revenue: fmt.format((stats.businessesByPlan[key] ?? 0) * price),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PlanRow extends StatelessWidget {
+  const _PlanRow({
+    required this.label,
+    required this.count,
+    required this.total,
+    required this.color,
+    required this.revenue,
+  });
+
+  final String label;
+  final int count;
+  final int total;
+  final Color color;
+  final String revenue;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final pct   = count / total;
+
+    return Row(
+      children: [
+        SizedBox(
+          width: 88,
+          child: Text(label, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.75))),
+        ),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value:            pct,
+              minHeight:        8,
+              backgroundColor:  color.withValues(alpha: 0.12),
+              valueColor:       AlwaysStoppedAnimation(color),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        SizedBox(
+          width: 30,
+          child: Text('$count',
+              textAlign: TextAlign.right,
+              style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface)),
+        ),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 108,
+          child: Text('₲ $revenue',
+              textAlign: TextAlign.right,
+              style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade500)),
+        ),
+      ],
+    );
+  }
+}
+
+// ── KPI Card ─────────────────────────────────────────────────────────────────
+
+class _KpiCard extends StatelessWidget {
+  const _KpiCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+    this.sublabel,
+    this.wide = false,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+  final String? sublabel;
+  final bool wide;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        minWidth: wide ? 250 : 155,
+        maxWidth: wide ? 310 : 205,
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: theme.dividerColor.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(value, style: GoogleFonts.inter(
+                    fontSize: 21, fontWeight: FontWeight.w800,
+                    color: theme.colorScheme.onSurface,
+                  )),
+                  const SizedBox(height: 2),
+                  Text(label, style: GoogleFonts.inter(
+                    fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w500,
+                  )),
+                  if (sublabel != null) ...[
+                    const SizedBox(height: 2),
+                    Text(sublabel!, style: GoogleFonts.inter(
+                      fontSize: 10, color: Colors.grey.shade400,
+                    )),
+                  ],
                 ],
               ),
             ),
@@ -167,171 +354,51 @@ class AdminDashboardScreen extends ConsumerWidget {
   }
 }
 
-// ── Widgets ───────────────────────────────────────────────────────────────────
+// ── Section Title ─────────────────────────────────────────────────────────────
 
-class _KpiCard extends StatelessWidget {
-  const _KpiCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.sub,
-    required this.color,
-  });
-
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle({required this.title, required this.icon, required this.color});
+  final String title;
   final IconData icon;
-  final String label;
-  final String value;
-  final String sub;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.3)),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, size: 20, color: color),
-              ),
-            ],
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                value,
-                style: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w800,
-                    color: theme.colorScheme.onSurface),
-              ),
-              Text(
-                label,
-                style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
-              ),
-              Text(
-                sub,
-                style: GoogleFonts.inter(fontSize: 11, color: color, fontWeight: FontWeight.w500),
-              ),
-            ],
-          ),
-        ],
-      ),
+          child: Icon(icon, size: 16, color: color),
+        ),
+        const SizedBox(width: 10),
+        Text(title, style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700,
+            color: theme.colorScheme.onSurface)),
+        const SizedBox(width: 12),
+        Expanded(child: Divider(color: theme.dividerColor.withValues(alpha: 0.4))),
+      ],
     );
   }
 }
 
-class _PlansCard extends StatelessWidget {
-  const _PlansCard({required this.planCounts, required this.total});
+// ── Refresh ───────────────────────────────────────────────────────────────────
 
-  final Map<String, int> planCounts;
-  final int total;
-
-  static const _planColors = <String, Color>{
-    'free':       Color(0xFF6B7280),
-    'basic':      Color(0xFF3B82F6),
-    'pro':        AppColors.primary,
-    'enterprise': Color(0xFFF59E0B),
-  };
-
-  static const _planLabels = <String, String>{
-    'free':       'Gratuito',
-    'basic':      'Básico',
-    'pro':        'Pro',
-    'enterprise': 'Empresarial',
-  };
-
+class _RefreshButton extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final plans = ['free', 'basic', 'pro', 'enterprise'];
-
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.3)),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
-        ],
-      ),
-      child: Column(
-        children: plans.map((plan) {
-          final count = planCounts[plan] ?? 0;
-          final pct = total > 0 ? count / total : 0.0;
-          final color = _planColors[plan] ?? AppColors.primary;
-          final label = _planLabels[plan] ?? plan;
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(label, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600,
-                        color: theme.colorScheme.onSurface)),
-                    Text('$count negocios (${(pct * 100).toStringAsFixed(0)}%)',
-                        style: GoogleFonts.inter(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: pct,
-                    minHeight: 8,
-                    backgroundColor: color.withValues(alpha: 0.12),
-                    valueColor: AlwaysStoppedAnimation<Color>(color),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-}
-
-class _ErrorCard extends StatelessWidget {
-  const _ErrorCard({required this.message});
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.red.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.error_outline, color: Colors.red),
-          const SizedBox(width: 12),
-          Expanded(child: Text(message, style: GoogleFonts.inter(fontSize: 13, color: Colors.red))),
-        ],
+  Widget build(BuildContext context, WidgetRef ref) {
+    return OutlinedButton.icon(
+      onPressed: () => ref.invalidate(adminStatsProvider),
+      icon: const Icon(Icons.refresh_rounded, size: 16),
+      label: const Text('Actualizar'),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.primary,
+        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        textStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500),
       ),
     );
   }

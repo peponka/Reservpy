@@ -80,10 +80,12 @@ class _ReservPyAppState extends ConsumerState<ReservPyApp> {
       final userWithRoles = profile.copyWith(roles: roles);
       ref.read(currentUserProvider.notifier).state = userWithRoles;
 
-      // Set active role based on roles
-      final activeRole = roles.contains(UserRole.businessOwner)
-          ? UserRole.businessOwner
-          : roles.first;
+      // Set active role — admin takes highest priority
+      final activeRole = roles.contains(UserRole.admin)
+          ? UserRole.admin
+          : roles.contains(UserRole.businessOwner)
+              ? UserRole.businessOwner
+              : roles.first;
       ref.read(activeRoleProvider.notifier).state = activeRole;
 
       // Refresh business data if applicable
