@@ -66,7 +66,8 @@ class AdminShell extends ConsumerWidget {
               onTap: (i) => ref.read(adminNavIndexProvider.notifier).state = i,
               onLogout: () async {
                 await AuthRepository().signOut();
-                if (context.mounted) context.go('/');
+                // El GoRouter refreshListenable detecta el cambio de sesión
+                // y redirige solo a '/'. No navegamos manualmente.
               },
               ref: ref,
             ),
