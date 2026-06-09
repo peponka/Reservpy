@@ -95,39 +95,65 @@ class _AdminTopBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Container(
-      height:      64,
-      decoration:  const BoxDecoration(
-        color:  AC.surface,
-        border: Border(bottom: BorderSide(color: AC.border)),
+      height:  64,
+      decoration: BoxDecoration(
+        color: AC.surface,
+        border: const Border(bottom: BorderSide(color: AC.border)),
+        boxShadow: [
+          BoxShadow(
+            color:      const Color(0x06000020),
+            blurRadius: 12,
+            offset:     const Offset(0, 2),
+          ),
+        ],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 28),
+      padding: const EdgeInsets.symmetric(horizontal: 32),
       child: Row(
         children: [
           Text(
             _navItems[currentIndex].label,
             style: GoogleFonts.spaceGrotesk(
-              fontSize: 18, fontWeight: FontWeight.w600, color: AC.text,
+              fontSize: 19, fontWeight: FontWeight.w700, color: AC.text,
             ),
           ),
           const Spacer(),
-          // Pulse indicator
           Container(
-            width: 8, height: 8,
-            decoration: const BoxDecoration(color: AC.success, shape: BoxShape.circle),
-          ).animate(onPlay: (c) => c.repeat())
-              .then(delay: 1000.ms)
-              .fade(begin: 1, end: 0.2, duration: 800.ms)
-              .then()
-              .fade(begin: 0.2, end: 1, duration: 800.ms),
-          const SizedBox(width: 8),
-          Text('Sistema operativo', style: GoogleFonts.inter(fontSize: 12, color: AC.textSec)),
-          const SizedBox(width: 20),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color:        AC.violet.withValues(alpha: 0.15),
+              color:        AC.success.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(20),
-              border:       Border.all(color: AC.violet.withValues(alpha: 0.3)),
+              border:       Border.all(color: AC.success.withValues(alpha: 0.2)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 7, height: 7,
+                  decoration: const BoxDecoration(color: AC.success, shape: BoxShape.circle),
+                ).animate(onPlay: (c) => c.repeat())
+                    .then(delay: 1000.ms)
+                    .fade(begin: 1, end: 0.3, duration: 800.ms)
+                    .then()
+                    .fade(begin: 0.3, end: 1, duration: 800.ms),
+                const SizedBox(width: 7),
+                Text('Sistema operativo', style: GoogleFonts.inter(
+                  fontSize: 12, fontWeight: FontWeight.w500, color: AC.success,
+                )),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AC.violet.withValues(alpha: 0.1),
+                  AC.violet.withValues(alpha: 0.06),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AC.violet.withValues(alpha: 0.2)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -175,41 +201,54 @@ class _AdminSidebarState extends ConsumerState<_AdminSidebar> {
     return Container(
       width: 240,
       decoration: const BoxDecoration(
-        color:  AC.surface,
-        border: Border(right: BorderSide(color: AC.border)),
+        color: AC.surface,
+        boxShadow: [
+          BoxShadow(
+            color:      Color(0x08000028),
+            blurRadius: 24,
+            offset:     Offset(4, 0),
+          ),
+        ],
       ),
       child: Column(
         children: [
           // ── Logo ──────────────────────────────────────────
           Container(
-            padding:     const EdgeInsets.fromLTRB(20, 22, 20, 18),
+            padding:     const EdgeInsets.fromLTRB(20, 24, 20, 20),
             decoration:  const BoxDecoration(
               border: Border(bottom: BorderSide(color: AC.border)),
             ),
             child: Row(
               children: [
                 Container(
-                  width:  36, height: 36,
+                  width:  40, height: 40,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                     gradient: const LinearGradient(
                       colors: AC.gradViolet,
                       begin: Alignment.topLeft,
                       end:   Alignment.bottomRight,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color:      AC.violet.withValues(alpha: 0.3),
+                        blurRadius: 10,
+                        offset:     const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                     child: Image.asset('assets/images/icon.png', fit: BoxFit.cover),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 11),
                 Text.rich(TextSpan(children: [
                   TextSpan(text: 'Reserv', style: GoogleFonts.spaceGrotesk(
-                    fontSize: 17, fontWeight: FontWeight.w800, color: AC.text,
+                    fontSize: 18, fontWeight: FontWeight.w800, color: AC.text,
                   )),
                   TextSpan(text: 'Py', style: GoogleFonts.spaceGrotesk(
-                    fontSize: 17, fontWeight: FontWeight.w800, color: AC.violet,
+                    fontSize: 18, fontWeight: FontWeight.w800, color: AC.violet,
                   )),
                 ])),
               ],
@@ -233,17 +272,24 @@ class _AdminSidebarState extends ConsumerState<_AdminSidebar> {
                       onTap: () => widget.onTap(i),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
-                        margin:   const EdgeInsets.only(bottom: 2),
-                        padding:  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        margin:   const EdgeInsets.only(bottom: 3),
+                        padding:  const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
                         decoration: BoxDecoration(
                           color: active
-                              ? AC.violet.withValues(alpha: 0.15)
+                              ? AC.violet.withValues(alpha: 0.08)
                               : hov
                                   ? AC.surfaceHigh
                                   : Colors.transparent,
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(12),
                           border: active
-                              ? Border.all(color: AC.violet.withValues(alpha: 0.3))
+                              ? Border.all(color: AC.violet.withValues(alpha: 0.18))
+                              : null,
+                          boxShadow: active
+                              ? [BoxShadow(
+                                  color: AC.violet.withValues(alpha: 0.08),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                )]
                               : null,
                         ),
                         child: Row(

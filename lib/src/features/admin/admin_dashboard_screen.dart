@@ -73,7 +73,7 @@ class _DashboardBody extends ConsumerWidget {
     final fmt = NumberFormat('#,###', 'es_PY');
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(28),
+      padding: const EdgeInsets.all(32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -84,12 +84,12 @@ class _DashboardBody extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Bienvenido de nuevo 👋', style: GoogleFonts.spaceGrotesk(
-                    fontSize: 26, fontWeight: FontWeight.w700, color: AC.text,
+                    fontSize: 30, fontWeight: FontWeight.w700, color: AC.text,
                   )),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 5),
                   Text(
                     DateFormat("EEEE d 'de' MMMM, yyyy", 'es').format(DateTime.now()),
-                    style: GoogleFonts.inter(fontSize: 13, color: AC.textSec),
+                    style: GoogleFonts.inter(fontSize: 14, color: AC.textSec),
                   ),
                 ],
               ),
@@ -101,7 +101,7 @@ class _DashboardBody extends ConsumerWidget {
               ),
             ],
           ).animate().fadeIn(duration: 400.ms),
-          const SizedBox(height: 28),
+          const SizedBox(height: 32),
 
           // Overdue alert
           if (stats.overdueCount > 0)
@@ -110,8 +110,8 @@ class _DashboardBody extends ConsumerWidget {
 
           // ── KPI cards ─────────────────────────────────────
           Wrap(
-            spacing: 16,
-            runSpacing: 16,
+            spacing: 20,
+            runSpacing: 20,
             children: [
               _KpiCard(
                 label:    'Ingresos del mes',
@@ -132,7 +132,7 @@ class _DashboardBody extends ConsumerWidget {
                 label:    'Reservas este mes',
                 value:    stats.reservationsThisMonth.toDouble(),
                 icon:     Icons.calendar_month_rounded,
-                gradient: [const Color(0xFF00B4D8), const Color(0xFF0096C7)],
+                gradient: [const Color(0xFF0EA5E9), const Color(0xFF0284C7)],
                 fmt:      fmt,
               ),
               _KpiCard(
@@ -140,7 +140,7 @@ class _DashboardBody extends ConsumerWidget {
                 value:    stats.completionRate,
                 suffix:   '%',
                 icon:     Icons.task_alt_rounded,
-                gradient: [AC.success, const Color(0xFF1DB954)],
+                gradient: [AC.success, const Color(0xFF059669)],
                 fmt:      NumberFormat('#.#'),
                 isSmall:  true,
               ),
@@ -148,7 +148,7 @@ class _DashboardBody extends ConsumerWidget {
               e.value.animate(delay: Duration(milliseconds: 80 * e.key))
                   .fadeIn(duration: 350.ms).slideY(begin: 0.15, end: 0)).toList(),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 32),
 
           // ── Revenue chart ─────────────────────────────────
           if (stats.monthlyRevenue.isNotEmpty)
@@ -240,40 +240,58 @@ class _KpiCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width:  220,
-      padding: const EdgeInsets.all(20),
+      width: 272,
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color:  AC.surface,
-        borderRadius: BorderRadius.circular(16),
+        color: AC.surface,
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AC.border),
+        boxShadow: const [
+          BoxShadow(
+            color:      Color(0x09000030),
+            blurRadius: 28,
+            offset:     Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: gradient,
-                      begin: Alignment.topLeft, end: Alignment.bottomRight),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, size: 16, color: Colors.white),
+          Container(
+            padding: const EdgeInsets.all(13),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: gradient,
+                begin: Alignment.topLeft,
+                end:   Alignment.bottomRight,
               ),
-            ],
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color:      gradient.first.withValues(alpha: 0.28),
+                  blurRadius: 14,
+                  offset:     const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Icon(icon, size: 22, color: Colors.white),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 22),
           CountUpValue(
             value:  value,
             prefix: prefix,
             suffix: suffix,
             style:  GoogleFonts.spaceGrotesk(
-              fontSize: isSmall ? 28 : 32, fontWeight: FontWeight.w700, color: AC.text,
+              fontSize:   isSmall ? 38 : 42,
+              fontWeight: FontWeight.w700,
+              color:      AC.text,
+              letterSpacing: -1,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(label, style: GoogleFonts.inter(fontSize: 12, color: AC.textSec)),
+          const SizedBox(height: 6),
+          Text(label, style: GoogleFonts.inter(
+            fontSize: 13, color: AC.textSec, fontWeight: FontWeight.w500,
+          )),
         ],
       ),
     );
@@ -362,7 +380,7 @@ class _RevenueChartState extends State<_RevenueChart> {
                       ),
                       lineTouchData: LineTouchData(
                         touchTooltipData: LineTouchTooltipData(
-                          getTooltipColor: (_) => AC.surfaceHigh,
+                          getTooltipColor: (_) => AC.text,
                           getTooltipItems: (spots) => spots.map((s) => LineTooltipItem(
                             '₲ ${widget.fmt.format(s.y)}',
                             GoogleFonts.spaceGrotesk(
@@ -373,25 +391,25 @@ class _RevenueChartState extends State<_RevenueChart> {
                       ),
                       lineBarsData: [
                         LineChartBarData(
-                          spots:          spots,
-                          isCurved:       true,
+                          spots:           spots,
+                          isCurved:        true,
                           curveSmoothness: 0.35,
-                          color:          AC.teal,
-                          barWidth:       2.5,
+                          color:           AC.teal,
+                          barWidth:        3,
                           dotData: FlDotData(
                             show: true,
                             getDotPainter: (spot, pct, bar, idx) => FlDotCirclePainter(
-                              radius: _touchedIndex == idx ? 6 : 3,
-                              color:  AC.teal,
-                              strokeColor: AC.bg,
-                              strokeWidth: 2,
+                              radius:      _touchedIndex == idx ? 6 : 4,
+                              color:       AC.teal,
+                              strokeColor: AC.surface,
+                              strokeWidth: 2.5,
                             ),
                           ),
                           belowBarData: BarAreaData(
                             show: true,
                             gradient: LinearGradient(
                               colors: [
-                                AC.teal.withValues(alpha: 0.25),
+                                AC.teal.withValues(alpha: 0.15),
                                 AC.teal.withValues(alpha: 0.0),
                               ],
                               begin: Alignment.topCenter,
@@ -417,7 +435,7 @@ class _PlanDonut extends StatelessWidget {
   final NumberFormat fmt;
 
   static const _colors = {
-    'free':       Color(0xFF4A4A6A),
+    'free':       Color(0xFFCBD5E1),
     'basic':      Color(0xFF0EA5E9),
     'pro':        AC.violet,
     'enterprise': AC.warning,
@@ -447,21 +465,25 @@ class _PlanDonut extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Por Plan', style: GoogleFonts.spaceGrotesk(
-            fontSize: 15, fontWeight: FontWeight.w700, color: AC.text,
+          Text('Distribución por Plan', style: GoogleFonts.spaceGrotesk(
+            fontSize: 16, fontWeight: FontWeight.w700, color: AC.text,
           )),
-          const SizedBox(height: 20),
+          const SizedBox(height: 4),
+          Text('Clientes por tipo de suscripción', style: GoogleFonts.inter(
+            fontSize: 12, color: AC.textSec,
+          )),
+          const SizedBox(height: 24),
           Row(
             children: [
               SizedBox(
-                width: 120, height: 120,
+                width: 130, height: 130,
                 child: PieChart(PieChartData(
-                  sections:    sections,
-                  centerSpaceRadius: 32,
-                  sectionsSpace: 3,
+                  sections:          sections,
+                  centerSpaceRadius: 36,
+                  sectionsSpace:     3,
                 )),
               ),
-              const SizedBox(width: 20),
+              const SizedBox(width: 24),
               Expanded(
                 child: Column(
                   children: byPlan.entries.where((e) => e.value > 0).map((e) {
@@ -469,19 +491,30 @@ class _PlanDonut extends StatelessWidget {
                     final label = _labels[e.key] ?? e.key;
                     final pct   = (e.value / total * 100).toStringAsFixed(0);
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.only(bottom: 12),
                       child: Row(
                         children: [
-                          Container(width: 10, height: 10,
-                              decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-                          const SizedBox(width: 8),
+                          Container(
+                            width: 10, height: 10,
+                            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                          ),
+                          const SizedBox(width: 10),
                           Expanded(child: Text(label,
-                              style: GoogleFonts.inter(fontSize: 12, color: AC.textSec))),
-                          Text('${e.value}', style: GoogleFonts.inter(
-                              fontSize: 13, fontWeight: FontWeight.w600, color: AC.text)),
-                          const SizedBox(width: 4),
-                          Text('$pct%', style: GoogleFonts.inter(
-                              fontSize: 11, color: AC.textMut)),
+                              style: GoogleFonts.inter(fontSize: 13, color: AC.textSec,
+                                  fontWeight: FontWeight.w500))),
+                          Text('${e.value}', style: GoogleFonts.spaceGrotesk(
+                              fontSize: 14, fontWeight: FontWeight.w700, color: AC.text)),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text('$pct%', style: GoogleFonts.inter(
+                                fontSize: 11, color: color,
+                                fontWeight: FontWeight.w600)),
+                          ),
                         ],
                       ),
                     );
@@ -510,9 +543,13 @@ class _SecondaryKpis extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Métricas Clave', style: GoogleFonts.spaceGrotesk(
-            fontSize: 15, fontWeight: FontWeight.w700, color: AC.text,
+            fontSize: 16, fontWeight: FontWeight.w700, color: AC.text,
           )),
-          const SizedBox(height: 16),
+          const SizedBox(height: 4),
+          Text('Indicadores de rendimiento del negocio', style: GoogleFonts.inter(
+            fontSize: 12, color: AC.textSec,
+          )),
+          const SizedBox(height: 20),
           _MetricRow(label: 'MRR', value: '₲ ${fmt.format(stats.mrr)}',
               color: AC.teal),
           _MetricRow(label: 'ARR proyectado', value: '₲ ${fmt.format(stats.arr)}',
@@ -525,7 +562,7 @@ class _SecondaryKpis extends StatelessWidget {
           _MetricRow(label: 'Pagos vencidos', value: '${stats.overdueCount}',
               color: stats.overdueCount > 0 ? AC.danger : AC.success),
           _MetricRow(label: 'Reservas canceladas', value: '${stats.cancelledReservations}',
-              color: AC.warning),
+              color: AC.warning, isLast: true),
         ],
       ),
     );
@@ -533,24 +570,39 @@ class _SecondaryKpis extends StatelessWidget {
 }
 
 class _MetricRow extends StatelessWidget {
-  const _MetricRow({required this.label, required this.value, required this.color});
+  const _MetricRow({
+    required this.label,
+    required this.value,
+    required this.color,
+    this.isLast = false,
+  });
   final String label;
   final String value;
   final Color color;
+  final bool isLast;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      decoration: isLast ? null : BoxDecoration(
+        border: Border(bottom: BorderSide(color: AC.border, width: 0.8)),
+      ),
       child: Row(
         children: [
-          Container(width: 3, height: 28, decoration: BoxDecoration(
-            color: color, borderRadius: BorderRadius.circular(2))),
-          const SizedBox(width: 12),
+          Container(
+            width: 4, height: 32,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+          const SizedBox(width: 14),
           Expanded(child: Text(label,
-              style: GoogleFonts.inter(fontSize: 12, color: AC.textSec))),
+              style: GoogleFonts.inter(fontSize: 13, color: AC.textSec,
+                  fontWeight: FontWeight.w500))),
           Text(value, style: GoogleFonts.spaceGrotesk(
-              fontSize: 15, fontWeight: FontWeight.w600, color: AC.text)),
+              fontSize: 15, fontWeight: FontWeight.w700, color: AC.text)),
         ],
       ),
     );

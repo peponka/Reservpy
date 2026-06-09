@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -6,69 +5,69 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AC {
   // Backgrounds
-  static const bg          = Color(0xFF0A0A0F);
-  static const surface     = Color(0xFF111118);
-  static const surfaceHigh = Color(0xFF16161F);
-  static const border      = Color(0xFF1E1E2E);
-  static const borderBright = Color(0xFF2A2A3E);
+  static const bg           = Color(0xFFF5F6FA);
+  static const surface      = Color(0xFFFFFFFF);
+  static const surfaceHigh  = Color(0xFFF0F2F9);
+  static const border       = Color(0xFFE8EBF4);
+  static const borderBright = Color(0xFFD0D5E8);
 
   // Accents
   static const violet  = Color(0xFF6C63FF);
-  static const teal    = Color(0xFF00D4AA);
-  static const danger  = Color(0xFFFF4757);
-  static const warning = Color(0xFFFFA502);
-  static const success = Color(0xFF2ED573);
-  static const info    = Color(0xFF2196F3);
+  static const teal    = Color(0xFF00B894);
+  static const danger  = Color(0xFFEF4444);
+  static const warning = Color(0xFFF59E0B);
+  static const success = Color(0xFF10B981);
+  static const info    = Color(0xFF3B82F6);
 
   // Text
-  static const text    = Color(0xFFF0F0FF);
-  static const textSec = Color(0xFF8585A4);
-  static const textMut = Color(0xFF4A4A6A);
+  static const text    = Color(0xFF111827);
+  static const textSec = Color(0xFF6B7280);
+  static const textMut = Color(0xFF9CA3AF);
 
   // Gradient pairs
   static const gradViolet = [Color(0xFF6C63FF), Color(0xFF9C6FFF)];
-  static const gradTeal   = [Color(0xFF00D4AA), Color(0xFF00B4D8)];
-  static const gradFire   = [Color(0xFFFF4757), Color(0xFFFF6B35)];
-  static const gradGold   = [Color(0xFFFFA502), Color(0xFFFFD700)];
+  static const gradTeal   = [Color(0xFF00B894), Color(0xFF00CEC9)];
+  static const gradFire   = [Color(0xFFEF4444), Color(0xFFFF6B35)];
+  static const gradGold   = [Color(0xFFF59E0B), Color(0xFFFFD700)];
 }
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
 
 ThemeData adminTheme() {
   return ThemeData(
-    brightness:       Brightness.dark,
+    brightness:              Brightness.light,
     scaffoldBackgroundColor: AC.bg,
-    colorScheme: const ColorScheme.dark(
-      surface:          AC.surface,
-      surfaceContainerLowest: AC.surface,
-      surfaceContainerLow:    AC.surfaceHigh,
-      primary:          AC.violet,
-      secondary:        AC.teal,
-      error:            AC.danger,
-      onSurface:        AC.text,
-      onPrimary:        Colors.white,
+    colorScheme: const ColorScheme.light(
+      surface:                    AC.surface,
+      surfaceContainerLowest:     AC.surface,
+      surfaceContainerLow:        AC.surfaceHigh,
+      primary:                    AC.violet,
+      secondary:                  AC.teal,
+      error:                      AC.danger,
+      onSurface:                  AC.text,
+      onPrimary:                  Colors.white,
     ),
     dividerColor: AC.border,
     textTheme: TextTheme(
-      displayLarge: GoogleFonts.spaceGrotesk(color: AC.text, fontWeight: FontWeight.w700),
+      displayLarge:  GoogleFonts.spaceGrotesk(color: AC.text, fontWeight: FontWeight.w700),
       displayMedium: GoogleFonts.spaceGrotesk(color: AC.text, fontWeight: FontWeight.w700),
       headlineLarge: GoogleFonts.spaceGrotesk(color: AC.text, fontWeight: FontWeight.w700),
       headlineMedium: GoogleFonts.spaceGrotesk(color: AC.text, fontWeight: FontWeight.w700),
       headlineSmall: GoogleFonts.spaceGrotesk(color: AC.text, fontWeight: FontWeight.w600),
-      titleLarge: GoogleFonts.inter(color: AC.text, fontWeight: FontWeight.w600),
-      titleMedium: GoogleFonts.inter(color: AC.text, fontWeight: FontWeight.w500),
-      bodyLarge: GoogleFonts.inter(color: AC.text),
-      bodyMedium: GoogleFonts.inter(color: AC.textSec),
-      bodySmall: GoogleFonts.inter(color: AC.textSec, fontSize: 12),
-      labelLarge: GoogleFonts.inter(color: AC.text, fontWeight: FontWeight.w600),
+      titleLarge:    GoogleFonts.inter(color: AC.text, fontWeight: FontWeight.w600),
+      titleMedium:   GoogleFonts.inter(color: AC.text, fontWeight: FontWeight.w500),
+      bodyLarge:     GoogleFonts.inter(color: AC.text),
+      bodyMedium:    GoogleFonts.inter(color: AC.textSec),
+      bodySmall:     GoogleFonts.inter(color: AC.textSec, fontSize: 12),
+      labelLarge:    GoogleFonts.inter(color: AC.text, fontWeight: FontWeight.w600),
     ),
     iconTheme: const IconThemeData(color: AC.textSec),
     inputDecorationTheme: InputDecorationTheme(
-      filled:      true,
-      fillColor:   AC.surfaceHigh,
-      hintStyle:   GoogleFonts.inter(color: AC.textMut),
-      labelStyle:  GoogleFonts.inter(color: AC.textSec),
-      border:      OutlineInputBorder(
+      filled:     true,
+      fillColor:  AC.surfaceHigh,
+      hintStyle:  GoogleFonts.inter(color: AC.textMut),
+      labelStyle: GoogleFonts.inter(color: AC.textSec),
+      border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
         borderSide:   const BorderSide(color: AC.border),
       ),
@@ -83,16 +82,16 @@ ThemeData adminTheme() {
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     ),
     cardTheme: CardThemeData(
-      color:  AC.surface,
+      color:     AC.surface,
       elevation: 0,
-      shape:  RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
         side:         const BorderSide(color: AC.border),
       ),
     ),
     chipTheme: ChipThemeData(
       backgroundColor: AC.surfaceHigh,
-      selectedColor:   AC.violet.withValues(alpha: 0.2),
+      selectedColor:   AC.violet.withValues(alpha: 0.12),
       labelStyle:      GoogleFonts.inter(color: AC.textSec, fontSize: 12),
       side:            const BorderSide(color: AC.border),
       shape:           RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -116,7 +115,7 @@ ThemeData adminTheme() {
       ),
     ),
     scrollbarTheme: ScrollbarThemeData(
-      thumbColor: WidgetStateProperty.all(AC.border),
+      thumbColor: WidgetStateProperty.all(AC.borderBright),
       radius:     const Radius.circular(4),
       thickness:  WidgetStateProperty.all(4),
     ),
@@ -125,7 +124,7 @@ ThemeData adminTheme() {
 
 // ── Reusable widgets ──────────────────────────────────────────────────────────
 
-/// Card with glassmorphism + gradient border
+/// Card with subtle shadow + optional gradient border
 class AdminCard extends StatelessWidget {
   const AdminCard({
     super.key,
@@ -151,10 +150,19 @@ class AdminCard extends StatelessWidget {
       height: height,
       decoration: BoxDecoration(
         color:        AC.surface,
-        borderRadius: BorderRadius.circular(16),
-        border:       Border.all(color: gradient ? Colors.transparent : AC.border),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: gradient ? Colors.transparent : AC.border,
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color:       Color(0x08000030),
+            blurRadius:  24,
+            offset:      Offset(0, 6),
+          ),
+        ],
       ),
-      padding: padding ?? const EdgeInsets.all(20),
+      padding: padding ?? const EdgeInsets.all(24),
       child: child,
     );
 
@@ -164,11 +172,18 @@ class AdminCard extends StatelessWidget {
             height: height,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0x226C63FF), Color(0x2200D4AA)],
+                colors: [Color(0x1A6C63FF), Color(0x1400B894)],
                 begin:  Alignment.topLeft,
                 end:    Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(17),
+              borderRadius: BorderRadius.circular(21),
+              boxShadow: const [
+                BoxShadow(
+                  color:       Color(0x0C6C63FF),
+                  blurRadius:  32,
+                  offset:      Offset(0, 8),
+                ),
+              ],
             ),
             padding: const EdgeInsets.all(1),
             child: inner,
@@ -178,12 +193,12 @@ class AdminCard extends StatelessWidget {
     if (onTap != null) {
       result = Material(
         color:        Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: InkWell(
           onTap:        onTap,
-          borderRadius: BorderRadius.circular(16),
-          splashColor:  AC.violet.withValues(alpha: 0.08),
-          hoverColor:   AC.violet.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(20),
+          splashColor:  AC.violet.withValues(alpha: 0.06),
+          hoverColor:   AC.violet.withValues(alpha: 0.03),
           child: result,
         ),
       );
@@ -268,7 +283,6 @@ class _CountUpValueState extends State<CountUpValue>
   }
 
   String _fmt(double v) {
-    // Format with thousands separator
     final n = v.toInt();
     final s = n.toString();
     final buf = StringBuffer();
@@ -283,13 +297,13 @@ class _CountUpValueState extends State<CountUpValue>
 /// Severity badge
 class SeverityBadge extends StatelessWidget {
   const SeverityBadge({super.key, required this.severity});
-  final String severity; // leve | moderado | critico
+  final String severity;
 
   Color get _color {
     switch (severity) {
       case 'critico':  return AC.danger;
       case 'moderado': return AC.warning;
-      default:         return const Color(0xFFFFE066);
+      default:         return const Color(0xFFD97706);
     }
   }
 
@@ -306,9 +320,9 @@ class SeverityBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
       decoration: BoxDecoration(
-        color:        _color.withValues(alpha: 0.15),
+        color:        _color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border:       Border.all(color: _color.withValues(alpha: 0.3)),
+        border:       Border.all(color: _color.withValues(alpha: 0.25)),
       ),
       child: Text(_label, style: GoogleFonts.inter(
         fontSize: 11, fontWeight: FontWeight.w600, color: _color,
@@ -355,9 +369,9 @@ class StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
       decoration: BoxDecoration(
-        color:        _color.withValues(alpha: 0.12),
+        color:        _color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border:       Border.all(color: _color.withValues(alpha: 0.25)),
+        border:       Border.all(color: _color.withValues(alpha: 0.2)),
       ),
       child: Text(_label, style: GoogleFonts.inter(
         fontSize: 11, fontWeight: FontWeight.w600, color: _color,
