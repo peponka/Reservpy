@@ -87,10 +87,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       // no redirigir — esperar al próximo refresh del refreshListenable.
       if (isLoggedIn && user == null) return null;
 
-      // Admin users are ALWAYS redirected to /admin — no role selector ever.
+      // Admin users go to /admin automatically, except from the landing page.
       if (isLoggedIn && user != null && user.hasRole(UserRole.admin)) {
+        if (state.matchedLocation == '/') return null; // allow browsing landing
         if (state.matchedLocation != '/admin') return '/admin';
-        return null; // already on /admin, do nothing
+        return null;
       }
       // Protect /admin from non-admins
       if (state.matchedLocation == '/admin') {
@@ -101,9 +102,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Not logged in → allow public pages, redirect others to landing
       if (!isLoggedIn && !isPublicPage) return '/';
 
-      // Logged in but on auth/landing page → redirect to home
-      if (isLoggedIn && (state.matchedLocation == '/' ||
-          state.matchedLocation == '/login' ||
+      // Logged in but on auth pages → redirect to home
+      // (landing page '/' is NOT included — admins and users can browse it freely)
+      if (isLoggedIn && (state.matchedLocation == '/login' ||
           state.matchedLocation == '/register' ||
           state.matchedLocation == '/forgot-password')) {
         // Admin goes directly to admin panel
