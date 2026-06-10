@@ -1,17 +1,13 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:reservpy/src/features/landing/landing_theme.dart';
-import 'package:reservpy/src/shared/providers/providers.dart';
-import 'package:reservpy/src/shared/models/models.dart';
-import 'package:reservpy/src/data/repositories/auth_repository.dart';
 
 /// Fixed top navbar with blur backdrop, responsive mobile menu, and scroll-to
 /// callbacks for each section.
-class LandingNavbar extends ConsumerStatefulWidget {
+class LandingNavbar extends StatefulWidget {
   const LandingNavbar({
     super.key,
     this.onFeaturesPressed,
@@ -26,79 +22,16 @@ class LandingNavbar extends ConsumerStatefulWidget {
   final VoidCallback? onPricingPressed;
 
   @override
-  ConsumerState<LandingNavbar> createState() => _LandingNavbarState();
+  State<LandingNavbar> createState() => _LandingNavbarState();
 }
 
-class _LandingNavbarState extends ConsumerState<LandingNavbar> {
+class _LandingNavbarState extends State<LandingNavbar> {
   bool _mobileMenuOpen = false;
 
   void _toggleMenu() => setState(() => _mobileMenuOpen = !_mobileMenuOpen);
 
   void _closeMenu() {
     if (_mobileMenuOpen) setState(() => _mobileMenuOpen = false);
-  }
-
-  bool _googleLoading = false;
-
-  Future<void> _handleGoogle() async {
-    if (_googleLoading) return;
-    setState(() => _googleLoading = true);
-    try {
-      await AuthRepository().signInWithGoogle();
-    } finally {
-      if (mounted) setState(() => _googleLoading = false);
-    }
-  }
-
-  Widget _buildAuthButtons(BuildContext context, {bool closingMenu = false}) {
-    final isLoggedIn = ref.watch(isLoggedInProvider);
-    final activeRole = ref.watch(activeRoleProvider);
-
-    if (isLoggedIn) {
-      final label = activeRole == UserRole.admin
-          ? 'Panel admin →'
-          : activeRole == UserRole.businessOwner || activeRole == UserRole.business
-              ? 'Mi negocio →'
-              : 'Mi cuenta →';
-      final route = activeRole == UserRole.businessOwner || activeRole == UserRole.business
-          ? '/business'
-          : '/client';
-
-      return _PrimaryPillButton(
-        label: label,
-        onTap: () {
-          if (closingMenu) _closeMenu();
-          context.go(route);
-        },
-      );
-    }
-
-    // Not logged in
-    final googleBtn = _GoogleNavButton(
-      loading: _googleLoading,
-      onTap: () {
-        if (closingMenu) _closeMenu();
-        _handleGoogle();
-      },
-    );
-    final loginBtn = _GhostButton(
-      label: 'Ingresar',
-      onTap: () {
-        if (closingMenu) _closeMenu();
-        context.go('/login');
-      },
-    );
-
-    if (closingMenu) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [loginBtn, const SizedBox(height: 8), googleBtn],
-      );
-    }
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [loginBtn, const SizedBox(width: 8), googleBtn],
-    );
   }
 
   @override
@@ -170,7 +103,15 @@ class _LandingNavbarState extends ConsumerState<LandingNavbar> {
                             },
                           ),
                           const SizedBox(width: 16),
-                          _buildAuthButtons(context),
+                          _GhostButton(
+                            label: 'Ingresar',
+                            onTap: () => context.go('/login'),
+                          ),
+                          const SizedBox(width: 8),
+                          _PrimaryPillButton(
+                            label: 'Registrarse →',
+                            onTap: () => context.go('/register'),
+                          ),
                         ],
 
                         // ── Mobile hamburger ──────────────
@@ -264,7 +205,9 @@ class _LandingNavbarState extends ConsumerState<LandingNavbar> {
                       },
                     ),
                     const SizedBox(height: 12),
-                    _buildAuthButtons(context, closingMenu: true),
+                    _GhostButton(label: 'Ingresar', onTap: () { _closeMenu(); context.go('/login'); }),
+                    const SizedBox(height: 8),
+                    _PrimaryPillButton(label: 'Registrarse →', onTap: () { _closeMenu(); context.go('/register'); }),
                   ],
                 ),
               ),
@@ -315,70 +258,6 @@ class _Logo extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-// ── Google Sign-In button for navbar ─────────────────────────────────────────
-
-class _GoogleNavButton extends StatefulWidget {
-  const _GoogleNavButton({required this.onTap, this.loading = false});
-  final VoidCallback onTap;
-  final bool loading;
-
-  @override
-  State<_GoogleNavButton> createState() => _GoogleNavButtonState();
-}
-
-class _GoogleNavButtonState extends State<_GoogleNavButton> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: _hovered ? const Color(0xFFF1F3F4) : Colors.white,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: const Color(0xFFDADCE0)),
-            boxShadow: _hovered
-                ? [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8, offset: const Offset(0, 2))]
-                : [],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (widget.loading)
-                const SizedBox(
-                  width: 18, height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF4285F4)),
-                )
-              else
-                Image.network(
-                  'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
-                  width: 18, height: 18,
-                  errorBuilder: (_, __, ___) => const Icon(Icons.login, size: 18, color: Color(0xFF4285F4)),
-                ),
-              const SizedBox(width: 8),
-              Text(
-                'Continuar con Google',
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF3C4043),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
