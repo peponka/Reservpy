@@ -34,6 +34,9 @@ final profileByIdProvider =
 // ─── Auth ────────────────────────────────────────────────
 final isLoggedInProvider = StateProvider<bool>((ref) => false);
 final currentUserProvider = StateProvider<AppUser?>((ref) => null);
+/// Only true when the admin explicitly authenticated via /admin-login.
+/// A regular user session (even with admin role) does NOT grant access to /admin.
+final adminSessionActiveProvider = StateProvider<bool>((ref) => false);
 /// The currently active role for navigation/display purposes.
 /// This is the role the user chose at login (or last switched to).
 final activeRoleProvider = StateProvider<UserRole>((ref) => UserRole.client);

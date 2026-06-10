@@ -93,6 +93,7 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
 
         ref.read(activeRoleProvider.notifier).state = UserRole.admin;
         ref.read(isLoggedInProvider.notifier).state = true;
+        ref.read(adminSessionActiveProvider.notifier).state = true;
 
         if (!mounted) return;
         context.go('/admin');

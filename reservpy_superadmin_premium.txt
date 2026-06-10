@@ -1,0 +1,684 @@
+================================================================
+PROMPT MAESTRO — RESERVPY SUPER ADMIN PANEL PREMIUM
+Versión 2.0 — Experiencia de clase enterprise
+================================================================
+
+VISIÓN GENERAL
+--------------
+Estás construyendo el panel de control definitivo para Reservpy,
+un SaaS de reservas para el mercado latinoamericano. Este NO es
+un panel admin genérico. Es un Super Admin Premium de nivel
+enterprise: visualmente impactante, funcionalmente completo,
+con inteligencia de negocio real integrada.
+
+Cada pantalla debe sentirse como un producto de $500/mes, no
+como un CRUD básico con tablas. El admin que use esto debe
+sentir que tiene control total y visibilidad completa de su
+negocio en todo momento.
+
+Stack: Next.js 14 (App Router) + Supabase + Tailwind CSS +
+       Recharts (gráficos) + Framer Motion (animaciones)
+       + Resend (emails transaccionales)
+
+Acceso Super Admin: pepeq68@gmail.com (protegido, no removible)
+
+Prioridad: Bug #1 → Feature #2 → Feature #3A → #3B → #3C → #3D
+
+
+================================================================
+ESTÉTICA Y DISEÑO — NIVEL PREMIUM OBLIGATORIO
+================================================================
+
+El panel debe seguir estos principios de diseño sin excepción:
+
+PALETA DE COLORES:
+- Fondo base: #0A0A0F (negro profundo con leve tono azulado)
+- Superficie cards: #111118 con borde 1px #1E1E2E
+- Acento primario: #6C63FF (violeta eléctrico)
+- Acento secundario: #00D4AA (teal brillante)
+- Peligro/Alerta: #FF4757
+- Advertencia: #FFA502
+- Éxito: #2ED573
+- Texto primario: #F0F0FF
+- Texto secundario: #8585A4
+
+TIPOGRAFÍA:
+- Títulos y números grandes: "Space Grotesk" (Google Fonts)
+- Body y UI: "Inter" variable
+- Monoespaciado (IDs, códigos): "JetBrains Mono"
+- Números de KPI: mínimo 36px, font-weight 700
+
+EFECTOS VISUALES:
+- Cards con glassmorphism sutil: backdrop-filter blur(12px)
+  con background rgba(17, 17, 24, 0.85)
+- Bordes con gradiente en cards importantes:
+  border-image: linear-gradient(135deg, #6C63FF22, #00D4AA22)
+- Micro-animaciones en todos los cambios de estado (Framer Motion)
+- Números de KPI con animación count-up al cargar (useCountUp)
+- Gráficos con animación de entrada desde abajo
+- Loading skeletons con shimmer effect en cada sección
+- Hover states con glow sutil en cards: box-shadow 0 0 20px #6C63FF18
+- Sidebar con indicador activo animado (pill deslizante)
+- Notificaciones con toast personalizado (no usar librerías genéricas)
+
+LAYOUT:
+- Sidebar fijo izquierdo: 260px, dark profundo
+- Header top: 64px con búsqueda global y notificaciones
+- Área de contenido: padding 32px, grid-gap 24px
+- Cards de métricas: altura mínima 120px, ícono decorativo grande
+- Tablas con row highlight animado al hover
+- Modales con backdrop blur y entrada con spring animation
+
+
+================================================================
+BUG #1 — FIX CRÍTICO: LOOP DE "ENTRAR COMO ADMINISTRADOR"
+================================================================
+
+Problema:
+Después de hacer login, la pantalla sigue mostrando el botón
+"Entrar como Administrador" en lugar de redirigir al dashboard.
+El estado de autenticación no se propaga correctamente.
+
+Causa probable:
+El componente de login no espera a que el contexto de auth
+(AuthContext o Zustand store) se actualice antes de decidir
+el redirect. El guard de ruta chequea el rol antes de que
+Supabase termine de devolver la sesión.
+
+Solución completa:
+
+1. En el AuthProvider, asegurarse de tener un estado "loading":
+
+   const [user, setUser] = useState(null)
+   const [role, setRole] = useState(null)
+   const [loading, setLoading] = useState(true)
+
+   useEffect(() => {
+     supabase.auth.getSession().then(({ data: { session } }) => {
+       setUser(session?.user ?? null)
+       if (session?.user) {
+         fetchUserRole(session.user.id).then(setRole)
+       }
+       setLoading(false)
+     })
+
+     const { data: { subscription } } = supabase.auth.onAuthStateChange(
+       async (_event, session) => {
+         setUser(session?.user ?? null)
+         if (session?.user) {
+           const r = await fetchUserRole(session.user.id)
+           setRole(r)
+         } else {
+           setRole(null)
+         }
+       }
+     )
+     return () => subscription.unsubscribe()
+   }, [])
+
+2. En el guard de ruta del admin (middleware.ts o layout.tsx):
+   - Si loading === true: mostrar skeleton, NO redirigir
+   - Si loading === false y role === 'admin' o 'super_admin': permitir
+   - Si loading === false y no hay sesión: redirigir a /login
+   - Si ya hay sesión activa en /login: redirigir a /admin/dashboard
+
+3. Eliminar cualquier botón manual de "Entrar como Administrador".
+   El acceso debe ser automático basado en el rol, nunca manual.
+
+
+================================================================
+FEATURE #2 — GESTIÓN DE EQUIPO (TEAM MANAGEMENT) PREMIUM
+================================================================
+
+Descripción:
+Sección completa de gestión de equipo con UX de nivel enterprise.
+El Super Admin puede construir su equipo con roles granulares
+y control total sobre cada miembro.
+
+ROLES DEL SISTEMA:
+
+super_admin → Acceso irrestricto. Solo pepeq68@gmail.com.
+              No puede ser removido ni modificado por nadie.
+
+admin       → Acceso completo excepto configuración del super admin.
+              Puede gestionar el equipo (excepto super_admin).
+              Puede ver y editar todos los clientes y pagos.
+
+manager     → Acceso a clientes, reservas y métricas.
+              Puede marcar pagos, agregar notas, enviar recordatorios.
+              No puede gestionar equipo ni cambiar configuración.
+
+soporte     → Solo lectura de clientes y reservas.
+              Puede agregar notas internas.
+              No puede modificar datos ni ver métricas financieras.
+
+PANTALLA "MI EQUIPO":
+
+Layout:
+- Header con contador "X miembros activos" y botón "+ Invitar"
+- Grid de cards por miembro (no tabla, cards visuales)
+- Cada card muestra: avatar con iniciales, nombre, email,
+  rol con badge de color, estado, fecha de ingreso,
+  último acceso (hace X días/horas), menú de acciones (3 puntos)
+
+Funcionalidades:
+- Modal de invitación:
+    · Campo email con validación
+    · Selector de rol con descripción de permisos de cada uno
+    · Mensaje personalizado opcional (aparece en el email)
+    · Botón "Enviar invitación" con confirmación visual
+- Invitaciones pendientes: sección separada con badge "Pendiente"
+  y opción de reenviar o cancelar invitación
+- Cambio de rol: dropdown inline en la card, con confirmación
+- Revocar acceso: botón con modal de confirmación destructiva
+  que explica qué pierde el usuario al ser removido
+- Log de actividad del equipo: quién hizo qué y cuándo
+  (visible solo para super_admin y admin)
+
+Email de invitación (via Resend):
+- Asunto: "Te invitaron a gestionar Reservpy"
+- Template HTML premium con branding de Reservpy
+- CTA: "Aceptar invitación" → link con token único y expiración 48h
+- Si ya tiene cuenta en Supabase, auto-vincula el rol
+- Si no tiene cuenta, muestra flujo de registro simplificado
+
+
+================================================================
+FEATURE #3A — DASHBOARD PRINCIPAL PREMIUM (HOME DEL SUPER ADMIN)
+================================================================
+
+Este es el corazón del Super Admin. Debe dar inteligencia de
+negocio real en un vistazo. Diseño tipo "mission control".
+
+SECCIÓN 1 — BARRA DE ESTADO SUPERIOR (full width)
+Mostrar en tiempo real (con polling cada 60s o Supabase realtime):
+- Clientes activos ahora (los que tienen reservas en las próximas 2h)
+- Reservas del día: completadas / pendientes / canceladas
+- Alerta roja si hay clientes con pago vencido hace +7 días
+
+SECCIÓN 2 — KPI CARDS PRINCIPALES (grid 4 columnas)
+Cada card con: ícono grande decorativo, label, número principal
+con animación count-up, variación vs mes anterior con flecha
+de color (verde/rojo), mini sparkline de los últimos 30 días.
+
+KPIs a mostrar:
+- Ingresos del mes (en PYG con separador de miles)
+- Total clientes activos
+- Reservas totales del mes
+- Tasa de retención mensual (%)
+
+SECCIÓN 3 — GRÁFICO DE INGRESOS (ancho completo)
+- Gráfico de área con gradiente bajo la curva (Recharts AreaChart)
+- Selector de período: 7D / 30D / 3M / 6M / 1A
+- Línea de comparación con período anterior (gris punteado)
+- Tooltip personalizado con formato de moneda PYG
+- Anotaciones en picos y caídas importantes
+
+SECCIÓN 4 — GRID DE DOS COLUMNAS
+Columna izquierda: "Últimos clientes registrados"
+- Lista de los 5 más recientes con avatar, nombre, plan, fecha
+- Botón "Ver todos" → redirige a /admin/clients
+
+Columna derecha: "Alertas de pagos vencidos"
+- Lista de los 5 más urgentes ordenados por días de atraso
+- Indicador visual de severidad (color según antigüedad)
+- Acción rápida "Enviar recordatorio" inline
+- Botón "Ver todos" → redirige a /admin/payments/overdue
+
+SECCIÓN 5 — MÉTRICAS SECUNDARIAS (grid 3 columnas)
+- Distribución de planes (donut chart: básico / pro / enterprise)
+- Top 5 clientes por ingresos generados (bar chart horizontal)
+- Actividad del equipo: últimas acciones registradas
+
+
+================================================================
+FEATURE #3B — VISTA DETALLADA POR CLIENTE (PERFIL PREMIUM)
+================================================================
+
+Al hacer click en un cliente, abrir una página dedicada
+/admin/clients/[id] con toda la información en profundidad.
+
+HEADER DEL PERFIL:
+- Avatar con iniciales del negocio (círculo con color único
+  generado a partir del nombre — algoritmo HSL determinístico)
+- Nombre del negocio grande (Space Grotesk, 28px)
+- Badge de plan y badge de estado con color semántico
+- Fecha de cliente desde: "Cliente hace X días"
+- Botones de acción rápida en el header:
+    · Enviar email
+    · Editar información
+    · Cambiar plan
+    · Suspender cuenta (rojo, requiere confirmación)
+
+TABS DE NAVEGACIÓN INTERNA:
+Tab 1: Resumen
+- Cards con métricas clave del cliente:
+    · Total reservas realizadas (de por vida)
+    · Reservas este mes
+    · Pago próximo (fecha y monto)
+    · Estado de cuenta (al día / vencido / suspendido)
+- Línea de tiempo de actividad (últimas 10 acciones)
+- Notas internas (textarea editable con autosave + indicador
+  "Guardado" que aparece 2s después de editar)
+
+Tab 2: Pagos
+- Tabla completa del historial de pagos con columnas:
+    fecha de pago, período cubierto, plan, monto,
+    método, estado (badge), acciones
+- Filtros: por estado, por período de tiempo
+- Botón "Registrar pago manual" → modal con campos:
+    monto, fecha, método, referencia (opcional), notas
+- Indicador de balance: cuánto debe o cuánto tiene de crédito
+- Próxima fecha de vencimiento con cuenta regresiva si es urgente
+
+Tab 3: Reservas
+- Tabla de reservas del cliente (fecha, servicio, cliente final,
+  estado, duración, monto generado si aplica)
+- Filtros por estado y rango de fecha
+- Gráfico de reservas por semana (sparkline inline)
+
+Tab 4: Configuración del Cliente
+- Plan actual con opción de upgrade/downgrade
+- Ciclo de facturación
+- Datos del negocio editables (nombre, email, teléfono, RUC)
+- Historial de cambios de plan
+- Zona de peligro: suspender cuenta / eliminar cuenta
+
+
+================================================================
+FEATURE #3C — CENTRO DE PAGOS VENCIDOS
+================================================================
+
+Página dedicada /admin/payments/overdue que funciona como
+sala de control de morosidad.
+
+HEADER CON RESUMEN:
+- Total adeudado (suma de todos los pagos vencidos en PYG)
+- Cantidad de clientes con deuda
+- Promedio de días de atraso
+- Monto recuperado este mes (pagos que estaban vencidos y se pagaron)
+
+TABLA PRINCIPAL:
+Columnas: cliente, plan, monto, días de atraso, último contacto,
+          acciones
+
+Filtros y ordenamiento:
+- Por severidad: Leve (1-7d) / Moderado (8-30d) / Crítico (+30d)
+- Por plan
+- Por monto
+
+Indicadores visuales de severidad por fila:
+- 1-7 días: borde izquierdo amarillo, badge "Leve"
+- 8-30 días: borde izquierdo naranja, badge "Moderado"
+- +30 días: borde izquierdo rojo, badge "Crítico", fila destacada
+
+Acciones por cliente:
+- "Enviar recordatorio" → email automático con plantilla
+  (el sistema registra la fecha del último envío para evitar spam)
+- "Registrar pago" → modal de pago manual
+- "Ver perfil" → va al perfil completo del cliente
+- "Suspender" → acción destructiva con confirmación
+
+BULK ACTIONS (selección múltiple):
+- Seleccionar todos los de una severidad
+- Enviar recordatorio masivo (con confirmación "Enviarás X emails")
+- Exportar listado a CSV
+
+
+================================================================
+FEATURE #3D — CONFIGURACIÓN DEL SUPER ADMIN
+================================================================
+
+Sección /admin/settings accesible solo para super_admin y admin.
+
+SUB-SECCIONES:
+
+General:
+- Nombre y logo de la plataforma
+- Zona horaria (default: America/Asuncion)
+- Moneda de facturación (default: PYG)
+- Email de soporte visible para los clientes
+
+Planes y Precios:
+- CRUD de planes: nombre, precio mensual/anual, features incluidas
+- Activar/desactivar planes sin eliminarlos
+- Definir plan por defecto para nuevos registros
+
+Emails y Notificaciones:
+- Templates de emails (recordatorio de pago, bienvenida,
+  invitación de equipo, suspensión de cuenta)
+- Editor visual básico para personalizar asunto y cuerpo
+- Test: enviar email de prueba a mi propio correo
+
+Integraciones:
+- Resend (emails): mostrar estado de conexión + API key masked
+- Placeholder para futuras: WhatsApp Business, Tigo Money, Bancard
+
+Seguridad:
+- Log de accesos del equipo (quién entró, desde qué IP, cuándo)
+- Sesiones activas con opción de cerrar sesiones remotamente
+- Cambiar contraseña del super admin
+
+
+================================================================
+SCHEMA DE BASE DE DATOS — SUPABASE
+================================================================
+
+-- EXTENSION requerida para UUIDs seguros
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+
+-- TABLA: team_members
+-- Miembros del equipo con roles granulares
+
+CREATE TABLE team_members (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id         UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  email           TEXT NOT NULL UNIQUE,
+  full_name       TEXT,
+  role            TEXT NOT NULL
+                    CHECK (role IN ('super_admin','admin','manager','soporte')),
+  status          TEXT NOT NULL DEFAULT 'pending'
+                    CHECK (status IN ('active','pending','revoked')),
+  invite_token    TEXT UNIQUE,
+  invite_expires  TIMESTAMPTZ,
+  invited_by      UUID REFERENCES auth.users(id),
+  invited_at      TIMESTAMPTZ DEFAULT now(),
+  accepted_at     TIMESTAMPTZ,
+  last_login_at   TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ DEFAULT now(),
+  updated_at      TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_tm_email  ON team_members(email);
+CREATE INDEX idx_tm_status ON team_members(status);
+CREATE INDEX idx_tm_role   ON team_members(role);
+
+
+-- TABLA: plans
+-- Planes disponibles en la plataforma (configurable desde admin)
+
+CREATE TABLE plans (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name            TEXT NOT NULL UNIQUE,
+  slug            TEXT NOT NULL UNIQUE,
+  price_monthly   NUMERIC(12,2) NOT NULL,
+  price_yearly    NUMERIC(12,2),
+  currency        TEXT NOT NULL DEFAULT 'PYG',
+  features        JSONB DEFAULT '[]',
+  max_reservations INT,
+  is_active       BOOLEAN DEFAULT true,
+  is_default      BOOLEAN DEFAULT false,
+  created_at      TIMESTAMPTZ DEFAULT now(),
+  updated_at      TIMESTAMPTZ DEFAULT now()
+);
+
+
+-- TABLA: clients
+-- Negocios/clientes suscritos a Reservpy
+
+CREATE TABLE clients (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id           UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  business_name     TEXT NOT NULL,
+  email             TEXT NOT NULL UNIQUE,
+  phone             TEXT,
+  ruc               TEXT,
+  plan_id           UUID REFERENCES plans(id),
+  billing_cycle     TEXT DEFAULT 'monthly'
+                      CHECK (billing_cycle IN ('monthly','yearly')),
+  status            TEXT NOT NULL DEFAULT 'active'
+                      CHECK (status IN ('active','inactive','suspended','cancelled')),
+  plan_started_at   TIMESTAMPTZ DEFAULT now(),
+  plan_expires_at   TIMESTAMPTZ,
+  trial_ends_at     TIMESTAMPTZ,
+  internal_notes    TEXT,
+  notes_updated_by  UUID REFERENCES auth.users(id),
+  notes_updated_at  TIMESTAMPTZ,
+  metadata          JSONB DEFAULT '{}',
+  created_at        TIMESTAMPTZ DEFAULT now(),
+  updated_at        TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_clients_status     ON clients(status);
+CREATE INDEX idx_clients_plan_id    ON clients(plan_id);
+CREATE INDEX idx_clients_email      ON clients(email);
+CREATE INDEX idx_clients_expires_at ON clients(plan_expires_at);
+
+
+-- TABLA: payments
+-- Historial completo de pagos
+
+CREATE TABLE payments (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id       UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  plan_id         UUID REFERENCES plans(id),
+  amount          NUMERIC(12,2) NOT NULL,
+  currency        TEXT NOT NULL DEFAULT 'PYG',
+  billing_period_start DATE,
+  billing_period_end   DATE,
+  payment_method  TEXT CHECK (payment_method IN
+                    ('transferencia','tigo_money','bancard',
+                     'efectivo','credito','otro')),
+  reference       TEXT,
+  status          TEXT NOT NULL DEFAULT 'pending'
+                    CHECK (status IN ('paid','pending','overdue','cancelled','refunded')),
+  due_date        DATE NOT NULL,
+  paid_at         TIMESTAMPTZ,
+  registered_by   UUID REFERENCES auth.users(id),
+  notes           TEXT,
+  created_at      TIMESTAMPTZ DEFAULT now(),
+  updated_at      TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_payments_client_id ON payments(client_id);
+CREATE INDEX idx_payments_status    ON payments(status);
+CREATE INDEX idx_payments_due_date  ON payments(due_date);
+CREATE INDEX idx_payments_paid_at   ON payments(paid_at);
+
+
+-- TABLA: payment_reminders
+-- Log de recordatorios enviados (evita spam y audita acciones)
+
+CREATE TABLE payment_reminders (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  payment_id  UUID NOT NULL REFERENCES payments(id) ON DELETE CASCADE,
+  client_id   UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  sent_by     UUID REFERENCES auth.users(id),
+  sent_at     TIMESTAMPTZ DEFAULT now(),
+  method      TEXT DEFAULT 'email'
+                CHECK (method IN ('email','whatsapp','manual')),
+  template    TEXT,
+  notes       TEXT
+);
+
+CREATE INDEX idx_reminders_client_id ON payment_reminders(client_id);
+
+
+-- TABLA: team_activity_log
+-- Log de auditoría de todas las acciones del equipo
+
+CREATE TABLE team_activity_log (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       UUID REFERENCES auth.users(id),
+  action        TEXT NOT NULL,
+  entity_type   TEXT,
+  entity_id     UUID,
+  description   TEXT,
+  metadata      JSONB DEFAULT '{}',
+  ip_address    INET,
+  user_agent    TEXT,
+  created_at    TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX idx_log_user_id    ON team_activity_log(user_id);
+CREATE INDEX idx_log_entity     ON team_activity_log(entity_type, entity_id);
+CREATE INDEX idx_log_created_at ON team_activity_log(created_at DESC);
+
+
+-- TABLA: email_templates
+-- Templates de emails personalizables desde el admin
+
+CREATE TABLE email_templates (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug        TEXT NOT NULL UNIQUE,
+  name        TEXT NOT NULL,
+  subject     TEXT NOT NULL,
+  body_html   TEXT NOT NULL,
+  variables   JSONB DEFAULT '[]',
+  is_active   BOOLEAN DEFAULT true,
+  created_at  TIMESTAMPTZ DEFAULT now(),
+  updated_at  TIMESTAMPTZ DEFAULT now()
+);
+
+
+-- VISTA: clientes con pagos vencidos (dashboard y centro de pagos)
+
+CREATE VIEW v_overdue_clients AS
+SELECT
+  c.id                  AS client_id,
+  c.business_name,
+  c.email,
+  c.phone,
+  c.status              AS client_status,
+  pl.name               AS plan_name,
+  p.id                  AS payment_id,
+  p.amount,
+  p.currency,
+  p.due_date,
+  CURRENT_DATE - p.due_date AS days_overdue,
+  CASE
+    WHEN CURRENT_DATE - p.due_date BETWEEN 1 AND 7   THEN 'leve'
+    WHEN CURRENT_DATE - p.due_date BETWEEN 8 AND 30  THEN 'moderado'
+    WHEN CURRENT_DATE - p.due_date > 30              THEN 'critico'
+  END AS severity,
+  (
+    SELECT MAX(sent_at) FROM payment_reminders pr
+    WHERE pr.client_id = c.id AND pr.payment_id = p.id
+  ) AS last_reminder_sent
+FROM clients c
+JOIN payments p  ON p.client_id = c.id
+LEFT JOIN plans pl ON pl.id = c.plan_id
+WHERE p.status = 'overdue'
+  AND c.status NOT IN ('suspended','cancelled')
+ORDER BY days_overdue DESC;
+
+
+-- VISTA: métricas de ingresos mensuales (para gráfico del dashboard)
+
+CREATE VIEW v_monthly_revenue AS
+SELECT
+  DATE_TRUNC('month', paid_at) AS month,
+  COUNT(*)                      AS payment_count,
+  SUM(amount)                   AS total_revenue,
+  currency
+FROM payments
+WHERE status = 'paid'
+  AND paid_at IS NOT NULL
+GROUP BY DATE_TRUNC('month', paid_at), currency
+ORDER BY month DESC;
+
+
+-- ROW LEVEL SECURITY
+
+ALTER TABLE team_members     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE clients          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payments         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payment_reminders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE team_activity_log ENABLE ROW LEVEL SECURITY;
+
+-- Helper function: obtiene el rol del usuario autenticado
+CREATE OR REPLACE FUNCTION get_my_role()
+RETURNS TEXT AS $$
+  SELECT role FROM team_members
+  WHERE user_id = auth.uid() AND status = 'active'
+  LIMIT 1;
+$$ LANGUAGE sql SECURITY DEFINER;
+
+-- Lectura de clientes: todo el equipo activo puede ver
+CREATE POLICY "team_read_clients" ON clients
+  FOR SELECT USING (
+    get_my_role() IN ('super_admin','admin','manager','soporte')
+  );
+
+-- Escritura en clientes: solo admin y super_admin
+CREATE POLICY "admin_write_clients" ON clients
+  FOR ALL USING (
+    get_my_role() IN ('super_admin','admin')
+  );
+
+-- Pagos: lectura para todo el equipo excepto soporte
+CREATE POLICY "team_read_payments" ON payments
+  FOR SELECT USING (
+    get_my_role() IN ('super_admin','admin','manager')
+  );
+
+-- Pagos: escritura solo admin+
+CREATE POLICY "admin_write_payments" ON payments
+  FOR ALL USING (
+    get_my_role() IN ('super_admin','admin')
+  );
+
+-- Equipo: solo super_admin y admin gestionan miembros
+CREATE POLICY "admin_manage_team" ON team_members
+  FOR ALL USING (
+    get_my_role() IN ('super_admin','admin')
+  );
+
+-- Log: solo admins ven el log completo
+CREATE POLICY "admin_read_log" ON team_activity_log
+  FOR SELECT USING (
+    get_my_role() IN ('super_admin','admin')
+  );
+
+-- Log: cualquier miembro autenticado puede insertar (auditoría)
+CREATE POLICY "team_insert_log" ON team_activity_log
+  FOR INSERT WITH CHECK (
+    get_my_role() IS NOT NULL
+  );
+
+
+================================================================
+NOTAS DE IMPLEMENTACIÓN
+================================================================
+
+1. FUNCIÓN DE AUDITORÍA AUTOMÁTICA
+   Crear un trigger en PostgreSQL que inserte en team_activity_log
+   automáticamente en cada INSERT/UPDATE/DELETE de clients y payments.
+   Esto garantiza que el log sea completo y no dependa de que el
+   frontend lo implemente correctamente.
+
+2. REALTIME EN DASHBOARD
+   Usar Supabase Realtime para actualizar el contador de "alertas
+   de pagos vencidos" sin recargar la página:
+   supabase.channel('payments').on('postgres_changes',
+     { event: '*', schema: 'public', table: 'payments' }, callback)
+
+3. EMAILS VÍA RESEND
+   - Configurar dominio propio en Resend (ej: noreply@reservpy.com)
+   - Usar React Email para los templates (misma base de código)
+   - Rate limit: máximo 1 recordatorio por cliente cada 48 horas
+     (validar en server action antes de enviar)
+
+4. PROTECCIÓN DEL SUPER ADMIN
+   En el server action de gestión de equipo, agregar validación:
+   IF target_email = 'pepeq68@gmail.com' THEN
+     RETURN error('No se puede modificar al super administrador')
+   END IF
+
+5. EXPORTACIÓN CSV
+   Usar la librería Papa Parse o json2csv en el servidor (Node.js)
+   para exportar clientes y pagos. El archivo debe generarse en el
+   server y enviarse como stream, nunca en el cliente.
+
+6. ACCESIBILIDAD (a11y)
+   - Todos los modales deben tener focus trap y cerrar con Escape
+   - Tablas con aria-sort en columnas ordenables
+   - Badges de estado con aria-label descriptivo
+   - Contraste mínimo WCAG AA en todos los textos sobre fondo oscuro
+
+================================================================
+FIN DEL DOCUMENTO
+Reservpy Super Admin Prompt Maestro v2.0
+Para uso con IA generativa de código (Claude, Cursor, v0)
+================================================================

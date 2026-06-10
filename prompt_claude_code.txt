@@ -1,0 +1,23 @@
+Contexto del proyecto:
+Flutter web app (reservpy.com) + Android APK. Backend: Supabase Auth. Estoy intentando implementar Google Sign-In para ambas plataformas.
+
+Lo que ya está hecho:
+- pubspec.yaml tiene google_sign_in: ^6.2.2 y crypto: ^3.0.6
+- web/index.html tiene el meta tag con el web client ID
+- lib/src/data/repositories/auth_repository.dart tiene el método signInWithGoogle() usando GoogleSignIn + signInWithIdToken (para bypassear el redirect flow de Supabase que daba error "Unable to exchange external code: 4/0A")
+- En Google Cloud Console: OAuth client web con https://reservpy.com y https://www.reservpy.com en JavaScript origins, y OAuth client Android con SHA-1 y package com.reservpy.reservpy
+- En Supabase: Google provider activo con ambos client IDs (web + android)
+
+El error actual en web:
+Después de agregar https://reservpy.com a JavaScript origins en Google Cloud Console, aparece origin_mismatch (Error 400). Puede ser propagation delay (lleva hasta varias horas).
+
+Lo que necesito:
+1. Verificar que el código en auth_repository.dart sea correcto para web (popup via GIS) y Android (native sign-in con serverClientId)
+2. Buildear: flutter pub get && flutter build web --release
+3. Hacer push para que Vercel deploye: git add -f build/web lib/src/data/repositories/auth_repository.dart && git commit -m "feat: google sign-in" && git push
+4. Confirmar que el AndroidManifest.xml tiene todo lo necesario para que google_sign_in funcione en Android
+5. Si el origin_mismatch persiste después del deploy, diagnosticar por qué
+
+Web client ID: 412493608107-93hftd0m1l7bavll2u0j2pgsecei6ibj.apps.googleusercontent.com
+Android client ID: 412493608107-8eqb8lgd2qb0di5tq9auo1cm632tjb1h.apps.googleusercontent.com
+Supabase project: cmntfqsruljhlgqirtkw

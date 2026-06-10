@@ -61,6 +61,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   final refreshListenable = GoRouterRefreshStream([
     ref.watch(isLoggedInProvider.notifier).stream,
     ref.watch(currentUserProvider.notifier).stream,
+    ref.watch(adminSessionActiveProvider.notifier).stream,
   ]);
 
   ref.onDispose(() {
@@ -75,6 +76,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLoggedIn = ref.read(isLoggedInProvider);
       final user = ref.read(currentUserProvider);
       final activeRole = ref.read(activeRoleProvider);
+      final adminSessionActive = ref.read(adminSessionActiveProvider);
 
       final isPublicPage = state.matchedLocation == '/' ||
           state.matchedLocation == '/login' ||
@@ -85,29 +87,22 @@ final routerProvider = Provider<GoRouter>((ref) {
           state.matchedLocation == '/admin-login';
 
       // ── Admin guard ────────────────────────────────────────────────────
+      // /admin requires an explicit admin login via /admin-login.
+      // A regular session (even with admin role) is NOT enough.
+      if (state.matchedLocation == '/admin') {
+        if (!adminSessionActive) return '/admin-login';
+        return null;
+      }
+
+      // /admin-login: only skip if the admin session is already active
+      if (state.matchedLocation == '/admin-login') {
+        if (adminSessionActive) return '/admin';
+        return null;
+      }
+
       // Si está logueado pero el user todavía no cargó (race condition),
       // no redirigir — esperar al próximo refresh del refreshListenable.
       if (isLoggedIn && user == null) return null;
-
-      // Admin users go to /admin automatically, except from the landing page.
-      if (isLoggedIn && user != null && user.hasRole(UserRole.admin)) {
-        if (state.matchedLocation == '/') return null; // allow browsing landing
-        if (state.matchedLocation != '/admin') return '/admin';
-        return null;
-      }
-      // Protect /admin from non-admins
-      if (state.matchedLocation == '/admin') {
-        if (!isLoggedIn) return '/admin-login';
-        return '/'; // logged-in non-admin → landing
-      }
-
-      // If already logged in as admin, skip the admin login page
-      if (state.matchedLocation == '/admin-login') {
-        if (isLoggedIn && user != null && user.hasRole(UserRole.admin)) {
-          return '/admin';
-        }
-        return null;
-      }
 
       // Not logged in → allow public pages, redirect others to landing
       if (!isLoggedIn && !isPublicPage) return '/';
