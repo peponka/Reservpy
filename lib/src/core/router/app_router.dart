@@ -30,6 +30,7 @@ import '../../features/reservations/business_detail_screen.dart';
 import '../../features/shell/client_shell.dart';
 import '../../features/shell/business_shell.dart';
 import '../../features/admin/admin_shell.dart';
+import '../../features/admin/admin_login_screen.dart';
 import '../../features/subscription/upgrade_screen.dart';
 import '../../features/subscription/bancard_payment_screen.dart';
 import '../../shared/providers/providers.dart';
@@ -80,7 +81,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           state.matchedLocation == '/register' ||
           state.matchedLocation == '/forgot-password' ||
           state.matchedLocation == '/onboarding' ||
-          state.matchedLocation == '/select-role';
+          state.matchedLocation == '/select-role' ||
+          state.matchedLocation == '/admin-login';
 
       // ── Admin guard ────────────────────────────────────────────────────
       // Si está logueado pero el user todavía no cargó (race condition),
@@ -95,8 +97,16 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
       // Protect /admin from non-admins
       if (state.matchedLocation == '/admin') {
-        if (!isLoggedIn) return '/login';
-        return '/'; // logged-in non-admin → landing, not /client
+        if (!isLoggedIn) return '/admin-login';
+        return '/'; // logged-in non-admin → landing
+      }
+
+      // If already logged in as admin, skip the admin login page
+      if (state.matchedLocation == '/admin-login') {
+        if (isLoggedIn && user != null && user.hasRole(UserRole.admin)) {
+          return '/admin';
+        }
+        return null;
       }
 
       // Not logged in → allow public pages, redirect others to landing
@@ -192,6 +202,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => _buildPage(
           state,
           const OnboardingScreen(),
+        ),
+      ),
+
+      // ─── Admin Login ─────────────────────────────────
+      GoRoute(
+        path: '/admin-login',
+        pageBuilder: (context, state) => _buildPage(
+          state,
+          const AdminLoginScreen(),
         ),
       ),
 
