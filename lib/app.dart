@@ -55,11 +55,13 @@ class _ReservPyAppState extends ConsumerState<ReservPyApp> {
     if (kIsWeb) {
       final code = Uri.base.queryParameters['code'];
       if (code != null && code.isNotEmpty) {
+        bool sessionRestored = false;
         try {
           final response = await Supabase.instance.client.auth
               .exchangeCodeForSession(code);
           if (response.session != null) {
             await _restoreSession(response.session!);
+            sessionRestored = true;
           }
         } catch (_) {
           // Code may already be exchanged by Supabase.initialize() — check again
@@ -67,6 +69,18 @@ class _ReservPyAppState extends ConsumerState<ReservPyApp> {
           final retrySession = Supabase.instance.client.auth.currentSession;
           if (retrySession != null && !ref.read(isLoggedInProvider)) {
             await _restoreSession(retrySession);
+            sessionRestored = true;
+          }
+        }
+        // After OAuth login, navigate to the appropriate dashboard
+        if (sessionRestored && mounted) {
+          final router = ref.read(routerProvider);
+          final activeRole = ref.read(activeRoleProvider);
+          if (activeRole == UserRole.businessOwner ||
+              activeRole == UserRole.business) {
+            router.go('/business');
+          } else {
+            router.go('/client');
           }
         }
       }
