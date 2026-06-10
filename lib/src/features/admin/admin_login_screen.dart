@@ -492,6 +492,29 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
                         .animate()
                         .fadeIn(delay: 400.ms, duration: 400.ms),
 
+                    const SizedBox(height: 12),
+
+                    // Sign out link (only shown when there's an active session)
+                    if (ref.watch(isLoggedInProvider))
+                      Center(
+                        child: GestureDetector(
+                          onTap: () async {
+                            await _authRepo.signOut();
+                            ref.read(isLoggedInProvider.notifier).state = false;
+                            ref.read(currentUserProvider.notifier).state = null;
+                            ref.read(adminSessionActiveProvider.notifier).state = false;
+                          },
+                          child: Text(
+                            'Cerrar sesión actual',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: Colors.red.withValues(alpha: 0.5),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+
                     const SizedBox(height: 24),
                   ],
                 ),
