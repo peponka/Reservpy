@@ -56,9 +56,19 @@ class _ReservPyAppState extends ConsumerState<ReservPyApp> {
       final code = Uri.base.queryParameters['code'];
       if (code != null && code.isNotEmpty) {
         try {
-          await Supabase.instance.client.auth.exchangeCodeForSession(code);
-          // Success fires AuthChangeEvent.signedIn → _authSub → _restoreSession
-        } catch (_) {}
+          final response = await Supabase.instance.client.auth
+              .exchangeCodeForSession(code);
+          if (response.session != null) {
+            await _restoreSession(response.session!);
+          }
+        } catch (_) {
+          // Code may already be exchanged by Supabase.initialize() — check again
+          await Future.delayed(const Duration(milliseconds: 300));
+          final retrySession = Supabase.instance.client.auth.currentSession;
+          if (retrySession != null && !ref.read(isLoggedInProvider)) {
+            await _restoreSession(retrySession);
+          }
+        }
       }
     }
   }
