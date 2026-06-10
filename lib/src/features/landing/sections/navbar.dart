@@ -1,13 +1,16 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:reservpy/src/features/landing/landing_theme.dart';
+import 'package:reservpy/src/shared/providers/providers.dart';
+import 'package:reservpy/src/shared/models/models.dart';
 
 /// Fixed top navbar with blur backdrop, responsive mobile menu, and scroll-to
 /// callbacks for each section.
-class LandingNavbar extends StatefulWidget {
+class LandingNavbar extends ConsumerStatefulWidget {
   const LandingNavbar({
     super.key,
     this.onFeaturesPressed,
@@ -22,16 +25,60 @@ class LandingNavbar extends StatefulWidget {
   final VoidCallback? onPricingPressed;
 
   @override
-  State<LandingNavbar> createState() => _LandingNavbarState();
+  ConsumerState<LandingNavbar> createState() => _LandingNavbarState();
 }
 
-class _LandingNavbarState extends State<LandingNavbar> {
+class _LandingNavbarState extends ConsumerState<LandingNavbar> {
   bool _mobileMenuOpen = false;
 
   void _toggleMenu() => setState(() => _mobileMenuOpen = !_mobileMenuOpen);
 
   void _closeMenu() {
     if (_mobileMenuOpen) setState(() => _mobileMenuOpen = false);
+  }
+
+  Widget _buildAuthButtons(BuildContext context, {bool closingMenu = false}) {
+    final isLoggedIn = ref.watch(isLoggedInProvider);
+    final activeRole = ref.watch(activeRoleProvider);
+
+    if (isLoggedIn) {
+      final label = activeRole == UserRole.admin
+          ? 'Panel admin →'
+          : activeRole == UserRole.businessOwner || activeRole == UserRole.business
+              ? 'Mi negocio →'
+              : 'Mi cuenta →';
+      final route = activeRole == UserRole.businessOwner || activeRole == UserRole.business
+          ? '/business'
+          : '/client';
+
+      return _PrimaryPillButton(
+        label: label,
+        onTap: () {
+          if (closingMenu) _closeMenu();
+          context.go(route);
+        },
+      );
+    }
+
+    // Not logged in — show normal Ingresar / Registrarse
+    if (closingMenu) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _GhostButton(label: 'Ingresar', onTap: () { _closeMenu(); context.go('/login'); }),
+          const SizedBox(height: 8),
+          _PrimaryPillButton(label: 'Registrarse →', onTap: () { _closeMenu(); context.go('/register'); }),
+        ],
+      );
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _GhostButton(label: 'Ingresar', onTap: () => context.go('/login')),
+        const SizedBox(width: 8),
+        _PrimaryPillButton(label: 'Registrarse →', onTap: () => context.go('/register')),
+      ],
+    );
   }
 
   @override
@@ -103,15 +150,7 @@ class _LandingNavbarState extends State<LandingNavbar> {
                             },
                           ),
                           const SizedBox(width: 16),
-                          _GhostButton(
-                            label: 'Ingresar',
-                            onTap: () => context.go('/login'),
-                          ),
-                          const SizedBox(width: 8),
-                          _PrimaryPillButton(
-                            label: 'Registrarse →',
-                            onTap: () => context.go('/register'),
-                          ),
+                          _buildAuthButtons(context),
                         ],
 
                         // ── Mobile hamburger ──────────────
@@ -205,9 +244,7 @@ class _LandingNavbarState extends State<LandingNavbar> {
                       },
                     ),
                     const SizedBox(height: 12),
-                    _GhostButton(label: 'Ingresar', onTap: () { _closeMenu(); context.go('/login'); }),
-                    const SizedBox(height: 8),
-                    _PrimaryPillButton(label: 'Registrarse →', onTap: () { _closeMenu(); context.go('/register'); }),
+                    _buildAuthButtons(context, closingMenu: true),
                   ],
                 ),
               ),
