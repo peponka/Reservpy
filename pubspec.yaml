@@ -15,6 +15,8 @@ dependencies:
 
   # Backend
   supabase_flutter: ^2.8.3
+  google_sign_in: ^6.2.2
+  crypto: ^3.0.6
 
   # Navigation
   go_router: ^17.2.3

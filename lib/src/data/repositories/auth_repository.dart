@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:reservpy/src/core/supabase/supabase_config.dart';
 
@@ -53,10 +54,33 @@ class AuthRepository {
 
   /// Sign in with Google
   Future<bool> signInWithGoogle() async {
-    return await _auth.signInWithOAuth(
-      OAuthProvider.google,
-      redirectTo: kIsWeb ? Uri.base.origin : null,
-    );
+    if (kIsWeb) {
+      // On web: use google_sign_in popup and pass ID token to Supabase
+      final googleSignIn = GoogleSignIn(
+        clientId: '412493608107-93hftd0m1l7bavll2u0j2pgsecei6ibj.apps.googleusercontent.com',
+        scopes: ['email', 'profile', 'openid'],
+      );
+      try {
+        final googleUser = await googleSignIn.signIn();
+        if (googleUser == null) return false;
+        final googleAuth = await googleUser.authentication;
+        final idToken = googleAuth.idToken;
+        if (idToken == null) return false;
+        await _auth.signInWithIdToken(
+          provider: OAuthProvider.google,
+          idToken: idToken,
+          accessToken: googleAuth.accessToken,
+        );
+        return true;
+      } catch (_) {
+        return false;
+      }
+    } else {
+      return await _auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: null,
+      );
+    }
   }
 
   /// Sign out
