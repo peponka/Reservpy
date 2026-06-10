@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -47,6 +48,18 @@ class _ReservPyAppState extends ConsumerState<ReservPyApp> {
     final session = Supabase.instance.client.auth.currentSession;
     if (session != null) {
       await _restoreSession(session);
+      return;
+    }
+
+    // Web PKCE: after OAuth redirect, URL contains ?code=xxx — exchange it explicitly
+    if (kIsWeb) {
+      final code = Uri.base.queryParameters['code'];
+      if (code != null && code.isNotEmpty) {
+        try {
+          await Supabase.instance.client.auth.exchangeCodeForSession(code);
+          // Success fires AuthChangeEvent.signedIn → _authSub → _restoreSession
+        } catch (_) {}
+      }
     }
   }
 
