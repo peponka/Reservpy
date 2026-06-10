@@ -45,45 +45,59 @@ class _ReservPyAppState extends ConsumerState<ReservPyApp> {
   }
 
   Future<void> _checkExistingSession() async {
+    // Detect an OAuth callback: Google redirected back with ?code=xxx in the URL
+    final hasOAuthCode = kIsWeb &&
+        (Uri.base.queryParameters['code']?.isNotEmpty ?? false);
+
     final session = Supabase.instance.client.auth.currentSession;
     if (session != null) {
+      // Supabase.initialize() may have already exchanged the code for us
       await _restoreSession(session);
+      if (hasOAuthCode) _redirectAfterOAuth();
       return;
     }
 
-    // Web PKCE: after OAuth redirect, URL contains ?code=xxx — exchange it explicitly
-    if (kIsWeb) {
-      final code = Uri.base.queryParameters['code'];
-      if (code != null && code.isNotEmpty) {
-        bool sessionRestored = false;
-        try {
-          final response = await Supabase.instance.client.auth
-              .exchangeCodeForSession(code);
-          if (response.session != null) {
-            await _restoreSession(response.session!);
-            sessionRestored = true;
-          }
-        } catch (_) {
-          // Code may already be exchanged by Supabase.initialize() — check again
-          await Future.delayed(const Duration(milliseconds: 300));
-          final retrySession = Supabase.instance.client.auth.currentSession;
-          if (retrySession != null && !ref.read(isLoggedInProvider)) {
-            await _restoreSession(retrySession);
-            sessionRestored = true;
-          }
+    // Web PKCE: exchange the code explicitly if initialize() didn't
+    if (hasOAuthCode) {
+      final code = Uri.base.queryParameters['code']!;
+      bool sessionRestored = false;
+      try {
+        final response = await Supabase.instance.client.auth
+            .exchangeCodeForSession(code);
+        if (response.session != null) {
+          await _restoreSession(response.session!);
+          sessionRestored = true;
         }
-        // After OAuth login, navigate to the appropriate dashboard
-        if (sessionRestored && mounted) {
-          final router = ref.read(routerProvider);
-          final activeRole = ref.read(activeRoleProvider);
-          if (activeRole == UserRole.businessOwner ||
-              activeRole == UserRole.business) {
-            router.go('/business');
-          } else {
-            router.go('/client');
+      } catch (_) {
+        // Exchange may have raced with initialize() — check again
+        await Future.delayed(const Duration(milliseconds: 300));
+        final retrySession = Supabase.instance.client.auth.currentSession;
+        if (retrySession != null) {
+          if (!ref.read(isLoggedInProvider)) {
+            await _restoreSession(retrySession);
           }
+          sessionRestored = true;
         }
       }
+      if (sessionRestored) _redirectAfterOAuth();
+    }
+  }
+
+  /// After a Google OAuth login, take the user to their dashboard
+  /// instead of leaving them on the landing page.
+  void _redirectAfterOAuth() {
+    if (!mounted || !ref.read(isLoggedInProvider)) return;
+    final router = ref.read(routerProvider);
+    final user = ref.read(currentUserProvider);
+    final activeRole = ref.read(activeRoleProvider);
+
+    if (user != null && user.isMultiRole) {
+      router.go('/select-role');
+    } else if (activeRole == UserRole.businessOwner ||
+        activeRole == UserRole.business) {
+      router.go('/business');
+    } else {
+      router.go('/client');
     }
   }
 
@@ -117,12 +131,12 @@ class _ReservPyAppState extends ConsumerState<ReservPyApp> {
       final userWithRoles = profile.copyWith(roles: roles);
       ref.read(currentUserProvider.notifier).state = userWithRoles;
 
-      // Set active role — admin takes highest priority
-      final activeRole = roles.contains(UserRole.admin)
-          ? UserRole.admin
-          : roles.contains(UserRole.businessOwner)
-              ? UserRole.businessOwner
-              : roles.first;
+      // Set active role — admin is NEVER auto-selected (admin panel is only
+      // entered via /admin-login); prefer business owner, then any other role.
+      final activeRole = roles.contains(UserRole.businessOwner)
+          ? UserRole.businessOwner
+          : roles.firstWhere((r) => r != UserRole.admin,
+              orElse: () => roles.first);
       ref.read(activeRoleProvider.notifier).state = activeRole;
 
       // Refresh business data if applicable

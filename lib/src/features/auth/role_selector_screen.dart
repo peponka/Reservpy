@@ -18,15 +18,8 @@ class RoleSelectorScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
     final roles = user?.roles ?? [UserRole.client];
 
-    // Admin → skip selector and go directly to admin panel
-    if (user != null && user.hasRole(UserRole.admin)) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (context.mounted) context.go('/admin');
-      });
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
+    // Admin role is ignored here — the admin panel is only entered via
+    // /admin-login. The selector below already skips the admin card.
 
     return Scaffold(
       body: Container(

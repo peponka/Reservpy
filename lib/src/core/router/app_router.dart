@@ -112,9 +112,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (isLoggedIn && (state.matchedLocation == '/login' ||
           state.matchedLocation == '/register' ||
           state.matchedLocation == '/forgot-password')) {
-        // Admin with active session → panel; without → landing (must use /admin-login)
-        if (user != null && user.hasRole(UserRole.admin)) {
-          return adminSessionActive ? '/admin' : '/client';
+        // Admin with active admin session → panel. Otherwise an admin-role
+        // user is treated like any normal user (admin panel needs /admin-login).
+        if (user != null &&
+            user.hasRole(UserRole.admin) &&
+            adminSessionActive) {
+          return '/admin';
         }
         // If multi-role and hasn't selected yet, go to selector
         if (user != null && user.isMultiRole && state.matchedLocation != '/select-role') {
