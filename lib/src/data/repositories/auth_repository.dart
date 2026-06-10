@@ -54,12 +54,21 @@ class AuthRepository {
 
   /// Sign in with Google
   Future<bool> signInWithGoogle() async {
-    // Web client ID (used as serverClientId on Android to get ID token)
-    const webClientId = '412493608107-93hftd0m1l7bavll2u0j2pgsecei6ibj.apps.googleusercontent.com';
+    if (kIsWeb) {
+      // Web: Supabase OAuth redirect flow — uses registered redirect URI,
+      // no JavaScript origin propagation needed.
+      try {
+        await _auth.signInWithOAuth(OAuthProvider.google);
+        return true; // Browser redirects immediately; session handled by app.dart listener
+      } catch (_) {
+        return false;
+      }
+    }
 
+    // Android/iOS: native Google Sign-In → Supabase signInWithIdToken
+    const webClientId = '412493608107-93hftd0m1l7bavll2u0j2pgsecei6ibj.apps.googleusercontent.com';
     final googleSignIn = GoogleSignIn(
-      clientId: kIsWeb ? webClientId : null,
-      serverClientId: kIsWeb ? null : webClientId,
+      serverClientId: webClientId,
       scopes: ['email', 'profile', 'openid'],
     );
     try {
