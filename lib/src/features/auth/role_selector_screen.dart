@@ -16,10 +16,16 @@ class RoleSelectorScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
-    final roles = user?.roles ?? [UserRole.client];
-    // TODO: remove debug log after diagnosing missing client card
-    // ignore: avoid_print
-    print('RoleSelector: user=${user?.email} roles=$roles');
+
+    // Wait until the session restore has populated the user — building the
+    // role list from the fallback and swapping it later corrupts the
+    // card animations (the new cards never fade in).
+    if (user == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    final roles = user.roles;
 
     // Admin role is ignored here — the admin panel is only entered via
     // /admin-login. The selector below already skips the admin card.
@@ -101,6 +107,7 @@ class RoleSelectorScreen extends ConsumerWidget {
                       // Skip legacy alias and admin (admin auto-redirects above)
                       if (role == UserRole.business || role == UserRole.admin) return const SizedBox.shrink();
                       return Padding(
+                        key: ValueKey(role),
                         padding: const EdgeInsets.only(bottom: 16),
                         child: _RoleCard(
                           role: role,
