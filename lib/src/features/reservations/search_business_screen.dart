@@ -16,8 +16,8 @@ final _businessFilterProvider = StateProvider<_BusinessFilter>((ref) => _Busines
 enum _BusinessFilter { all, open, recent }
 
 /// Two-page search screen:
-///   Page 1 — Browse categories (grid with business counts)
-///   Page 2 — View businesses in the selected category (rich cards, filters)
+///   Page 1 â€” Browse categories (grid with business counts)
+///   Page 2 â€” View businesses in the selected category (rich cards, filters)
 class SearchBusinessScreen extends ConsumerStatefulWidget {
   const SearchBusinessScreen({super.key});
 
@@ -146,7 +146,7 @@ class _CategoriesPage extends ConsumerWidget {
                       const SizedBox(width: AppSizes.s12),
                       Expanded(
                         child: Text(
-                          'Categorías',
+                          'CategorÃ­as',
                           style: GoogleFonts.inter(
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
@@ -164,7 +164,7 @@ class _CategoriesPage extends ConsumerWidget {
                               BorderRadius.circular(AppSizes.radiusFull),
                         ),
                         child: Text(
-                          '${filtered.length} categorías',
+                          '${filtered.length} categorÃ­as',
                           style: GoogleFonts.inter(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -181,7 +181,7 @@ class _CategoriesPage extends ConsumerWidget {
                   child: Padding(
                     padding: const EdgeInsets.only(left: 16),
                     child: Text(
-                      'Elegí una categoría para ver los negocios disponibles',
+                      'ElegÃ­ una categorÃ­a para ver los negocios disponibles',
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         color: AppColors.textSecondary,
@@ -315,7 +315,7 @@ class _CategoriesPage extends ConsumerWidget {
               focusNode: searchFocusNode,
               style: GoogleFonts.inter(fontSize: 15, color: AppColors.accent),
               decoration: InputDecoration(
-                hintText: 'Buscá por categoría...',
+                hintText: 'BuscÃ¡ por categorÃ­a...',
                 hintStyle: GoogleFonts.inter(
                     fontSize: 14, color: AppColors.textSecondary),
                 prefixIcon: const Icon(Icons.search_rounded,
@@ -372,7 +372,7 @@ class _CategoriesPage extends ConsumerWidget {
             ),
             const SizedBox(height: AppSizes.s20),
             Text(
-              'No se encontraron categorías',
+              'No se encontraron categorÃ­as',
               style: GoogleFonts.inter(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -381,7 +381,7 @@ class _CategoriesPage extends ConsumerWidget {
             ),
             const SizedBox(height: AppSizes.s8),
             Text(
-              'Probá con otro término de búsqueda',
+              'ProbÃ¡ con otro tÃ©rmino de bÃºsqueda',
               style: GoogleFonts.inter(
                   fontSize: 14, color: AppColors.textSecondary),
               textAlign: TextAlign.center,
@@ -394,7 +394,7 @@ class _CategoriesPage extends ConsumerWidget {
 }
 
 // -----------------------------------------------------------------------------
-// CATEGORY CARD — Enhanced with business count
+// CATEGORY CARD â€” Enhanced with business count
 // -----------------------------------------------------------------------------
 class _CategoryCard extends StatefulWidget {
   final BusinessCategory category;
@@ -496,7 +496,7 @@ class _CategoryCardState extends State<_CategoryCard> {
                 child: Text(
                   widget.businessCount > 0
                       ? '${widget.businessCount} negocio${widget.businessCount == 1 ? '' : 's'}'
-                      : 'Próximamente',
+                      : 'PrÃ³ximamente',
                   style: GoogleFonts.inter(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
@@ -602,7 +602,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
           aspectRatio = 0.75;
         } else {
           // Mobile: una sola columna, card "alta" para mostrar todo
-          // (nombre, categoría, horarios, precios y botones sin cortes).
+          // (nombre, categorÃ­a, horarios, precios y botones sin cortes).
           crossCount = 1;
           aspectRatio = 0.85;
         }
@@ -720,7 +720,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                           SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: crossCount,
                         crossAxisSpacing: AppSizes.s20,
-                        // Más respiración entre cards (antes pegadas)
+                        // MÃ¡s respiraciÃ³n entre cards (antes pegadas)
                         mainAxisSpacing: AppSizes.s24,
                         childAspectRatio: aspectRatio,
                       ),
@@ -829,7 +829,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
               const SizedBox(width: AppSizes.s12),
               Expanded(
                 child: Text(
-                  'Volver a categorías',
+                  'Volver a categorÃ­as',
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
@@ -907,8 +907,8 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
             const SizedBox(height: AppSizes.s20),
             Text(
               isOtros
-                  ? '¿No encontrás tu categoría?'
-                  : 'Todavía no hay negocios',
+                  ? 'Â¿No encontrÃ¡s tu categorÃ­a?'
+                  : 'TodavÃ­a no hay negocios',
               style: GoogleFonts.inter(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -918,8 +918,8 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
             const SizedBox(height: AppSizes.s8),
             Text(
               isOtros
-                  ? 'Creá una nueva categoría para tu tipo de negocio.\nSi ya existe, te avisaremos.'
-                  : 'Aún no hay negocios registrados en ${category.name}.\n¡Pronto habrá opciones disponibles!',
+                  ? 'CreÃ¡ una nueva categorÃ­a para tu tipo de negocio.\nSi ya existe, te avisaremos.'
+                  : 'AÃºn no hay negocios registrados en ${category.name}.\nÂ¡Pronto habrÃ¡ opciones disponibles!',
               style: GoogleFonts.inter(
                   fontSize: 14, color: AppColors.textSecondary),
               textAlign: TextAlign.center,
@@ -932,7 +932,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                   onPressed: () => _showCreateCategoryDialog(context),
                   icon: const Icon(Icons.add_rounded, size: 20),
                   label: Text(
-                    'Crear nueva categoría',
+                    'Crear nueva categorÃ­a',
                     style: GoogleFonts.inter(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
@@ -989,7 +989,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                   const SizedBox(width: AppSizes.s12),
                   Expanded(
                     child: Text(
-                      'Crear nueva categoría',
+                      'Crear nueva categorÃ­a',
                       style: GoogleFonts.inter(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
@@ -1004,7 +1004,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    '¿No encontrás la categoría que buscás?\nCreá una nueva para tu tipo de negocio.',
+                    'Â¿No encontrÃ¡s la categorÃ­a que buscÃ¡s?\nCreÃ¡ una nueva para tu tipo de negocio.',
                     style: GoogleFonts.inter(
                       fontSize: 13,
                       color: AppColors.textSecondary,
@@ -1019,7 +1019,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                     style: GoogleFonts.inter(
                         fontSize: 15, color: AppColors.accent),
                     decoration: InputDecoration(
-                      labelText: 'Nombre de la categoría',
+                      labelText: 'Nombre de la categorÃ­a',
                       labelStyle: GoogleFonts.inter(
                           fontSize: 14,
                           color: AppColors.textSecondary),
@@ -1082,7 +1082,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                     if (name.isEmpty) {
                       setDialogState(() {
                         _categoryError =
-                            'Ingresá un nombre para la categoría';
+                            'IngresÃ¡ un nombre para la categorÃ­a';
                       });
                       return;
                     }
@@ -1103,7 +1103,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                     if (exists) {
                       setDialogState(() {
                         _categoryError =
-                            'Ya existe una categoría con ese nombre';
+                            'Ya existe una categorÃ­a con ese nombre';
                       });
                       return;
                     }
@@ -1139,7 +1139,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                                     color: Colors.white, size: 20),
                                 const SizedBox(width: 8),
                                 Text(
-                                  'Categoría "$name" creada exitosamente',
+                                  'CategorÃ­a "$name" creada exitosamente',
                                   style: GoogleFonts.inter(
                                       fontWeight: FontWeight.w500),
                                 ),
@@ -1162,7 +1162,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                   },
                   icon: const Icon(Icons.add_rounded, size: 18),
                   label: Text(
-                    'Crear categoría',
+                    'Crear categorÃ­a',
                     style: GoogleFonts.inter(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -1270,7 +1270,7 @@ class _FilterChipButtonState extends State<_FilterChipButton> {
 }
 
 // -----------------------------------------------------------------------------
-// PREMIUM BUSINESS CARD — Enhanced with services, prices, badges, dual CTA
+// PREMIUM BUSINESS CARD â€” Enhanced with services, prices, badges, dual CTA
 // -----------------------------------------------------------------------------
 class _BusinessCard extends ConsumerStatefulWidget {
   final Business business;
@@ -1606,7 +1606,7 @@ class _BusinessCardState extends ConsumerState<_BusinessCard> {
                               child: Text(
                                 prices.length == 1
                                     ? _formatPrice(prices.first)
-                                    : '${_formatPrice(prices.first)} – ${_formatPrice(prices.last)}',
+                                    : '${_formatPrice(prices.first)} â€“ ${_formatPrice(prices.last)}',
                                 style: GoogleFonts.inter(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w700,

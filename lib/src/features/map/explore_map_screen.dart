@@ -224,8 +224,8 @@ class _ExploreMapScreenState extends ConsumerState<ExploreMapScreen> {
             ),
           ),
 
-        // 4. Bottom sheet arrastrable — el usuario puede deslizar arriba
-        //    para ver más negocios sin tener el mapa fijo encima.
+        // 4. Bottom sheet arrastrable â€” el usuario puede deslizar arriba
+        //    para ver mÃ¡s negocios sin tener el mapa fijo encima.
         DraggableScrollableSheet(
           initialChildSize: 0.4, // arranca al 40% para ver bien el mapa
           minChildSize: 0.15,    // se puede achicar al 15% (solo handle)
@@ -280,7 +280,7 @@ class _ExploreMapScreenState extends ConsumerState<ExploreMapScreen> {
     return CustomScrollView(
       controller: scrollController,
       slivers: [
-        // -- Handle bar (línea de arrastre) --
+        // -- Handle bar (lÃ­nea de arrastre) --
         if (showHandle)
           SliverToBoxAdapter(
             child: Center(
@@ -296,7 +296,7 @@ class _ExploreMapScreenState extends ConsumerState<ExploreMapScreen> {
             ),
           ),
 
-        // -- Banner ubicación --
+        // -- Banner ubicaciÃ³n --
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.symmetric(
@@ -312,7 +312,7 @@ class _ExploreMapScreenState extends ConsumerState<ExploreMapScreen> {
                 ),
                 const SizedBox(width: AppSizes.s6),
                 Text(
-                  'Asunción, Paraguay ????',
+                  'AsunciÃ³n, Paraguay ????',
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -384,7 +384,7 @@ class _ExploreMapScreenState extends ConsumerState<ExploreMapScreen> {
 
         const SliverToBoxAdapter(child: SizedBox(height: AppSizes.s8)),
 
-        // -- Chips de categorías --
+        // -- Chips de categorÃ­as --
         SliverToBoxAdapter(
           child: SizedBox(
             height: 44,
@@ -851,7 +851,7 @@ class _BusinessCard extends StatelessWidget {
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Category icon – gradient circle
+                            // Category icon â€“ gradient circle
                             Container(
                               width: 52,
                               height: 52,

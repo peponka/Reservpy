@@ -24,7 +24,7 @@ import 'package:reservpy/src/data/services/email_service.dart';
 
 
 // ---------------------------------------------------------------------------
-// REGISTER SCREEN — Multi-step premium SaaS registration flow
+// REGISTER SCREEN â€” Multi-step premium SaaS registration flow
 // ---------------------------------------------------------------------------
 
 /// Multi-step registration screen with:
@@ -165,7 +165,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
 
       if (!mounted) return;
 
-      // CN-008: Si Supabase requiere confirmación de email, la sesión
+      // CN-008: Si Supabase requiere confirmaciÃ³n de email, la sesiÃ³n
       // llega null. En ese caso mostramos el aviso y no entramos a la app.
       if (response.user != null && response.session == null) {
         setState(() => _isLoading = false);
@@ -174,12 +174,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
           context: context,
           barrierDismissible: false,
           builder: (_) => AlertDialog(
-            title: const Text('Revisá tu email'),
+            title: const Text('RevisÃ¡ tu email'),
             content: Text(
-              'Te enviamos un enlace de confirmación a '
+              'Te enviamos un enlace de confirmaciÃ³n a '
               '${_emailController.text.trim()}.\n\n'
-              'Hacé clic en el enlace para activar tu cuenta '
-              'y luego iniciá sesión.',
+              'HacÃ© clic en el enlace para activar tu cuenta '
+              'y luego iniciÃ¡ sesiÃ³n.',
             ),
             actions: [
               TextButton(
@@ -210,7 +210,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
             createdAt: DateTime.now(),
           ));
         } catch (_) {
-          // Profile update is non-fatal — trigger already created it
+          // Profile update is non-fatal â€” trigger already created it
         }
 
         // Insert role(s) into user_roles table
@@ -243,9 +243,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
           );
         }
 
-        // -- Entrar directo: mantenemos la sesión abierta --
+        // -- Entrar directo: mantenemos la sesiÃ³n abierta --
         // (Ya no deslogueamos ni mandamos al login la primera vez.
-        //  El login solo se usa cuando el usuario vuelve más adelante.)
+        //  El login solo se usa cuando el usuario vuelve mÃ¡s adelante.)
         final roles = (role == UserRole.business)
             ? <UserRole>[UserRole.businessOwner, UserRole.client]
             : <UserRole>[UserRole.client];
@@ -265,20 +265,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
 
         ref.read(currentUserProvider.notifier).state = newUser;
         ref.read(isLoggedInProvider.notifier).state = true;
-        // Como el usuario ya eligió "Tengo un negocio" o "Quiero reservar",
+        // Como el usuario ya eligiÃ³ "Tengo un negocio" o "Quiero reservar",
         // fijamos el rol activo y entramos directo (sin pasar por selector).
         ref.read(activeRoleProvider.notifier).state =
             (role == UserRole.business) ? UserRole.businessOwner : UserRole.client;
 
         if (role == UserRole.business) {
           // -- Crear el negocio AHORA con los datos del registro --
-          // Así, al volver a entrar, el usuario ya tiene su negocio
+          // AsÃ­, al volver a entrar, el usuario ya tiene su negocio
           // y va directo a su panel (sin la pantalla "Crear mi negocio").
           final String requestedName = _businessNameController.text.trim();
 
           // 1) Obtener el nombre del rubro ANTES de crear el negocio.
           //    Esperamos a que el provider termine de cargar (con timeout corto)
-          //    para no depender del estado en caché.
+          //    para no depender del estado en cachÃ©.
           String? categoryName;
           if (_selectedCategoryId != null && _selectedCategoryId!.isNotEmpty) {
             try {
@@ -325,7 +325,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
           }
 
           // 3) Cargar servicios sugeridos del rubro (best-effort: si alguno
-          //    falla, seguimos con los que sí entraron).
+          //    falla, seguimos con los que sÃ­ entraron).
           if (categoryName != null) {
             final svcRepo = ServiceRepository();
             for (final svc
@@ -338,13 +338,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
             }
           }
 
-          // 4) Invalidar para que el panel cargue el negocio recién creado.
+          // 4) Invalidar para que el panel cargue el negocio reciÃ©n creado.
           ref.invalidate(businessesProvider);
           ref.invalidate(ownerBusinessProvider);
           ref.invalidate(businessServicesProvider(created.id));
 
           if (!mounted) return;
-          // Pantalla de "¡Tu negocio fue creado!" ? de ahí a su panel
+          // Pantalla de "Â¡Tu negocio fue creado!" ? de ahÃ­ a su panel
           GoRouter.of(context).go(
             '/business-created?name=${Uri.encodeComponent(created.name)}',
           );
@@ -353,7 +353,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
           GoRouter.of(context).go('/client');
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('¡Cuenta creada con éxito! ??'),
+              content: const Text('Â¡Cuenta creada con Ã©xito! ??'),
               backgroundColor: const Color(0xFF20A482),
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 3),
@@ -368,7 +368,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
       if (!mounted) return;
       String message = e.message;
       if (message.contains('already registered')) {
-        message = 'Este email ya está registrado. Intentá iniciar sesión.';
+        message = 'Este email ya estÃ¡ registrado. IntentÃ¡ iniciar sesiÃ³n.';
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -400,7 +400,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     if (code.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Ingresá los 6 dígitos del código'),
+          content: const Text('IngresÃ¡ los 6 dÃ­gitos del cÃ³digo'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           shape:
@@ -427,7 +427,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   }
 
   void _completeRegistration() {
-    // This is now a fallback — main registration happens in _handleFormSubmit
+    // This is now a fallback â€” main registration happens in _handleFormSubmit
     GoRouter.of(context).go('/login');
   }
 
@@ -642,7 +642,7 @@ class _StepIndicator extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// STEP 1 — ROLE SELECTION
+// STEP 1 â€” ROLE SELECTION
 // ---------------------------------------------------------------------------
 
 class _StepRoleSelection extends StatelessWidget {
@@ -668,7 +668,7 @@ class _StepRoleSelection extends StatelessWidget {
 
               // --- Header -----------------------------------
               Text(
-                '¿Cómo querés usar ReservPy?',
+                'Â¿CÃ³mo querÃ©s usar ReservPy?',
                 style: theme.textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
@@ -681,7 +681,7 @@ class _StepRoleSelection extends StatelessWidget {
               const SizedBox(height: AppSizes.s8),
 
               Text(
-                'Elegí el tipo de cuenta según lo que necesités',
+                'ElegÃ­ el tipo de cuenta segÃºn lo que necesitÃ©s',
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
@@ -705,8 +705,8 @@ class _StepRoleSelection extends StatelessWidget {
                             subtitle:
                                 'Quiero recibir reservas de mis clientes y gestionar mi agenda online.',
                             features: const [
-                              'Página de reservas propia',
-                              'Panel de administración',
+                              'PÃ¡gina de reservas propia',
+                              'Panel de administraciÃ³n',
                               'Gratis hasta 10 turnos/mes',
                             ],
                             ctaLabel: 'Crear mi negocio ?',
@@ -745,8 +745,8 @@ class _StepRoleSelection extends StatelessWidget {
                           subtitle:
                               'Quiero recibir reservas de mis clientes y gestionar mi agenda online.',
                           features: const [
-                            'Página de reservas propia',
-                            'Panel de administración',
+                            'PÃ¡gina de reservas propia',
+                            'Panel de administraciÃ³n',
                             'Gratis hasta 10 turnos/mes',
                           ],
                           ctaLabel: 'Crear mi negocio ?',
@@ -971,7 +971,7 @@ class _RoleCardState extends State<_RoleCard> {
 }
 
 // ---------------------------------------------------------------------------
-// STEP 2 — REGISTRATION FORM
+// STEP 2 â€” REGISTRATION FORM
 // ---------------------------------------------------------------------------
 
 class _StepRegistrationForm extends StatelessWidget {
@@ -1035,12 +1035,12 @@ class _StepRegistrationForm extends StatelessWidget {
         if (isWide) {
           return Row(
             children: [
-              // LEFT — Hero panel
+              // LEFT â€” Hero panel
               Expanded(
                 flex: 5,
                 child: _BusinessHeroPanel(),
               ),
-              // RIGHT — Form
+              // RIGHT â€” Form
               Expanded(
                 flex: 5,
                 child: _buildBusinessFormPanel(context),
@@ -1088,7 +1088,7 @@ class _StepRegistrationForm extends StatelessWidget {
                 const SizedBox(height: AppSizes.s4),
 
                 Text(
-                  'Empezá a recibir reservas hoy',
+                  'EmpezÃ¡ a recibir reservas hoy',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
@@ -1128,7 +1128,7 @@ class _StepRegistrationForm extends StatelessWidget {
 
                 const SizedBox(height: AppSizes.s16),
 
-                // Category selector (Rubro) — Premium bottom sheet
+                // Category selector (Rubro) â€” Premium bottom sheet
                 Builder(
                   builder: (context) {
                     final selectedCat = selectedCategoryId != null
@@ -1149,7 +1149,7 @@ class _StepRegistrationForm extends StatelessWidget {
                         child: TextFormField(
                           decoration: InputDecoration(
                             labelText: 'Rubro del negocio *',
-                            hintText: 'Seleccioná tu rubro',
+                            hintText: 'SeleccionÃ¡ tu rubro',
                             prefixIcon: selectedCat != null
                                 ? Padding(
                                     padding: const EdgeInsets.all(12),
@@ -1173,7 +1173,7 @@ class _StepRegistrationForm extends StatelessWidget {
                             text: selectedCat?.name ?? '',
                           ),
                           validator: (_) =>
-                              selectedCategoryId == null ? 'Seleccioná un rubro' : null,
+                              selectedCategoryId == null ? 'SeleccionÃ¡ un rubro' : null,
                         ),
                       ),
                     );
@@ -1232,7 +1232,7 @@ class _StepRegistrationForm extends StatelessWidget {
                     AppTextField(
                       controller: passwordController,
                       label: AppStrings.password,
-                      hint: '••••••••',
+                      hint: 'â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢',
                       prefixIcon: Icons.lock_outline_rounded,
                       obscureText: obscurePassword,
                       validator: Validators.password,
@@ -1248,11 +1248,11 @@ class _StepRegistrationForm extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: AppSizes.s16),
-                    // Confirmar contraseña (abajo, a lo ancho)
+                    // Confirmar contraseÃ±a (abajo, a lo ancho)
                     AppTextField(
                       controller: confirmPasswordController,
                       label: AppStrings.confirmPassword,
-                      hint: '••••••••',
+                      hint: 'â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢',
                       prefixIcon: Icons.lock_outline_rounded,
                       obscureText: obscureConfirm,
                       validator: (v) => Validators.confirmPassword(
@@ -1292,7 +1292,7 @@ class _StepRegistrationForm extends StatelessWidget {
 
                 // Small text
                 Text(
-                  'Gratis hasta 10 reservas/mes · Sin tarjeta de crédito',
+                  'Gratis hasta 10 reservas/mes Â· Sin tarjeta de crÃ©dito',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
@@ -1305,7 +1305,7 @@ class _StepRegistrationForm extends StatelessWidget {
 
                 // Terms
                 Text(
-                  'Al crear tu cuenta, aceptás los Términos de Servicio y la Política de Privacidad de ReservPy.',
+                  'Al crear tu cuenta, aceptÃ¡s los TÃ©rminos de Servicio y la PolÃ­tica de Privacidad de ReservPy.',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurface.withValues(alpha: 0.4),
                     fontSize: 11,
@@ -1330,7 +1330,7 @@ class _StepRegistrationForm extends StatelessWidget {
                     onTap: onSwitchRole,
                     child: Text.rich(
                       TextSpan(
-                        text: '¿Querés reservar un turno? ',
+                        text: 'Â¿QuerÃ©s reservar un turno? ',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: colorScheme.onSurface.withValues(alpha: 0.5),
                         ),
@@ -1419,7 +1419,7 @@ class _StepRegistrationForm extends StatelessWidget {
                 const SizedBox(height: AppSizes.s4),
 
                 Text(
-                  'Completá tus datos para empezar a reservar',
+                  'CompletÃ¡ tus datos para empezar a reservar',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
@@ -1507,7 +1507,7 @@ class _StepRegistrationForm extends StatelessWidget {
                 AppTextField(
                   controller: passwordController,
                   label: AppStrings.password,
-                  hint: '••••••••',
+                  hint: 'â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢',
                   prefixIcon: Icons.lock_outline_rounded,
                   obscureText: obscurePassword,
                   validator: Validators.password,
@@ -1532,7 +1532,7 @@ class _StepRegistrationForm extends StatelessWidget {
                 AppTextField(
                   controller: confirmPasswordController,
                   label: AppStrings.confirmPassword,
-                  hint: '••••••••',
+                  hint: 'â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢',
                   prefixIcon: Icons.lock_outline_rounded,
                   obscureText: obscureConfirm,
                   validator: (v) => Validators.confirmPassword(
@@ -1571,7 +1571,7 @@ class _StepRegistrationForm extends StatelessWidget {
 
                 // Terms
                 Text(
-                  'Al crear tu cuenta, aceptás los Términos de Servicio y la Política de Privacidad de ReservPy.',
+                  'Al crear tu cuenta, aceptÃ¡s los TÃ©rminos de Servicio y la PolÃ­tica de Privacidad de ReservPy.',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurface.withValues(alpha: 0.4),
                     fontSize: 11,
@@ -1595,7 +1595,7 @@ class _StepRegistrationForm extends StatelessWidget {
                     onTap: onSwitchRole,
                     child: Text.rich(
                       TextSpan(
-                        text: '¿Tenés un negocio? ',
+                        text: 'Â¿TenÃ©s un negocio? ',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: colorScheme.onSurface.withValues(alpha: 0.5),
                         ),
@@ -1694,7 +1694,7 @@ class _BusinessHeroPanel extends StatelessWidget {
 
             // Subtitle
             Text(
-              'Creá tu cuenta, configurá tus servicios y compartí tu link. Tus clientes reservan solos.',
+              'CreÃ¡ tu cuenta, configurÃ¡ tus servicios y compartÃ­ tu link. Tus clientes reservan solos.',
               style: theme.textTheme.bodyLarge?.copyWith(
                 color: Colors.white.withValues(alpha: 0.85),
                 height: 1.5,
@@ -1707,11 +1707,11 @@ class _BusinessHeroPanel extends StatelessWidget {
 
             // Bullet points
             _HeroBullet(
-              text: 'Creá tu página de reservas en minutos',
+              text: 'CreÃ¡ tu pÃ¡gina de reservas en minutos',
               delay: 300,
             ),
             _HeroBullet(
-              text: 'Recibí turnos online 24/7',
+              text: 'RecibÃ­ turnos online 24/7',
               delay: 400,
             ),
             _HeroBullet(
@@ -1754,7 +1754,7 @@ class _BusinessHeroPanel extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSizes.s12),
                   Text(
-                    'Dejé de perder tiempo coordinando turnos por WhatsApp. En un día ya tenía todo funcionando.',
+                    'DejÃ© de perder tiempo coordinando turnos por WhatsApp. En un dÃ­a ya tenÃ­a todo funcionando.',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: Colors.white.withValues(alpha: 0.9),
                       fontStyle: FontStyle.italic,
@@ -1784,7 +1784,7 @@ class _BusinessHeroPanel extends StatelessWidget {
                       ),
                       const SizedBox(width: AppSizes.s8),
                       Text(
-                        '— Sofía R., Psicóloga',
+                        'â€” SofÃ­a R., PsicÃ³loga',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: Colors.white.withValues(alpha: 0.7),
                           fontWeight: FontWeight.w500,
@@ -1860,7 +1860,7 @@ class _HeroBullet extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// STEP 3 — EMAIL VERIFICATION
+// STEP 3 â€” EMAIL VERIFICATION
 // ---------------------------------------------------------------------------
 
 class _StepVerification extends StatelessWidget {
@@ -1986,7 +1986,7 @@ class _VerificationForm extends StatelessWidget {
         const SizedBox(height: AppSizes.s24),
 
         Text(
-          'Verificá tu email',
+          'VerificÃ¡ tu email',
           style: theme.textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.w800,
           ),
@@ -1998,7 +1998,7 @@ class _VerificationForm extends StatelessWidget {
 
         Text.rich(
           TextSpan(
-            text: 'Enviamos un código de 6 dígitos a ',
+            text: 'Enviamos un cÃ³digo de 6 dÃ­gitos a ',
             children: [
               TextSpan(
                 text: email.isNotEmpty ? email : 'tu correo',
@@ -2104,7 +2104,7 @@ class _VerificationForm extends StatelessWidget {
 
         // Expiry info
         Text(
-          'El código expira en 15 minutos.',
+          'El cÃ³digo expira en 15 minutos.',
           style: theme.textTheme.bodySmall?.copyWith(
             color: colorScheme.onSurface.withValues(alpha: 0.5),
           ),
@@ -2119,7 +2119,7 @@ class _VerificationForm extends StatelessWidget {
         GestureDetector(
           onTap: onGoToLogin,
           child: Text(
-            '¿No llegó? Registrate de nuevo',
+            'Â¿No llegÃ³? Registrate de nuevo',
             style: theme.textTheme.bodySmall?.copyWith(
               color: colorScheme.primary,
               fontWeight: FontWeight.w600,
@@ -2139,7 +2139,7 @@ class _VerificationForm extends StatelessWidget {
             // This is handled by the back button in the top bar
           },
           child: Text(
-            'Escribí mal mi correo',
+            'EscribÃ­ mal mi correo',
             style: theme.textTheme.bodySmall?.copyWith(
               color: colorScheme.onSurface.withValues(alpha: 0.5),
               decoration: TextDecoration.underline,
@@ -2209,7 +2209,7 @@ class _VerificationSuccess extends StatelessWidget {
         const SizedBox(height: AppSizes.s32),
 
         Text(
-          '¡Cuenta verificada!',
+          'Â¡Cuenta verificada!',
           style: theme.textTheme.headlineMedium?.copyWith(
             fontWeight: FontWeight.w800,
             color: AppColors.success,
@@ -2222,7 +2222,7 @@ class _VerificationSuccess extends StatelessWidget {
         const SizedBox(height: AppSizes.s8),
 
         Text(
-          'Tu email fue confirmado. Ya podés ingresar.',
+          'Tu email fue confirmado. Ya podÃ©s ingresar.',
           style: theme.textTheme.bodyLarge?.copyWith(
             color: colorScheme.onSurface.withValues(alpha: 0.6),
           ),
@@ -2277,7 +2277,7 @@ class _VerificationSuccess extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: _GradientButton(
-            label: 'Ir a iniciar sesión ?',
+            label: 'Ir a iniciar sesiÃ³n ?',
             onPressed: onContinue,
           ),
         )
@@ -2339,7 +2339,7 @@ class _GoogleSignUpButton extends StatelessWidget {
           try {
             final authRepo = AuthRepository();
             await authRepo.signInWithGoogle();
-            // OAuth redirect handles the rest — the app will reload with the session
+            // OAuth redirect handles the rest â€” the app will reload with the session
           } catch (e) {
             if (!context.mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
@@ -2476,7 +2476,7 @@ class _GradientButton extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// CATEGORY PICKER — Premium bottom sheet
+// CATEGORY PICKER â€” Premium bottom sheet
 // ---------------------------------------------------------------------------
 
 void _showCategoryPicker(
@@ -2556,7 +2556,7 @@ class _CategoryPickerSheetState extends State<_CategoryPickerSheet> {
                 Icon(Icons.category_rounded, color: AppColors.primary, size: 24),
                 const SizedBox(width: 10),
                 Text(
-                  'Seleccioná tu rubro',
+                  'SeleccionÃ¡ tu rubro',
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),

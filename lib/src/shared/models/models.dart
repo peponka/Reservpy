@@ -62,7 +62,7 @@ String _iconToString(IconData icon) {
 /// existing DB records. The canonical value is 'businessOwner'.
 enum UserRole {
   client,
-  business,       // legacy alias — same as businessOwner
+  business,       // legacy alias â€” same as businessOwner
   businessOwner,  // canonical name
   employee,
   admin;
@@ -496,7 +496,7 @@ class Reservation {
   final String? cancellationReason;
   final DateTime createdAt;
 
-  // Reservas manuales (cargadas por el dueño — CN-005)
+  // Reservas manuales (cargadas por el dueÃ±o â€” CN-005)
   final bool isManual;
   final String? manualClientName;
   final String? manualClientPhone;

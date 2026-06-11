@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Pantalla de éxito que se muestra justo después de registrar un negocio.
+/// Pantalla de Ã©xito que se muestra justo despuÃ©s de registrar un negocio.
 /// Confirma que el negocio fue creado y lleva al panel del negocio.
 class BusinessCreatedScreen extends StatefulWidget {
   final String businessName;
@@ -51,7 +51,7 @@ class _BusinessCreatedScreenState extends State<BusinessCreatedScreen>
             children: [
               const Spacer(flex: 2),
 
-              // Check animado dentro de un círculo
+              // Check animado dentro de un cÃ­rculo
               ScaleTransition(
                 scale: _scale,
                 child: Container(
@@ -83,7 +83,7 @@ class _BusinessCreatedScreenState extends State<BusinessCreatedScreen>
                 child: Column(
                   children: [
                     Text(
-                      '¡Tu negocio fue creado! ??',
+                      'Â¡Tu negocio fue creado! ??',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.inter(
                         fontSize: 26,
@@ -95,8 +95,8 @@ class _BusinessCreatedScreenState extends State<BusinessCreatedScreen>
                     const SizedBox(height: 12),
                     Text(
                       widget.businessName.trim().isNotEmpty
-                          ? '"${widget.businessName.trim()}" ya está listo para empezar a recibir reservas.'
-                          : 'Tu negocio ya está listo para empezar a recibir reservas.',
+                          ? '"${widget.businessName.trim()}" ya estÃ¡ listo para empezar a recibir reservas.'
+                          : 'Tu negocio ya estÃ¡ listo para empezar a recibir reservas.',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.inter(
                         fontSize: 16,
@@ -111,7 +111,7 @@ class _BusinessCreatedScreenState extends State<BusinessCreatedScreen>
 
               const Spacer(flex: 3),
 
-              // Botón ? panel del negocio
+              // BotÃ³n ? panel del negocio
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(

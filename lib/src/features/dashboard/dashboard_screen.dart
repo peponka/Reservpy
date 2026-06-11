@@ -36,14 +36,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   String _greeting() {
     final hour = _now.hour;
-    if (hour < 12) return 'BUENOS DÕAS';
+    if (hour < 12) return 'BUENOS D√çAS';
     if (hour < 19) return 'BUENAS TARDES';
     return 'BUENAS NOCHES';
   }
 
   String _greetingTitle() {
     final hour = _now.hour;
-    if (hour < 12) return 'Buenos dÌas';
+    if (hour < 12) return 'Buenos d√≠as';
     if (hour < 19) return 'Buenas tardes';
     return 'Buenas noches';
   }
@@ -115,9 +115,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   // -----------------------------------------------------------
-  // 1. GREETING HEADER (rediseÒo premium)
+  // 1. GREETING HEADER (redise√±o premium)
   //   - Saludo + nombre con avatar circular con la inicial
-  //   - Sin badge redundante, sin reloj (ya est· en la barra del telÈfono)
+  //   - Sin badge redundante, sin reloj (ya est√° en la barra del tel√©fono)
   // -----------------------------------------------------------
   Widget _buildGreetingHeader(
     ThemeData theme,
@@ -198,7 +198,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                     const SizedBox(height: AppSizes.s8),
                     Text(
-                      'Gestion· tus turnos del dÌa',
+                      'Gestion√° tus turnos del d√≠a',
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         color: Colors.white.withValues(alpha: 0.65),
@@ -272,7 +272,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         color: AppColors.info,
       ),
       _KpiData(
-        label: 'OcupaciÛn',
+        label: 'Ocupaci√≥n',
         value: '${stats.occupancyPercent.round()}%',
         icon: Icons.pie_chart_rounded,
         color: stats.occupancyPercent > 70
@@ -495,7 +495,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Confirm· o cancel· para mantener tu agenda al dÌa',
+                  'Confirm√° o cancel√° para mantener tu agenda al d√≠a',
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     color: AppColors.textSecondary,
@@ -579,7 +579,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     ColorScheme colorScheme,
     EnhancedDashboardStats stats,
   ) {
-    final dayNames = ['Lun', 'Mar', 'MiÈ', 'Jue', 'Vie', 'S·b', 'Dom'];
+    final dayNames = ['Lun', 'Mar', 'Mi√©', 'Jue', 'Vie', 'S√°b', 'Dom'];
     final breakdown = stats.weeklyBreakdown;
     final maxVal = breakdown.isEmpty
         ? 1
@@ -832,7 +832,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
           const SizedBox(height: AppSizes.s16),
           Text(
-            'Tu agenda est· vacÌa',
+            'Tu agenda est√° vac√≠a',
             style: GoogleFonts.inter(
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -1009,7 +1009,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   size: 20, color: AppColors.success),
               const SizedBox(width: AppSizes.s8),
               Text(
-                'Servicios m·s populares',
+                'Servicios m√°s populares',
                 style: GoogleFonts.inter(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -1025,7 +1025,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 padding:
                     const EdgeInsets.symmetric(vertical: AppSizes.s16),
                 child: Text(
-                  'A˙n no hay reservas con servicios.',
+                  'A√∫n no hay reservas con servicios.',
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     color: AppColors.textSecondary,
@@ -1224,7 +1224,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Plan Free ∑ $reservationCount/10 reservas',
+                      'Plan Free ¬∑ $reservationCount/10 reservas',
                       style: GoogleFonts.inter(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
@@ -1233,7 +1233,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                     const SizedBox(height: AppSizes.s4),
                     Text(
-                      'Actualiz· a Pro para turnos ilimitados',
+                      'Actualiz√° a Pro para turnos ilimitados',
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         fontWeight: FontWeight.w400,

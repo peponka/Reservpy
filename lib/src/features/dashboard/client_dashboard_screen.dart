@@ -37,14 +37,14 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
   // -- Greeting helpers ----------------------------------------------
   String _greetingLabel() {
     final h = _now.hour;
-    if (h < 12) return 'BUENOS DÕAS';
+    if (h < 12) return 'BUENOS D√çAS';
     if (h < 19) return 'BUENAS TARDES';
     return 'BUENAS NOCHES';
   }
 
   String _greetingTitle() {
     final h = _now.hour;
-    if (h < 12) return 'Buenos dÌas';
+    if (h < 12) return 'Buenos d√≠as';
     if (h < 19) return 'Buenas tardes';
     return 'Buenas noches';
   }
@@ -66,7 +66,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
 
     final userName = user?.firstName ?? 'Usuario';
 
-    // Filter reservations for this client ó already filtered by provider
+    // Filter reservations for this client ‚Äî already filtered by provider
     final myReservations = allReservations;
 
     final now = DateTime.now();
@@ -121,7 +121,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // -----------------------------------------------------------
-                // 1. GREETING HEADER ó green gradient card
+                // 1. GREETING HEADER ‚Äî green gradient card
                 // -----------------------------------------------------------
                 _buildGreetingHeader(
                   theme,
@@ -132,7 +132,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                 const SizedBox(height: AppSizes.s24),
 
                 // -----------------------------------------------------------
-                // 1b. REMINDER BANNER ó only if there's a reservation tomorrow
+                // 1b. REMINDER BANNER ‚Äî only if there's a reservation tomorrow
                 // -----------------------------------------------------------
                 if (tomorrowReservations.isNotEmpty) ...[
                   _buildTomorrowBanner(theme, colorScheme, tomorrowReservations.first),
@@ -140,7 +140,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                 ],
 
                 // -----------------------------------------------------------
-                // 2. STATS ROW ó 3 KPI cards
+                // 2. STATS ROW ‚Äî 3 KPI cards
                 // -----------------------------------------------------------
                 _buildStatsRow(
                   theme,
@@ -152,7 +152,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                 const SizedBox(height: AppSizes.s24),
 
                 // -----------------------------------------------------------
-                // 3. PR”XIMOS TURNOS
+                // 3. PR√ìXIMOS TURNOS
                 // -----------------------------------------------------------
                 _buildUpcomingCard(theme, colorScheme, upcoming),
                 const SizedBox(height: AppSizes.s20),
@@ -177,11 +177,11 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
   }
 
   // -------------------------------------------------------------------
-  // 1. GREETING HEADER (rediseÒo premium)
+  // 1. GREETING HEADER (redise√±o premium)
   //   - Saludo + nombre con avatar circular con la inicial
-  //   - LÌnea inferior contextual:
-  //       ∑ si hay prÛxima reserva ? la muestra
-  //       ∑ si no ? CTA de reservar
+  //   - L√≠nea inferior contextual:
+  //       ¬∑ si hay pr√≥xima reserva ? la muestra
+  //       ¬∑ si no ? CTA de reservar
   // -------------------------------------------------------------------
   Widget _buildGreetingHeader(
     ThemeData theme,
@@ -196,8 +196,8 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
       borderRadius: BorderRadius.circular(AppSizes.radiusXl),
       child: Stack(
         children: [
-          // Fondo con gradiente m·s sutil (sÛlo dos paradas, sin azul oscuro
-          // al final ó eso lo hacÌa verse "pl·stico").
+          // Fondo con gradiente m√°s sutil (s√≥lo dos paradas, sin azul oscuro
+          // al final ‚Äî eso lo hac√≠a verse "pl√°stico").
           Container(
             padding: const EdgeInsets.fromLTRB(
                 AppSizes.s24, AppSizes.s24, AppSizes.s24, AppSizes.s24),
@@ -286,12 +286,12 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
 
                 const SizedBox(height: AppSizes.s20),
 
-                // LÌnea inferior: contextual
+                // L√≠nea inferior: contextual
                 _buildHeroContextLine(nextReservation),
               ],
             ),
           ),
-          // CÌrculo decorativo arriba a la derecha (m·s sutil)
+          // C√≠rculo decorativo arriba a la derecha (m√°s sutil)
           Positioned(
             top: -40,
             right: -40,
@@ -312,11 +312,11 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
   }
 
   /// Pill informativa al pie del hero:
-  ///   ∑ con prÛxima reserva ? "Tu prÛximo turno ∑ martes 14:30"
-  ///   ∑ sin reservas       ? "Listo para reservar tu prÛximo turno"
+  ///   ¬∑ con pr√≥xima reserva ? "Tu pr√≥ximo turno ¬∑ martes 14:30"
+  ///   ¬∑ sin reservas       ? "Listo para reservar tu pr√≥ximo turno"
   Widget _buildHeroContextLine(Reservation? next) {
     if (next != null) {
-      final df = DateFormat('EEEE d MMM ∑ HH:mm', 'es');
+      final df = DateFormat('EEEE d MMM ¬∑ HH:mm', 'es');
       final dateStr = df.format(next.startTime);
       return Container(
         padding: const EdgeInsets.symmetric(
@@ -338,7 +338,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'TU PR”XIMO TURNO',
+                    'TU PR√ìXIMO TURNO',
                     style: GoogleFonts.inter(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
@@ -378,7 +378,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
         const SizedBox(width: AppSizes.s12),
         Expanded(
           child: Text(
-            'Listo para reservar tu prÛximo turno',
+            'Listo para reservar tu pr√≥ximo turno',
             style: GoogleFonts.inter(
               fontSize: 14,
               fontWeight: FontWeight.w500,
@@ -403,7 +403,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
   }) {
     final items = [
       _StatItem(
-        label: 'PR”XIMOS',
+        label: 'PR√ìXIMOS',
         value: '$upcomingCount',
         icon: Icons.calendar_today_rounded,
         color: AppColors.primary,
@@ -422,7 +422,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
       ),
     ];
 
-    // Siempre 3 columnas (tambiÈn en mobile) ó m·s limpio que apilar.
+    // Siempre 3 columnas (tambi√©n en mobile) ‚Äî m√°s limpio que apilar.
     return Row(
       children: items.asMap().entries.map((entry) {
         return Expanded(
@@ -438,8 +438,8 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
     );
   }
 
-  /// Stat card compacta y vertical (Ìcono pill arriba, n˙mero grande, label).
-  /// DiseÒo limpio sin tanto adorno ó entra siempre en una fila aunque
+  /// Stat card compacta y vertical (√≠cono pill arriba, n√∫mero grande, label).
+  /// Dise√±o limpio sin tanto adorno ‚Äî entra siempre en una fila aunque
   /// la pantalla sea angosta.
   Widget _buildStatCard(
     ThemeData theme,
@@ -469,7 +469,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                 AppSizes.s12, AppSizes.s16, AppSizes.s12, AppSizes.s12),
             child: Column(
               children: [
-                // Õcono circular sutil con el color del item
+                // √çcono circular sutil con el color del item
                 Container(
                   width: 32,
                   height: 32,
@@ -480,7 +480,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                   child: Icon(item.icon, color: item.color, size: 16),
                 ),
                 const SizedBox(height: AppSizes.s8),
-                // N˙mero (grande, dominante)
+                // N√∫mero (grande, dominante)
                 Text(
                   item.value,
                   style: GoogleFonts.inter(
@@ -491,7 +491,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSizes.s4),
-                // Label (chico, una sola lÌnea, recorta con Ö)
+                // Label (chico, una sola l√≠nea, recorta con ‚Ä¶)
                 Text(
                   item.label,
                   maxLines: 1,
@@ -568,7 +568,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'PrÛximos turnos',
+                      'Pr√≥ximos turnos',
                       style: GoogleFonts.inter(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -577,7 +577,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'PrÛximos 14 dÌas',
+                      'Pr√≥ximos 14 d√≠as',
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         color: AppColors.textSecondary,
@@ -631,7 +631,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
           ),
           const SizedBox(height: AppSizes.s16),
           Text(
-            'Sin turnos prÛximos',
+            'Sin turnos pr√≥ximos',
             style: GoogleFonts.inter(
               fontSize: 15,
               fontWeight: FontWeight.w700,
@@ -640,7 +640,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
           ),
           const SizedBox(height: AppSizes.s4),
           Text(
-            'Reserv· un turno y aparecer· ac·',
+            'Reserv√° un turno y aparecer√° ac√°',
             style: GoogleFonts.inter(
               fontSize: 13,
               color: AppColors.textSecondary,
@@ -680,7 +680,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
     Reservation r,
   ) {
     final timeStr =
-        '${DateFormat('HH:mm').format(r.startTime)} ñ ${DateFormat('HH:mm').format(r.endTime)}';
+        '${DateFormat('HH:mm').format(r.startTime)} ‚Äì ${DateFormat('HH:mm').format(r.endTime)}';
     final dateStr = DateFormat("EEE d MMM", 'es').format(r.startTime);
 
     return Container(
@@ -971,7 +971,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
           ),
           const SizedBox(height: AppSizes.s16),
           Text(
-            'Tu agenda est· vacÌa',
+            'Tu agenda est√° vac√≠a',
             style: GoogleFonts.inter(
               fontSize: 15,
               fontWeight: FontWeight.w700,
@@ -980,7 +980,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
           ),
           const SizedBox(height: AppSizes.s8),
           Text(
-            'Reserv· tu primer turno en segundos.\nSin llamadas, sin esperas.',
+            'Reserv√° tu primer turno en segundos.\nSin llamadas, sin esperas.',
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               fontSize: 13,
@@ -1097,7 +1097,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                             BorderRadius.circular(AppSizes.radiusSm),
                       ),
                       child: Text(
-                        '$timeStr ñ $endStr',
+                        '$timeStr ‚Äì $endStr',
                         style: GoogleFonts.inter(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
@@ -1190,7 +1190,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Recordatorio ó turno maÒana',
+                  'Recordatorio ‚Äî turno ma√±ana',
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
@@ -1199,7 +1199,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${r.serviceName ?? 'Servicio'} ∑ ${r.businessName ?? 'el negocio'} ∑ $timeStr hs',
+                  '${r.serviceName ?? 'Servicio'} ¬∑ ${r.businessName ?? 'el negocio'} ¬∑ $timeStr hs',
                   style: GoogleFonts.inter(
                     fontSize: 12,
                     color: AppColors.textSecondary,
@@ -1218,7 +1218,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
-              'MaÒana',
+              'Ma√±ana',
               style: GoogleFonts.inter(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
@@ -1239,14 +1239,14 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
       _QuickAction(
         icon: Icons.search_rounded,
         label: 'Buscar negocios',
-        subtitle: 'Encontr· tu servicio ideal',
+        subtitle: 'Encontr√° tu servicio ideal',
         color: AppColors.primary,
         tabIndex: 1,
       ),
       _QuickAction(
         icon: Icons.explore_rounded,
         label: 'Explorar mapa',
-        subtitle: 'DescubrÌ cerca de vos',
+        subtitle: 'Descubr√≠ cerca de vos',
         color: AppColors.info,
         tabIndex: 2,
       ),
@@ -1265,7 +1265,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
         Padding(
           padding: const EdgeInsets.only(bottom: AppSizes.s16),
           child: Text(
-            'Acceso r·pido',
+            'Acceso r√°pido',
             style: GoogleFonts.inter(
               fontSize: 16,
               fontWeight: FontWeight.w700,

@@ -66,7 +66,7 @@ class RoleSelectorScreen extends ConsumerWidget {
                     const SizedBox(height: 24),
 
                     Text(
-                      '�Hola, ${user?.firstName ?? ''}!',
+                      '¡Hola, ${user?.firstName ?? ''}!',
                       style: GoogleFonts.inter(
                         fontSize: 28,
                         fontWeight: FontWeight.w800,
@@ -79,7 +79,7 @@ class RoleSelectorScreen extends ConsumerWidget {
                     const SizedBox(height: 8),
 
                     Text(
-                      '�C�mo deseas ingresar hoy?',
+                      '¿Cómo deseas ingresar hoy?',
                       style: GoogleFonts.inter(
                         fontSize: 16,
                         color: Colors.grey.shade500,
@@ -184,13 +184,13 @@ class _RoleCardState extends State<_RoleCard> {
     switch (widget.role) {
       case UserRole.businessOwner:
       case UserRole.business:
-        return 'Gestion� tu negocio, turnos y equipo';
+        return 'Gestioná tu negocio, turnos y equipo';
       case UserRole.employee:
-        return 'Mir� tu agenda y turnos asignados';
+        return 'Mirá tu agenda y turnos asignados';
       case UserRole.admin:
-        return 'Panel de administraci�n del sistema';
+        return 'Panel de administración del sistema';
       case UserRole.client:
-        return 'Reserv� turnos en negocios disponibles';
+        return 'Reservá turnos en negocios disponibles';
     }
   }
 

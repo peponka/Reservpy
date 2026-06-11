@@ -36,7 +36,7 @@ class BusinessShell extends ConsumerWidget {
     _SidebarNavItem(icon: Icons.groups_outlined, activeIcon: Icons.groups_rounded, label: 'Equipo'),
     _SidebarNavItem(icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart_rounded, label: 'Reportes'),
     _SidebarNavItem(icon: Icons.credit_card_outlined, activeIcon: Icons.credit_card_rounded, label: 'Planes'),
-    _SidebarNavItem(icon: Icons.settings_outlined, activeIcon: Icons.settings_rounded, label: 'Configuración'),
+    _SidebarNavItem(icon: Icons.settings_outlined, activeIcon: Icons.settings_rounded, label: 'ConfiguraciÃ³n'),
   ];
 
   /// Mobile-only bottom nav items (subset of sidebar for compact display).
@@ -45,19 +45,19 @@ class BusinessShell extends ConsumerWidget {
     _SidebarNavItem(icon: Icons.calendar_today_outlined, activeIcon: Icons.calendar_today_rounded, label: 'Calendario'),
     _SidebarNavItem(icon: Icons.people_outline_rounded, activeIcon: Icons.people_rounded, label: 'Clientes'),
     _SidebarNavItem(icon: Icons.storefront_outlined, activeIcon: Icons.storefront_rounded, label: 'Servicios'),
-    _SidebarNavItem(icon: Icons.menu_rounded, activeIcon: Icons.menu_rounded, label: 'Más'),
+    _SidebarNavItem(icon: Icons.menu_rounded, activeIcon: Icons.menu_rounded, label: 'MÃ¡s'),
   ];
 
-  /// Maps mobile nav index to sidebar index (index 4 = "Más" handled separately).
+  /// Maps mobile nav index to sidebar index (index 4 = "MÃ¡s" handled separately).
   static const _mobileToSidebarIndex = [0, 4, 1, 2]; // Dashboard, Calendario, Clientes, Servicios
 
-  /// Items shown inside the "Más" bottom sheet, with their _buildActiveTab indices.
+  /// Items shown inside the "MÃ¡s" bottom sheet, with their _buildActiveTab indices.
   static const _moreSheetItems = <({IconData icon, String label, int tabIndex, Color color})>[
     (icon: Icons.event_available_rounded, label: 'Disponibilidad', tabIndex: 3, color: Color(0xFF0EA5E9)),
     (icon: Icons.groups_rounded, label: 'Equipo', tabIndex: 5, color: Color(0xFF6366F1)),
     (icon: Icons.bar_chart_rounded, label: 'Reportes', tabIndex: 6, color: Color(0xFFF59E0B)),
     (icon: Icons.diamond_rounded, label: 'Planes', tabIndex: 7, color: Color(0xFFEC4899)),
-    (icon: Icons.settings_rounded, label: 'Configuración', tabIndex: 8, color: Color(0xFF8B5CF6)),
+    (icon: Icons.settings_rounded, label: 'ConfiguraciÃ³n', tabIndex: 8, color: Color(0xFF8B5CF6)),
     (icon: Icons.person_rounded, label: 'Perfil', tabIndex: 9, color: Color(0xFF14B8A6)),
   ];
 
@@ -90,7 +90,7 @@ class BusinessShell extends ConsumerWidget {
       );
     }
 
-    // Show error with retry — prevents false "Crear mi negocio" on network failure
+    // Show error with retry â€” prevents false "Crear mi negocio" on network failure
     if (ownerBizAsync.hasError) {
       return Scaffold(
         body: Center(
@@ -109,7 +109,7 @@ class BusinessShell extends ConsumerWidget {
               ),
               const SizedBox(height: AppSizes.s8),
               Text(
-                'Verificá tu conexión a internet e intentá de nuevo.',
+                'VerificÃ¡ tu conexiÃ³n a internet e intentÃ¡ de nuevo.',
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
@@ -164,7 +164,7 @@ class BusinessShell extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSizes.s24),
                 Text(
-                  '¡Bienvenido a ReservPy!',
+                  'Â¡Bienvenido a ReservPy!',
                   style: GoogleFonts.inter(
                     fontSize: 28,
                     fontWeight: FontWeight.w800,
@@ -173,7 +173,7 @@ class BusinessShell extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSizes.s12),
                 Text(
-                  'Todavía no tenés un negocio creado.\nConfigurá tu negocio para empezar a recibir reservas.',
+                  'TodavÃ­a no tenÃ©s un negocio creado.\nConfigurÃ¡ tu negocio para empezar a recibir reservas.',
                   style: GoogleFonts.inter(
                     fontSize: 16,
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
@@ -230,7 +230,7 @@ class BusinessShell extends ConsumerWidget {
                   },
                   icon: const Icon(Icons.logout_rounded, size: 18, color: AppColors.error),
                   label: Text(
-                    'Cerrar sesión',
+                    'Cerrar sesiÃ³n',
                     style: GoogleFonts.inter(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -318,7 +318,7 @@ class BusinessShell extends ConsumerWidget {
     // -- Mobile: Bottom Navigation --
     // Map sidebar index back to mobile nav index
     final mobileIndex = _mobileToSidebarIndex.indexOf(currentIndex);
-    // If currentIndex is from a "Más" sheet item, highlight the "Más" tab (index 4)
+    // If currentIndex is from a "MÃ¡s" sheet item, highlight the "MÃ¡s" tab (index 4)
     final isFromMoreSheet = _moreSheetItems.any((item) => item.tabIndex == currentIndex);
     final safeMobileIndex = mobileIndex >= 0 ? mobileIndex : (isFromMoreSheet ? 4 : 0);
 
@@ -351,7 +351,7 @@ class BusinessShell extends ConsumerWidget {
         selectedIndex: safeMobileIndex,
         onDestinationSelected: (index) {
           if (index == 4) {
-            // "Más" tapped ? show bottom sheet with hidden sections
+            // "MÃ¡s" tapped ? show bottom sheet with hidden sections
             _showMoreSheet(context, ref, currentIndex);
           } else {
             ref.read(businessNavIndexProvider.notifier).state = _mobileToSidebarIndex[index];
@@ -377,7 +377,7 @@ class BusinessShell extends ConsumerWidget {
     );
   }
 
-  /// Shows the "Más" modal bottom sheet with hidden navigation sections.
+  /// Shows the "MÃ¡s" modal bottom sheet with hidden navigation sections.
   void _showMoreSheet(BuildContext context, WidgetRef ref, int currentIndex) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -415,7 +415,7 @@ class BusinessShell extends ConsumerWidget {
                   child: Row(
                     children: [
                       Text(
-                        'Más opciones',
+                        'MÃ¡s opciones',
                         style: GoogleFonts.inter(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
@@ -610,7 +610,7 @@ class _DesktopSidebar extends ConsumerWidget {
                       ),
                     ),
                     Text(
-                      'Gestión de turnos',
+                      'GestiÃ³n de turnos',
                       style: GoogleFonts.inter(
                         fontSize: 10,
                         color: colorScheme.primary,
@@ -874,7 +874,7 @@ class _DesktopSidebar extends ConsumerWidget {
                   },
                   icon: Icon(Icons.logout_rounded, size: 18, color: colorScheme.error),
                   label: Text(
-                    'Cerrar sesión',
+                    'Cerrar sesiÃ³n',
                     style: GoogleFonts.inter(
                       fontSize: 12,
                       color: colorScheme.error,
