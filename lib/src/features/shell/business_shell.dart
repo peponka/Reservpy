@@ -19,6 +19,7 @@ import 'package:reservpy/src/features/business/services_screen.dart';
 import 'package:reservpy/src/features/business/availability_screen.dart';
 import 'package:reservpy/src/features/dashboard/reports_screen.dart';
 import 'package:reservpy/src/features/notifications/notification_panel.dart';
+import 'package:reservpy/src/features/business/reservbot_chat.dart';
 
 /// Business owner navigation shell with responsive layout:
 /// - Desktop (>=800px): Left sidebar navigation (like ReservPy)
@@ -247,6 +248,7 @@ class BusinessShell extends ConsumerWidget {
 
     if (isDesktop) {
       return Scaffold(
+        floatingActionButton: const ReservbotButton(),
         body: Row(
           children: [
             // -- Left Sidebar --
@@ -323,6 +325,7 @@ class BusinessShell extends ConsumerWidget {
     final safeMobileIndex = mobileIndex >= 0 ? mobileIndex : (isFromMoreSheet ? 4 : 0);
 
     return Scaffold(
+      floatingActionButton: const ReservbotButton(),
       body: SafeArea(
         bottom: false,
         child: AnimatedSwitcher(
