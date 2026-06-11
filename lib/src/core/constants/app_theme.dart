@@ -324,26 +324,31 @@ class AppTheme {
   // ─── Text Theme ────────────────────────────────────────
   static TextTheme _buildTextTheme(Color baseColor) {
     return TextTheme(
-      displayLarge: GoogleFonts.inter(
+      displayLarge: GoogleFonts.plusJakartaSans(
         fontSize: 32,
         fontWeight: FontWeight.w700,
         color: baseColor,
         letterSpacing: -0.5,
       ),
-      displayMedium: GoogleFonts.inter(
+      displayMedium: GoogleFonts.plusJakartaSans(
         fontSize: 28,
         fontWeight: FontWeight.w700,
         color: baseColor,
         letterSpacing: -0.5,
       ),
-      headlineLarge: GoogleFonts.inter(
+      headlineLarge: GoogleFonts.plusJakartaSans(
         fontSize: 24,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w700,
         color: baseColor,
       ),
-      headlineMedium: GoogleFonts.inter(
+      headlineMedium: GoogleFonts.plusJakartaSans(
         fontSize: 20,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w700,
+        color: baseColor,
+      ),
+      headlineSmall: GoogleFonts.plusJakartaSans(
+        fontSize: 18,
+        fontWeight: FontWeight.w700,
         color: baseColor,
       ),
       titleLarge: GoogleFonts.inter(

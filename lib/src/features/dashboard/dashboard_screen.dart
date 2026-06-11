@@ -188,7 +188,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       userName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: isDesktop ? 30 : 26,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,

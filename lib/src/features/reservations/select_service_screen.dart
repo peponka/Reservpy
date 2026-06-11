@@ -199,7 +199,7 @@ class _PremiumAppBar extends StatelessWidget {
                 // Business name
                 Text(
                   businessName,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 32,
                     fontWeight: FontWeight.w800,
                     color: Colors.white,
@@ -386,7 +386,7 @@ class _ServicesSection extends StatelessWidget {
         // Section title
         Text(
           'Servicios',
-          style: GoogleFonts.inter(
+          style: GoogleFonts.plusJakartaSans(
             fontSize: 26,
             fontWeight: FontWeight.w800,
             color: AppColors.accent,

@@ -41,7 +41,7 @@ class HeroSection extends StatelessWidget {
                   child: RichText(
                     textAlign: TextAlign.center,
                     text: TextSpan(
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: titleSize,
                         fontWeight: FontWeight.w800,
                         color: LandingColors.textPrimary,
@@ -53,7 +53,7 @@ class HeroSection extends StatelessWidget {
                         ),
                         TextSpan(
                           text: 'Paraguay 🇵🇾',
-                          style: GoogleFonts.inter(
+                          style: GoogleFonts.plusJakartaSans(
                             fontSize: titleSize,
                             fontWeight: FontWeight.w800,
                             height: 1.1,

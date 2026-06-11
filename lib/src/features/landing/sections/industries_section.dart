@@ -37,11 +37,11 @@ class IndustriesSection extends StatelessWidget {
               Text(
                 'Ideal para profesionales y negocios\nde todos los rubros',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  fontSize: mobile ? 24 : 32,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: mobile ? 26 : 36,
                   fontWeight: FontWeight.w700,
                   color: LandingColors.textPrimary,
-                  height: 1.25,
+                  height: 1.2,
                 ),
               )
                   .animate()

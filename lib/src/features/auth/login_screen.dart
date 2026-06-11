@@ -186,7 +186,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Widget _buildFormPanel(BuildContext context) {
     return Container(
-      color: Colors.white,
+      color: const Color(0xFFF8FAF9),
       child: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
@@ -220,11 +220,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     // Header
                     Text(
                       'Bienvenido de vuelta',
-                      style: GoogleFonts.inter(
-                        fontSize: 28,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 30,
                         fontWeight: FontWeight.w800,
                         color: const Color(0xFF1A1A2E),
-                        height: 1.2,
+                        height: 1.15,
                       ),
                     )
                         .animate()
@@ -513,8 +513,8 @@ class _HeroPanel extends StatelessWidget {
 
                 Text(
                   'ReservPy',
-                  style: GoogleFonts.inter(
-                    fontSize: 42,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 44,
                     fontWeight: FontWeight.w800,
                     color: Colors.white,
                     height: 1.1,

@@ -120,7 +120,7 @@ class MyReservationsScreen extends ConsumerWidget {
       children: [
         Text(
           'Mis reservas',
-          style: GoogleFonts.inter(
+          style: GoogleFonts.plusJakartaSans(
             fontSize: 28,
             fontWeight: FontWeight.w800,
             color: AppColors.accent,

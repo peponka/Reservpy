@@ -147,7 +147,7 @@ class _CategoriesPage extends ConsumerWidget {
                       Expanded(
                         child: Text(
                           'Categorías',
-                          style: GoogleFonts.inter(
+                          style: GoogleFonts.plusJakartaSans(
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
                             color: AppColors.accent,
@@ -275,7 +275,7 @@ class _CategoriesPage extends ConsumerWidget {
                   children: [
                     Text(
                       'Buscar negocios',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 26,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,
@@ -858,7 +858,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                   children: [
                     Text(
                       category.name,
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 24,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,

@@ -240,7 +240,7 @@ class _Logo extends StatelessWidget {
             children: [
               TextSpan(
                 text: 'Reserv',
-                style: GoogleFonts.inter(
+                style: GoogleFonts.plusJakartaSans(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
                   color: LandingColors.textPrimary,
@@ -248,7 +248,7 @@ class _Logo extends StatelessWidget {
               ),
               TextSpan(
                 text: 'Py',
-                style: GoogleFonts.inter(
+                style: GoogleFonts.plusJakartaSans(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
                   color: LandingColors.primary,

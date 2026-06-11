@@ -79,7 +79,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                   // App name
                   Text(
                     'ReservPy',
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.plusJakartaSans(
                       fontSize: 34,
                       fontWeight: FontWeight.w800,
                       color: AppColors.textPrimary,

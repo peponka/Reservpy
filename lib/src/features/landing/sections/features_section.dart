@@ -15,7 +15,7 @@ class FeaturesSection extends StatelessWidget {
       width: double.infinity,
       color: LandingColors.bgWhite,
       padding: EdgeInsets.symmetric(
-        vertical: mobile ? 64 : 96,
+        vertical: mobile ? 80 : 112,
         horizontal: mobile ? 16 : 24,
       ),
       child: Center(
@@ -74,11 +74,11 @@ class FeaturesSection extends StatelessWidget {
     return RichText(
       textAlign: TextAlign.center,
       text: TextSpan(
-        style: GoogleFonts.inter(
-          fontSize: mobile ? 28 : 40,
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: mobile ? 30 : 44,
           fontWeight: FontWeight.w800,
           color: LandingColors.textPrimary,
-          height: 1.2,
+          height: 1.15,
         ),
         children: [
           const TextSpan(text: 'Todo lo que tu negocio\nnecesita para '),

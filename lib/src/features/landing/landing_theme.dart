@@ -12,8 +12,8 @@ class LandingColors {
   static const Color primaryTint = Color(0xFFE6FAF5);
 
   // ─── Backgrounds ───────────────────────────────────────
-  static const Color bgWhite = Color(0xFFFFFFFF);
-  static const Color bgAlt = Color(0xFFF0FDF9);
+  static const Color bgWhite = Color(0xFFFAFAF9);
+  static const Color bgAlt = Color(0xFFEEF8F3);
   static const Color bgDark = Color(0xFF0F0F10);
 
   // ─── Text ──────────────────────────────────────────────

@@ -243,7 +243,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                             userName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.inter(
+                            style: GoogleFonts.plusJakartaSans(
                               fontSize: 30,
                               fontWeight: FontWeight.w800,
                               color: Colors.white,

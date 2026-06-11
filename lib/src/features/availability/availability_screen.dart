@@ -97,7 +97,7 @@ class _AvailabilityScreenState extends ConsumerState<AvailabilityScreen> {
                 // Header
                 Text(
                   'Disponibilidad',
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
                     color: colorScheme.onSurface,

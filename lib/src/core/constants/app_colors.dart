@@ -15,7 +15,7 @@ class AppColors {
   static const Color accentLight = Color(0xFF1A3A5C);
 
   // ─── Backgrounds (Light) ───────────────────────────────
-  static const Color backgroundLight = Color(0xFFFAFBFC);
+  static const Color backgroundLight = Color(0xFFF8FAF9);
   static const Color surfaceLight = Color(0xFFFFFFFF);
   static const Color cardLight = Color(0xFFFFFFFF);
 

@@ -97,11 +97,11 @@ class _ReservbotSectionState extends State<ReservbotSection> {
         // Title
         Text(
           'Reservbot entiende tu agenda y te ayuda a operar más rápido',
-          style: GoogleFonts.inter(
-            fontSize: mobile ? 24 : 30,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: mobile ? 26 : 34,
             fontWeight: FontWeight.w800,
             color: LandingColors.textPrimary,
-            height: 1.25,
+            height: 1.2,
           ),
         ).animate().fadeIn(duration: 500.ms, delay: 100.ms).slideY(begin: 0.1),
         const SizedBox(height: 14),

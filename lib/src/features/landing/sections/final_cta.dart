@@ -77,11 +77,11 @@ class FinalCtaSection extends StatelessWidget {
                     Text(
                       'Tu negocio en Paraguay merece un sistema de turnos profesional',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
-                        fontSize: mobile ? 28 : 40,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: mobile ? 30 : 44,
                         fontWeight: FontWeight.w800,
                         color: LandingColors.textWhite,
-                        height: 1.2,
+                        height: 1.15,
                       ),
                     )
                         .animate()
