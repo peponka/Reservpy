@@ -72,6 +72,8 @@ class AuthRepository {
       scopes: ['email', 'profile', 'openid'],
     );
     try {
+      // Clear any cached Google account so the account chooser always appears
+      await googleSignIn.signOut();
       final googleUser = await googleSignIn.signIn();
       if (googleUser == null) return false;
       final googleAuth = await googleUser.authentication;
