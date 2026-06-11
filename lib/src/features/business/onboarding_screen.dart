@@ -747,7 +747,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       padding: const EdgeInsets.all(AppSizes.s24),
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: AppSizes.maxFormWidth),
+          constraints: const BoxConstraints(maxWidth: 800),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -791,17 +791,20 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               const SizedBox(height: AppSizes.s24),
 
               // Business name field
-              AppTextField(
-                controller: _businessNameController,
-                label: 'Nombre de tu negocio *',
-                hint: 'Ej: Peluquería Style, Consultorio Dr. López...',
-                prefixIcon: Icons.store_rounded,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) {
-                    return 'El nombre es requerido';
-                  }
-                  return null;
-                },
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: AppSizes.maxFormWidth),
+                child: AppTextField(
+                  controller: _businessNameController,
+                  label: 'Nombre de tu negocio *',
+                  hint: 'Ej: Peluquería Style, Consultorio Dr. López...',
+                  prefixIcon: Icons.store_rounded,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return 'El nombre es requerido';
+                    }
+                    return null;
+                  },
+                ),
               ),
 
               const SizedBox(height: AppSizes.s24),
@@ -809,7 +812,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               // ─── Category Grid ───────────────────────────────
               LayoutBuilder(
                 builder: (context, constraints) {
-                  final crossAxisCount = constraints.maxWidth > 500 ? 3 : 2;
+                  final crossAxisCount = constraints.maxWidth > 600 ? 3 : 2;
                   return GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
