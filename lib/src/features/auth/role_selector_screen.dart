@@ -17,6 +17,9 @@ class RoleSelectorScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
     final roles = user?.roles ?? [UserRole.client];
+    // TODO: remove debug log after diagnosing missing client card
+    // ignore: avoid_print
+    print('RoleSelector: user=${user?.email} roles=$roles');
 
     // Admin role is ignored here — the admin panel is only entered via
     // /admin-login. The selector below already skips the admin card.

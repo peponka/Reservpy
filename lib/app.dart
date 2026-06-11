@@ -112,6 +112,9 @@ class _ReservPyAppState extends ConsumerState<ReservPyApp> {
 
     // Fetch roles from user_roles table
     var roles = await roleRepo.getRoles(userId);
+    // TODO: remove debug log after diagnosing missing client card
+    // ignore: avoid_print
+    print('RestoreSession: fetched roles=$roles profile=${profile?.email}');
 
     if (profile != null) {
       // If no roles found in user_roles, fallback to profile.role
