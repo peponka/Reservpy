@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:reservpy/src/core/supabase/supabase_config.dart';
 import 'package:reservpy/src/core/constants/app_sizes.dart';
 import 'package:reservpy/src/core/constants/app_colors.dart';
 import 'dart:convert';
@@ -32,6 +34,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   bool _initialized = false;
   bool _isSaving = false;
+  bool _isUploadingLogo = false;
   double? _latitude;
   double? _longitude;
 
@@ -161,6 +164,69 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         .replaceAll(RegExp(r'[^a-z0-9\s-]'), '')
         .trim()
         .replaceAll(RegExp(r'\s+'), '-');
+  }
+
+  Future<void> _pickAndUploadLogo(Business business) async {
+    final picker = ImagePicker();
+    // maxWidth/imageQuality comprimen la imagen automáticamente
+    final XFile? picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 512,
+      maxHeight: 512,
+      imageQuality: 82,
+    );
+    if (picked == null) return;
+
+    setState(() => _isUploadingLogo = true);
+    try {
+      final bytes = await picked.readAsBytes();
+      final ext = picked.name.contains('.')
+          ? picked.name.split('.').last.toLowerCase()
+          : 'jpg';
+      final path =
+          'logos/${business.id}/${DateTime.now().millisecondsSinceEpoch}.$ext';
+
+      final storage = SupabaseConfig.client.storage.from('business-photos');
+      await storage.uploadBinary(path, bytes);
+
+      final url = storage.getPublicUrl(path);
+      await BusinessRepository().update(business.copyWith(logoUrl: url));
+      ref.invalidate(businessesProvider);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded,
+                  color: Colors.white, size: 20),
+              const SizedBox(width: AppSizes.s8),
+              Text('Logo actualizado', style: GoogleFonts.inter()),
+            ],
+          ),
+          backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al subir el logo: $e',
+              style: GoogleFonts.inter()),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isUploadingLogo = false);
+    }
   }
 
   Future<void> _saveBusinessData(Business business) async {
@@ -415,7 +481,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: AppSizes.s24),
 
           // b. Logo
-          _buildLogoSection(theme, colorScheme),
+          _buildLogoSection(theme, colorScheme, business),
           const SizedBox(height: AppSizes.s24),
 
           // c. Name + Phone side by side
@@ -1044,7 +1110,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   // ═══════════════════════════════════════════════════════════
   // b. Logo Section
   // ═══════════════════════════════════════════════════════════
-  Widget _buildLogoSection(ThemeData theme, ColorScheme colorScheme) {
+  Widget _buildLogoSection(
+      ThemeData theme, ColorScheme colorScheme, Business business) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1057,53 +1124,83 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ),
         const SizedBox(height: AppSizes.s8),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Square placeholder 64x64
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: colorScheme.outline.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                border: Border.all(
-                  color: colorScheme.outline.withValues(alpha: 0.15),
-                  style: BorderStyle.solid,
+        InkWell(
+          onTap: _isUploadingLogo ? null : () => _pickAndUploadLogo(business),
+          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Logo actual o placeholder 64x64
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: colorScheme.outline.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                  border: Border.all(
+                    color: colorScheme.outline.withValues(alpha: 0.15),
+                    style: BorderStyle.solid,
+                  ),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: _isUploadingLogo
+                    ? const Center(
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      )
+                    : business.logoUrl != null
+                        ? Image.network(
+                            business.logoUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Icon(
+                              Icons.cloud_upload_outlined,
+                              color: AppColors.textMuted,
+                              size: AppSizes.iconLg,
+                            ),
+                          )
+                        : Icon(
+                            Icons.cloud_upload_outlined,
+                            color: AppColors.textMuted,
+                            size: AppSizes.iconLg,
+                          ),
+              ),
+              const SizedBox(width: AppSizes.s16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _isUploadingLogo
+                          ? 'Subiendo logo...'
+                          : business.logoUrl != null
+                              ? 'Cambiar imagen'
+                              : 'Elegir imagen desde tu computadora',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(height: AppSizes.s6),
+                    Text(
+                      'JPG, PNG o WebP · Cualquier tamaño (se comprime automáticamente) · Aparece en tu página pública',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: Icon(
-                Icons.cloud_upload_outlined,
-                color: AppColors.textMuted,
-                size: AppSizes.iconLg,
-              ),
-            ),
-            const SizedBox(width: AppSizes.s16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Elegir imagen desde tu computadora',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(height: AppSizes.s6),
-                  Text(
-                    'JPG, PNG o WebP · Cualquier tamaño (se comprime automáticamente) · Aparece en tu página pública',
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      color: AppColors.textMuted,
-                      height: 1.5,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );
