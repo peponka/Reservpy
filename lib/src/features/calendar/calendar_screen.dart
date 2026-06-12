@@ -610,7 +610,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   /// Abre el formulario para agregar una reserva manual (cliente cargado
   /// a mano por el dueño — útil para turnos recibidos por WhatsApp,
   /// teléfono o en persona).
-  void _showManualReservationForm(DateTime day, {TimeOfDay? initialTime}) {
+  Future<void> _showManualReservationForm(DateTime day,
+      {TimeOfDay? initialTime}) async {
     final business = ref.read(currentBusinessProvider);
     if (business == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -618,8 +619,16 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       );
       return;
     }
-    final servicesAsync = ref.read(businessServicesProvider(business.id));
-    final services = servicesAsync.valueOrNull ?? [];
+    // Esperar a que carguen los servicios (puede ser la primera pantalla
+    // que se abre, sin haber pasado por "Servicios").
+    List<ServiceModel> services;
+    try {
+      services =
+          await ref.read(businessServicesProvider(business.id).future);
+    } catch (_) {
+      services = [];
+    }
+    if (!mounted) return;
     if (services.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
