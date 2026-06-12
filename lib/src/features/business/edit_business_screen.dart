@@ -71,7 +71,7 @@ class _EditBusinessScreenState extends ConsumerState<EditBusinessScreen> {
     _longitude = business.longitude;
 
     // Load existing services
-    final existingServices = ref.read(businessServicesProvider(business.id)).value ?? [];
+    final existingServices = ref.read(businessServicesProvider(business.id)).valueOrNull ?? [];
     _services = List<ServiceModel>.from(existingServices);
   }
 
@@ -1491,7 +1491,7 @@ class _EditBusinessHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final categories = ref.watch(categoriesProvider).value ?? [];
+    final categories = ref.watch(categoriesProvider).valueOrNull ?? [];
     final category = categories.cast<BusinessCategory?>().firstWhere(
       (c) => c?.id == categoryId,
       orElse: () => null,

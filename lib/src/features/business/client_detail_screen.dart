@@ -39,7 +39,7 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final allReservations = ref.watch(businessReservationsProvider).value ?? [];
+    final allReservations = ref.watch(businessReservationsProvider).valueOrNull ?? [];
 
     // ─── Filter reservations for this client at this business ────
     final clientReservations = allReservations
@@ -63,7 +63,7 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
     );
     final totalVisits = completedAndConfirmed.length;
 
-    final services = ref.watch(businessServicesProvider(widget.businessId)).value ?? [];
+    final services = ref.watch(businessServicesProvider(widget.businessId)).valueOrNull ?? [];
     final totalSpent = _calculateTotalSpent(completedAndConfirmed, services);
 
     final lastVisitDate = clientReservations.isNotEmpty

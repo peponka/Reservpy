@@ -30,7 +30,7 @@ class MyReservationsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final filter = ref.watch(_reservationFilterProvider);
-    final allReservations = ref.watch(clientReservationsProvider).value ?? [];
+    final allReservations = ref.watch(clientReservationsProvider).valueOrNull ?? [];
 
     // ── Apply filter ──
     final now = DateTime.now();
@@ -987,7 +987,7 @@ class _ReservationCardState extends ConsumerState<_ReservationCard> {
       // Notify business owner about cancellation
       final user = ref.read(currentUserProvider);
       if (user != null && r.businessId.isNotEmpty) {
-        final businesses = ref.read(businessesProvider).value ?? [];
+        final businesses = ref.read(businessesProvider).valueOrNull ?? [];
         final biz = businesses.where((b) => b.id == r.businessId).firstOrNull;
         if (biz != null) {
           NotificationRepository().create(

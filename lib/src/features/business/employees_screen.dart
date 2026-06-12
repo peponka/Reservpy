@@ -39,7 +39,7 @@ class EmployeesScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final business = ref.watch(currentBusinessProvider);
     final employeesAsync = ref.watch(employeesProvider);
-    final services = ref.watch(businessServicesProvider(business?.id ?? '')).value ?? [];
+    final services = ref.watch(businessServicesProvider(business?.id ?? '')).valueOrNull ?? [];
 
     return employeesAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),

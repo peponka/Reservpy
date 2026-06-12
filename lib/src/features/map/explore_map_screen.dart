@@ -105,7 +105,7 @@ class _ExploreMapScreenState extends ConsumerState<ExploreMapScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final categories = ref.watch(categoriesProvider).value ?? [];
+    final categories = ref.watch(categoriesProvider).valueOrNull ?? [];
     final selectedCategory = ref.watch(selectedCategoryFilterProvider);
     final businessesAsync = ref.watch(businessesProvider);
     final businesses = ref.watch(filteredBusinessesProvider);

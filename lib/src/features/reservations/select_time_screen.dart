@@ -90,8 +90,8 @@ class _SelectTimeScreenState extends ConsumerState<SelectTimeScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final businesses = ref.watch(businessesProvider).value ?? [];
-    final blockedSlots = ref.watch(blockedSlotsProvider).value ?? [];
+    final businesses = ref.watch(businessesProvider).valueOrNull ?? [];
+    final blockedSlots = ref.watch(blockedSlotsProvider).valueOrNull ?? [];
 
     final business = businesses.where((b) => b.id == widget.businessId).firstOrNull;
     if (business == null) {
@@ -105,7 +105,7 @@ class _SelectTimeScreenState extends ConsumerState<SelectTimeScreen> {
     }
 
     // Resolve the selected service to get its real duration
-    final services = ref.watch(businessServicesProvider(widget.businessId)).value ?? [];
+    final services = ref.watch(businessServicesProvider(widget.businessId)).valueOrNull ?? [];
     final service = services.where((s) => s.id == widget.serviceId).firstOrNull;
     final serviceDuration = service?.durationMinutes ?? business.slotDurationMinutes;
 

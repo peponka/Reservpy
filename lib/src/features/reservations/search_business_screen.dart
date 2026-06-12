@@ -87,7 +87,7 @@ class _CategoriesPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final categories = ref.watch(categoriesProvider).value ?? [];
+    final categories = ref.watch(categoriesProvider).valueOrNull ?? [];
     final businessCounts = ref.watch(businessCountByCategoryProvider);
     final query = searchController.text.toLowerCase().trim();
 
@@ -546,7 +546,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
 
   @override
   Widget build(BuildContext context) {
-    final allBusinesses = ref.watch(businessesProvider).value ?? [];
+    final allBusinesses = ref.watch(businessesProvider).valueOrNull ?? [];
     final query = ref.watch(searchQueryProvider).toLowerCase().trim();
     final activeFilter = ref.watch(_businessFilterProvider);
     final now = DateTime.now();
@@ -1096,7 +1096,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                     }
 
                     final categories =
-                        ref.read(categoriesProvider).value ?? [];
+                        ref.read(categoriesProvider).valueOrNull ?? [];
                     final exists = categories.any(
                         (c) => c.name.toLowerCase() == name.toLowerCase());
 
@@ -1294,7 +1294,7 @@ class _BusinessCardState extends ConsumerState<_BusinessCard> {
     final business = widget.business;
     final category = widget.category;
     final services =
-        ref.watch(businessServicesProvider(business.id)).value ?? [];
+        ref.watch(businessServicesProvider(business.id)).valueOrNull ?? [];
     final isOpen = business.isCurrentlyOpen;
     final initial =
         business.name.isNotEmpty ? business.name[0].toUpperCase() : '?';

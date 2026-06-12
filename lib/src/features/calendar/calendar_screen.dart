@@ -61,8 +61,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final business = ref.watch(currentBusinessProvider);
-    final reservations = ref.watch(businessReservationsProvider).value ?? [];
-    final blockedSlots = ref.watch(blockedSlotsProvider).value ?? [];
+    final reservations = ref.watch(businessReservationsProvider).valueOrNull ?? [];
+    final blockedSlots = ref.watch(blockedSlotsProvider).valueOrNull ?? [];
 
     // Filter blocked slots for current business
     final businessBlocked = blockedSlots
@@ -215,6 +215,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                         business: business,
                         reservations: reservations,
                         blockedSlots: businessBlocked,
+                        onSlotTap: (time) => _showManualReservationForm(
+                          _selectedDate,
+                          initialTime: time,
+                        ),
                       )
                     : _isWeekView
                         ? _WeekView(
@@ -606,7 +610,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   /// Abre el formulario para agregar una reserva manual (cliente cargado
   /// a mano por el dueño — útil para turnos recibidos por WhatsApp,
   /// teléfono o en persona).
-  void _showManualReservationForm(DateTime day) {
+  void _showManualReservationForm(DateTime day, {TimeOfDay? initialTime}) {
     final business = ref.read(currentBusinessProvider);
     if (business == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -615,7 +619,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       return;
     }
     final servicesAsync = ref.read(businessServicesProvider(business.id));
-    final services = servicesAsync.value ?? [];
+    final services = servicesAsync.valueOrNull ?? [];
     if (services.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -639,6 +643,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             day: day,
             business: business,
             services: services,
+            initialTime: initialTime,
             onCreated: () {
               // Refrescamos para que la nueva reserva aparezca
               ref.invalidate(businessReservationsProvider);
@@ -859,6 +864,7 @@ class _DayView extends ConsumerWidget {
   final Business? business;
   final List<Reservation> reservations;
   final List<BlockedSlot> blockedSlots;
+  final ValueChanged<TimeOfDay>? onSlotTap;
 
   const _DayView({
     super.key,
@@ -866,6 +872,7 @@ class _DayView extends ConsumerWidget {
     required this.business,
     required this.reservations,
     required this.blockedSlots,
+    this.onSlotTap,
   });
 
   @override
@@ -948,6 +955,24 @@ class _DayView extends ConsumerWidget {
                 ),
               );
             }),
+
+            // ── Tap targets: tocar una celda abre "Agregar turno" a esa hora ──
+            if (onSlotTap != null)
+              ...hours.asMap().entries.map((entry) {
+                final index = entry.key;
+                final hour = entry.value;
+                return Positioned(
+                  top: index * hourHeight,
+                  left: 58,
+                  right: 0,
+                  height: hourHeight,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: () =>
+                        onSlotTap!(TimeOfDay(hour: hour, minute: 0)),
+                  ),
+                );
+              }),
 
             // ── Blocked slots ──
             ...dayBlocked.map((blocked) {
@@ -2054,7 +2079,7 @@ class _MonthView extends ConsumerWidget {
 
     // Escuchamos el provider directo — así cuando se agrega una reserva
     // el chip de cantidad se actualiza solo (refresh automático).
-    final reservations = ref.watch(businessReservationsProvider).value ?? [];
+    final reservations = ref.watch(businessReservationsProvider).valueOrNull ?? [];
 
     // Primer día del mes y cuántos días tiene
     final firstOfMonth = DateTime(selectedDate.year, selectedDate.month, 1);
@@ -2264,12 +2289,14 @@ class _ManualReservationForm extends StatefulWidget {
   final Business business;
   final List<ServiceModel> services;
   final VoidCallback onCreated;
+  final TimeOfDay? initialTime;
 
   const _ManualReservationForm({
     required this.day,
     required this.business,
     required this.services,
     required this.onCreated,
+    this.initialTime,
   });
 
   @override
@@ -2293,8 +2320,8 @@ class _ManualReservationFormState extends State<_ManualReservationForm> {
     if (widget.services.isNotEmpty) {
       _selectedService = widget.services.first;
     }
-    // Por defecto: la hora de apertura del negocio
-    _selectedTime = widget.business.openingTime;
+    // Por defecto: la hora tocada en el calendario, o la apertura del negocio
+    _selectedTime = widget.initialTime ?? widget.business.openingTime;
   }
 
   @override

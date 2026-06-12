@@ -472,7 +472,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                     confirmPasswordController: _confirmPasswordController,
                     selectedCategoryId: _selectedCategoryId,
                     onCategoryChanged: (v) => setState(() => _selectedCategoryId = v),
-                    categories: ref.watch(categoriesProvider).value ?? [],
+                    categories: ref.watch(categoriesProvider).valueOrNull ?? [],
                     obscurePassword: _obscurePassword,
                     obscureConfirm: _obscureConfirm,
                     isLoading: _isLoading,

@@ -27,7 +27,7 @@ class BusinessProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final businesses = ref.watch(businessesProvider).value ?? [];
+    final businesses = ref.watch(businessesProvider).valueOrNull ?? [];
     final currentUser = ref.watch(currentUserProvider);
 
     // Find the business by ID.
@@ -58,8 +58,8 @@ class BusinessProfileScreen extends ConsumerWidget {
       );
     }
 
-    final services = ref.watch(businessServicesProvider(businessId)).value ?? [];
-    final categories = ref.watch(categoriesProvider).value ?? [];
+    final services = ref.watch(businessServicesProvider(businessId)).valueOrNull ?? [];
+    final categories = ref.watch(categoriesProvider).valueOrNull ?? [];
     final category = categories.cast<BusinessCategory?>().firstWhere(
       (c) => c?.id == business.categoryId,
       orElse: () => null,

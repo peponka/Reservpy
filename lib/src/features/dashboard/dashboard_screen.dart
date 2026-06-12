@@ -63,7 +63,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final user = ref.watch(currentUserProvider);
     final stats = ref.watch(enhancedDashboardStatsProvider);
     final allReservations =
-        ref.watch(businessReservationsProvider).value ?? [];
+        ref.watch(businessReservationsProvider).valueOrNull ?? [];
 
     final userName = user?.firstName ?? 'Usuario';
     final reservationCount = allReservations.length;

@@ -49,7 +49,7 @@ class _FavoriteButtonState extends ConsumerState<FavoriteButton>
 
   @override
   Widget build(BuildContext context) {
-    final favIds = ref.watch(clientFavoritesProvider).value ?? [];
+    final favIds = ref.watch(clientFavoritesProvider).valueOrNull ?? [];
     final isFav = favIds.contains(widget.businessId);
 
     return ScaleTransition(

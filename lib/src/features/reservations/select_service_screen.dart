@@ -16,8 +16,8 @@ class SelectServiceScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final services = ref.watch(businessServicesProvider(businessId)).value ?? [];
-    final businesses = ref.watch(businessesProvider).value ?? [];
+    final services = ref.watch(businessServicesProvider(businessId)).valueOrNull ?? [];
+    final businesses = ref.watch(businessesProvider).valueOrNull ?? [];
     final business = businesses.where((b) => b.id == businessId).firstOrNull;
     final businessName = business?.name ?? 'Negocio';
 

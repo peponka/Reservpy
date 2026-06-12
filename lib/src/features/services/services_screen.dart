@@ -16,7 +16,7 @@ class ServicesScreen extends ConsumerWidget {
     final colorScheme = theme.colorScheme;
     final business = ref.watch(currentBusinessProvider);
     final services = business != null
-        ? ref.watch(businessServicesProvider(business.id)).value ?? <ServiceModel>[]
+        ? ref.watch(businessServicesProvider(business.id)).valueOrNull ?? <ServiceModel>[]
         : <ServiceModel>[];
 
     return SingleChildScrollView(

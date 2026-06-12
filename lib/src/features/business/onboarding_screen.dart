@@ -753,7 +753,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   // ════════════════════════════════════════════════════════
 
   Widget _buildStep0(ThemeData theme, ColorScheme colorScheme) {
-    final rawCategories = ref.watch(categoriesProvider).value ?? [];
+    final rawCategories = ref.watch(categoriesProvider).valueOrNull ?? [];
     final categories = [...rawCategories]..sort((a, b) {
       if (a.name == 'Otros') return 1;
       if (b.name == 'Otros') return -1;

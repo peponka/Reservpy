@@ -170,7 +170,7 @@ class _AdminPaymentsScreenState extends ConsumerState<AdminPaymentsScreen> {
     final repo = AdminRepository();
     for (final paymentId in _selected) {
       // Find the businessId for this paymentId
-      final items = (ref.read(overduePaymentsProvider).value ?? []);
+      final items = (ref.read(overduePaymentsProvider).valueOrNull ?? []);
       final item = items.where((i) => i.paymentId == paymentId).firstOrNull;
       if (item != null) {
         await repo.sendReminder(item.businessId, paymentId);

@@ -22,7 +22,7 @@ class BusinessDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final businesses = ref.watch(businessesProvider).value ?? [];
+    final businesses = ref.watch(businessesProvider).valueOrNull ?? [];
     final business = businesses.cast<Business?>().firstWhere(
           (b) => b?.id == businessId,
           orElse: () => null,
@@ -56,7 +56,7 @@ class BusinessDetailScreen extends ConsumerWidget {
       );
     }
 
-    final categories = ref.watch(categoriesProvider).value ?? [];
+    final categories = ref.watch(categoriesProvider).valueOrNull ?? [];
     final category = categories.isEmpty
         ? BusinessCategory(
             id: '', name: '...', icon: Icons.category, color: Colors.grey)
@@ -65,7 +65,7 @@ class BusinessDetailScreen extends ConsumerWidget {
             orElse: () => categories.first,
           );
     final services =
-        ref.watch(businessServicesProvider(businessId)).value ?? [];
+        ref.watch(businessServicesProvider(businessId)).valueOrNull ?? [];
     final isOpen = business.isCurrentlyOpen;
 
     return Scaffold(

@@ -73,7 +73,7 @@ final currentBusinessProvider = Provider<Business?>((ref) {
   // Fallback: search in all businesses list
   final user = ref.watch(currentUserProvider);
   if (user == null) return null;
-  final allBiz = ref.watch(businessesProvider).value ?? [];
+  final allBiz = ref.watch(businessesProvider).valueOrNull ?? [];
   try {
     return allBiz.firstWhere((b) => b.ownerId == user.id);
   } catch (_) {
@@ -114,7 +114,7 @@ final clientReservationsProvider = FutureProvider<List<Reservation>>((ref) async
 
 // ─── Dashboard ───────────────────────────────────────────
 final dashboardStatsProvider = Provider<DashboardStats>((ref) {
-  final reservations = ref.watch(businessReservationsProvider).value ?? [];
+  final reservations = ref.watch(businessReservationsProvider).valueOrNull ?? [];
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
   final tomorrow = today.add(const Duration(days: 1));
@@ -170,7 +170,7 @@ final filteredBusinessesProvider = Provider<List<Business>>((ref) {
   final query = ref.watch(searchQueryProvider).toLowerCase();
   final categoryId = ref.watch(selectedCategoryFilterProvider);
   final businessesAsync = ref.watch(businessesProvider);
-  final businesses = businessesAsync.value ?? [];
+  final businesses = businessesAsync.valueOrNull ?? [];
 
   return businesses.where((b) {
     final matchesQuery =
@@ -182,7 +182,7 @@ final filteredBusinessesProvider = Provider<List<Business>>((ref) {
 
 /// Count of active businesses per category ID.
 final businessCountByCategoryProvider = Provider<Map<String, int>>((ref) {
-  final businesses = ref.watch(businessesProvider).value ?? [];
+  final businesses = ref.watch(businessesProvider).valueOrNull ?? [];
   final counts = <String, int>{};
   for (final b in businesses.where((b) => b.isActive)) {
     counts[b.categoryId] = (counts[b.categoryId] ?? 0) + 1;
@@ -221,7 +221,7 @@ final selectedDayProvider = StateProvider<DateTime>((ref) => DateTime.now());
 /// Reservations for the selected day, sorted by start time.
 final reservationsForDayProvider = Provider<List<Reservation>>((ref) {
   final day = ref.watch(selectedDayProvider);
-  final all = ref.watch(businessReservationsProvider).value ?? [];
+  final all = ref.watch(businessReservationsProvider).valueOrNull ?? [];
   return all.where((r) =>
     r.startTime.year == day.year &&
     r.startTime.month == day.month &&
@@ -237,7 +237,7 @@ final selectedStatusFilterProvider = StateProvider<ReservationStatus?>((ref) => 
 /// Business reservations filtered by status.
 final filteredReservationsProvider = Provider<List<Reservation>>((ref) {
   final status = ref.watch(selectedStatusFilterProvider);
-  final all = ref.watch(businessReservationsProvider).value ?? [];
+  final all = ref.watch(businessReservationsProvider).valueOrNull ?? [];
   if (status == null) return all;
   return all.where((r) => r.status == status).toList();
 });
@@ -246,8 +246,8 @@ final filteredReservationsProvider = Provider<List<Reservation>>((ref) {
 
 /// Computed stats from real reservation data.
 final enhancedDashboardStatsProvider = Provider<EnhancedDashboardStats>((ref) {
-  final reservations = ref.watch(businessReservationsProvider).value ?? [];
-  final services = ref.watch(servicesProvider).value ?? [];
+  final reservations = ref.watch(businessReservationsProvider).valueOrNull ?? [];
+  final services = ref.watch(servicesProvider).valueOrNull ?? [];
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
   final weekStart = today.subtract(Duration(days: today.weekday - 1));
@@ -370,7 +370,7 @@ final notificationsProvider = FutureProvider<List<AppNotification>>((ref) async 
 });
 
 final unreadNotificationCountProvider = Provider<int>((ref) {
-  final notifications = ref.watch(notificationsProvider).value ?? [];
+  final notifications = ref.watch(notificationsProvider).valueOrNull ?? [];
   return notifications.where((n) => !n.isRead).length;
 });
 
@@ -381,7 +381,7 @@ final businessReviewsProvider = FutureProvider.family<List<Review>, String>((ref
 });
 
 final businessAverageRatingProvider = Provider.family<double, String>((ref, businessId) {
-  final reviews = ref.watch(businessReviewsProvider(businessId)).value ?? [];
+  final reviews = ref.watch(businessReviewsProvider(businessId)).valueOrNull ?? [];
   if (reviews.isEmpty) return 0.0;
   final sum = reviews.fold<int>(0, (s, r) => s + r.rating);
   return sum / reviews.length;

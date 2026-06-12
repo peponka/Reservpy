@@ -96,8 +96,8 @@ class _ConfirmReservationScreenState
       }
       return;
     }
-    final businesses = ref.read(businessesProvider).value ?? [];
-    final services = ref.read(businessServicesProvider(widget.businessId)).value ?? [];
+    final businesses = ref.read(businessesProvider).valueOrNull ?? [];
+    final services = ref.read(businessServicesProvider(widget.businessId)).valueOrNull ?? [];
 
     final business =
         businesses.where((b) => b.id == widget.businessId).firstOrNull;
@@ -120,7 +120,7 @@ class _ConfirmReservationScreenState
       endTime: endTime,
       status: ReservationStatus.pending,
       notes: () {
-          final cats = ref.read(categoriesProvider).value ?? [];
+          final cats = ref.read(categoriesProvider).valueOrNull ?? [];
           final catName = cats.isEmpty
               ? 'Otros'
               : cats.firstWhere(
@@ -274,8 +274,8 @@ class _ConfirmReservationScreenState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final businesses = ref.watch(businessesProvider).value ?? [];
-    final services = ref.watch(businessServicesProvider(widget.businessId)).value ?? [];
+    final businesses = ref.watch(businessesProvider).valueOrNull ?? [];
+    final services = ref.watch(businessServicesProvider(widget.businessId)).valueOrNull ?? [];
 
     final business =
         businesses.where((b) => b.id == widget.businessId).firstOrNull;
@@ -292,7 +292,7 @@ class _ConfirmReservationScreenState
       );
     }
 
-    final categories = ref.watch(categoriesProvider).value ?? [];
+    final categories = ref.watch(categoriesProvider).valueOrNull ?? [];
     final category = categories.isEmpty
         ? BusinessCategory(id: '', name: '...', icon: Icons.category, color: Colors.grey)
         : categories.firstWhere(
@@ -518,7 +518,7 @@ class _ConfirmReservationScreenState
             // ── Employee Selector ──
             Consumer(
               builder: (context, ref, _) {
-                final employees = ref.watch(employeesProvider).value ?? [];
+                final employees = ref.watch(employeesProvider).valueOrNull ?? [];
                 final activeEmployees = employees.where((e) => e.isActive).toList();
                 if (activeEmployees.isEmpty) return const SizedBox.shrink();
 

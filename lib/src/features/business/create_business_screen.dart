@@ -258,7 +258,7 @@ class _CreateBusinessScreenState extends ConsumerState<CreateBusinessScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final categories = ref.watch(categoriesProvider).value ?? [];
+    final categories = ref.watch(categoriesProvider).valueOrNull ?? [];
 
     return Scaffold(
       appBar: AppBar(
