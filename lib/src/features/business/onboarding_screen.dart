@@ -583,7 +583,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   Future<void> _shareOnWhatsApp() async {
     final url = _getBusinessUrl();
-    final waUrl = Uri.parse('https://wa.me/?text=${Uri.encodeComponent('¡Reservá un turno en mi negocio! $url')}');
+    final waUrl = Uri.parse('https://api.whatsapp.com/send?text=${Uri.encodeComponent('¡Reservá un turno en mi negocio! $url')}');
     if (await canLaunchUrl(waUrl)) {
       await launchUrl(waUrl, mode: LaunchMode.externalApplication);
     }

@@ -62,9 +62,11 @@ class WhatsAppHelper {
     required String message,
   }) async {
     final encoded = Uri.encodeComponent(message);
+    // api.whatsapp.com directo: el redirect de wa.me re-codifica el texto
+    // en el servidor y rompe los emojis (los convierte en "�").
     final url = phone != null && phone.isNotEmpty
-        ? 'https://wa.me/$phone?text=$encoded'
-        : 'https://wa.me/?text=$encoded';
+        ? 'https://api.whatsapp.com/send?phone=$phone&text=$encoded'
+        : 'https://api.whatsapp.com/send?text=$encoded';
 
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
