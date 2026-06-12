@@ -550,6 +550,7 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
   @override
   Widget build(BuildContext context) {
     final allBusinesses = ref.watch(businessesProvider).valueOrNull ?? [];
+    final allCategories = ref.watch(categoriesProvider).valueOrNull ?? [];
     final query = ref.watch(searchQueryProvider).toLowerCase().trim();
     final activeFilter = ref.watch(_businessFilterProvider);
     final now = DateTime.now();
@@ -695,6 +696,13 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                 // -- Filter Chips --
                 _buildFilterChips(ref, activeFilter),
 
+                // -- Salto rápido a otra categoría (solo en "Todos") --
+                if (activeFilter == _BusinessFilter.all) ...[
+                  const SizedBox(height: AppSizes.s12),
+                  _buildCategoryQuickSwitch(
+                      ref, allCategories, allBusinesses),
+                ],
+
                 const SizedBox(height: AppSizes.s16),
 
                 // -- Results count --
@@ -732,9 +740,16 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
                       ),
                       itemCount: filtered.length,
                       itemBuilder: (context, index) {
+                        final biz = filtered[index];
+                        // Cada negocio muestra SU categoría real (clave
+                        // cuando el filtro "Todos" mezcla categorías).
+                        final bizCategory = allCategories
+                                .where((c) => c.id == biz.categoryId)
+                                .firstOrNull ??
+                            widget.category;
                         return _BusinessCard(
-                          business: filtered[index],
-                          category: widget.category,
+                          business: biz,
+                          category: bizCategory,
                         );
                       },
                     ),
@@ -746,6 +761,89 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
           ),
         );
       },
+    );
+  }
+
+  // -- Salto rápido a otra categoría (visible con el filtro "Todos") --
+  // Dos filas deslizables con todas las categorías que tienen negocios:
+  // tocás una y pasás directo a esa categoría para sacar otro turno.
+  Widget _buildCategoryQuickSwitch(
+    WidgetRef ref,
+    List<BusinessCategory> categories,
+    List<Business> businesses,
+  ) {
+    final withBusinesses = categories
+        .where((c) =>
+            businesses.any((b) => b.isActive && b.categoryId == c.id))
+        .toList();
+    if (withBusinesses.length <= 1) return const SizedBox.shrink();
+
+    final half = (withBusinesses.length / 2).ceil();
+    final row1 = withBusinesses.take(half).toList();
+    final row2 = withBusinesses.skip(half).toList();
+
+    Widget chip(BusinessCategory c) {
+      final count = businesses
+          .where((b) => b.isActive && b.categoryId == c.id)
+          .length;
+      return Padding(
+        padding: const EdgeInsets.only(right: AppSizes.s8),
+        child: Material(
+          color: c.color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+            onTap: () {
+              ref.read(_selectedCategoryProvider.notifier).state = c;
+              ref.read(_businessFilterProvider.notifier).state =
+                  _BusinessFilter.category;
+              widget.searchController.clear();
+              ref.read(searchQueryProvider.notifier).state = '';
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppSizes.s12, vertical: AppSizes.s8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+                border:
+                    Border.all(color: c.color.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(c.icon, size: 14, color: c.color),
+                  const SizedBox(width: AppSizes.s6),
+                  Text(
+                    '${c.name} ($count)',
+                    style: GoogleFonts.inter(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: c.color,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSizes.s24),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: row1.map(chip).toList()),
+            if (row2.isNotEmpty) ...[
+              const SizedBox(height: AppSizes.s8),
+              Row(children: row2.map(chip).toList()),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
