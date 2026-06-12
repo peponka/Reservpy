@@ -947,8 +947,9 @@ class _DayView extends ConsumerWidget {
                       child: Text(
                         AppDateUtils.timeOfDayToString(hour, 0),
                         style: theme.textTheme.labelMedium?.copyWith(
-                          color: theme.colorScheme.outline,
-                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.75),
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
