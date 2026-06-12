@@ -240,10 +240,13 @@ class _ReportsBody extends ConsumerWidget {
         return SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.all(AppSizes.s16),
-          child: ConstrainedBox(
+          child: Center(
+            child: ConstrainedBox(
             constraints: BoxConstraints(
               minHeight: constraints.maxHeight - 32,
-              maxWidth: constraints.maxWidth - 32,
+              // Ancho máximo en desktop: el contenido centrado se ve
+              // premium; estirado de borde a borde se ve vacío.
+              maxWidth: math.min(1040, constraints.maxWidth - 32),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -256,34 +259,42 @@ class _ReportsBody extends ConsumerWidget {
                 _KpiSummarySection(kpi: kpiSummary),
                 const SizedBox(height: AppSizes.s24),
 
-                // ── Export Excel/CSV ──
-                _ExportSection(reservations: reservations, services: services),
-                const SizedBox(height: AppSizes.s24),
+                if (reservations.isEmpty)
+                  // Sin reservas en el período: un mensaje amigable en vez
+                  // de seis secciones vacías.
+                  const _EmptyReportsCard()
+                else ...[
+                  // ── 2. Revenue Overview ──
+                  _RevenueSection(data: revenueData),
+                  const SizedBox(height: AppSizes.s24),
 
-                // ── 2. Revenue Overview ──
-                _RevenueSection(data: revenueData),
-                const SizedBox(height: AppSizes.s24),
+                  // ── Business Insights ──
+                  _InsightsSection(insights: insights),
+                  const SizedBox(height: AppSizes.s24),
 
-                // ── 3. Popular Services ──
-                _PopularServicesSection(services: popularServices),
-                const SizedBox(height: AppSizes.s24),
+                  // ── 3. Popular Services ──
+                  _PopularServicesSection(services: popularServices),
+                  const SizedBox(height: AppSizes.s24),
 
-                // ── 4. Peak Hours Heatmap ──
-                _PeakHoursSection(heatmap: heatmapData),
-                const SizedBox(height: AppSizes.s24),
+                  // ── 4. Peak Hours Heatmap ──
+                  _PeakHoursSection(heatmap: heatmapData),
+                  const SizedBox(height: AppSizes.s24),
 
-                // ── Business Insights ──
-                _InsightsSection(insights: insights),
-                const SizedBox(height: AppSizes.s24),
+                  // ── 5. Client Stats ──
+                  _ClientStatsSection(stats: clientStats),
+                  const SizedBox(height: AppSizes.s24),
 
-                // ── 5. Client Stats ──
-                _ClientStatsSection(stats: clientStats),
-                const SizedBox(height: AppSizes.s24),
+                  // ── 6. Top Clients ──
+                  _TopClientsSection(clients: topClients),
+                  const SizedBox(height: AppSizes.s24),
 
-                // ── 6. Top Clients ──
-                _TopClientsSection(clients: topClients),
+                  // ── Export Excel/CSV ──
+                  _ExportSection(
+                      reservations: reservations, services: services),
+                ],
                 const SizedBox(height: AppSizes.s40),
               ],
+            ),
             ),
           ),
         );
@@ -873,49 +884,58 @@ class _KpiSummarySection extends StatelessWidget {
       children: [
         const SectionHeader(title: 'Resumen del período'),
         const SizedBox(height: AppSizes.s8),
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: AppSizes.s12,
-          mainAxisSpacing: AppSizes.s12,
-          childAspectRatio: 1.55,
-          children: [
-            _KpiCard(
-              icon: Icons.event_available_rounded,
-              color: AppColors.primary,
-              label: 'Reservas totales',
-              value: '${kpi.totalBookings}',
-              subtitle: '${kpi.completedBookings} completadas',
-            ),
-            _KpiCard(
-              icon: Icons.receipt_long_rounded,
-              color: AppColors.info,
-              label: 'Ticket promedio',
-              value: _formatGuaranies(kpi.avgTicket),
-              subtitle: 'por reserva',
-            ),
-            _KpiCard(
-              icon: Icons.check_circle_outline_rounded,
-              color: AppColors.success,
-              label: 'Completación',
-              value: '${kpi.completionRate.toStringAsFixed(1)}%',
-              subtitle: 'reservas cumplidas',
-              showBar: true,
-              barValue: kpi.completionRate / 100,
-              barColor: AppColors.success,
-            ),
-            _KpiCard(
-              icon: Icons.loop_rounded,
-              color: const Color(0xFFFFA000),
-              label: 'Retención',
-              value: '${kpi.retentionRate.toStringAsFixed(1)}%',
-              subtitle: 'clientes recurrentes',
-              showBar: true,
-              barValue: kpi.retentionRate / 100,
-              barColor: const Color(0xFFFFA000),
-            ),
-          ],
+        LayoutBuilder(
+          builder: (context, constraints) {
+            // 4 columnas en desktop, 2 en mobile; altura FIJA para que las
+            // tarjetas no se estiren en pantallas anchas.
+            final cols = constraints.maxWidth >= 720 ? 4 : 2;
+            return GridView(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: cols,
+                crossAxisSpacing: AppSizes.s12,
+                mainAxisSpacing: AppSizes.s12,
+                mainAxisExtent: 118,
+              ),
+              children: [
+                _KpiCard(
+                  icon: Icons.event_available_rounded,
+                  color: AppColors.primary,
+                  label: 'Reservas totales',
+                  value: '${kpi.totalBookings}',
+                  subtitle: '${kpi.completedBookings} completadas',
+                ),
+                _KpiCard(
+                  icon: Icons.receipt_long_rounded,
+                  color: AppColors.info,
+                  label: 'Ticket promedio',
+                  value: _formatGuaranies(kpi.avgTicket),
+                  subtitle: 'por reserva',
+                ),
+                _KpiCard(
+                  icon: Icons.check_circle_outline_rounded,
+                  color: AppColors.success,
+                  label: 'Completación',
+                  value: '${kpi.completionRate.toStringAsFixed(0)}%',
+                  subtitle: 'reservas cumplidas',
+                  showBar: true,
+                  barValue: kpi.completionRate / 100,
+                  barColor: AppColors.success,
+                ),
+                _KpiCard(
+                  icon: Icons.loop_rounded,
+                  color: const Color(0xFFFFA000),
+                  label: 'Retención',
+                  value: '${kpi.retentionRate.toStringAsFixed(0)}%',
+                  subtitle: 'clientes recurrentes',
+                  showBar: true,
+                  barValue: kpi.retentionRate / 100,
+                  barColor: const Color(0xFFFFA000),
+                ),
+              ],
+            );
+          },
         ),
       ],
     );
@@ -947,49 +967,54 @@ class _KpiCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return AppCard(
-      padding: const EdgeInsets.all(AppSizes.s12),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSizes.s16, vertical: AppSizes.s12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.all(AppSizes.s6),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-            ),
-            child: Icon(icon, color: color, size: 15),
+          Row(
+            children: [
+              Icon(icon, color: color, size: 16),
+              const SizedBox(width: AppSizes.s6),
+              Expanded(
+                child: Text(
+                  label,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11.5,
+                    color: AppColors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: AppSizes.s6),
-          Text(
-            value,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: color,
+          const SizedBox(height: AppSizes.s8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+              maxLines: 1,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
-          Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w600,
-              fontSize: 11,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+          const SizedBox(height: 2),
           Text(
             subtitle,
             style: theme.textTheme.bodySmall?.copyWith(
               color: AppColors.textMuted,
-              fontSize: 10,
+              fontSize: 10.5,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
           if (showBar) ...[
-            const SizedBox(height: AppSizes.s6),
+            const SizedBox(height: AppSizes.s8),
             ClipRRect(
               borderRadius: BorderRadius.circular(AppSizes.radiusFull),
               child: LinearProgressIndicator(
@@ -1326,13 +1351,17 @@ class _ClientStatsSection extends StatelessWidget {
       children: [
         const SectionHeader(title: 'Estadísticas de clientes'),
         const SizedBox(height: AppSizes.s8),
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: AppSizes.s12,
-          mainAxisSpacing: AppSizes.s4,
-          childAspectRatio: 1.45,
+        LayoutBuilder(builder: (context, constraints) {
+          final cols = constraints.maxWidth >= 720 ? 4 : 2;
+          return GridView(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: cols,
+              crossAxisSpacing: AppSizes.s12,
+              mainAxisSpacing: AppSizes.s12,
+              mainAxisExtent: 110,
+            ),
           children: [
             _StatMiniCard(
               icon: Icons.person_add_rounded,
@@ -1365,7 +1394,8 @@ class _ClientStatsSection extends StatelessWidget {
               indicatorColor: AppColors.success,
             ),
           ],
-        ),
+          );
+        }),
       ],
     );
   }
@@ -1575,6 +1605,58 @@ class _TopClientsSection extends StatelessWidget {
           );
         }),
       ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  EMPTY STATE
+// ═══════════════════════════════════════════════════════════
+
+class _EmptyReportsCard extends StatelessWidget {
+  const _EmptyReportsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AppCard(
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSizes.s24, vertical: AppSizes.s40),
+      child: Center(
+        child: Column(
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.insights_rounded,
+                  size: 34, color: AppColors.primary),
+            ),
+            const SizedBox(height: AppSizes.s16),
+            Text(
+              'Todavía no hay datos en este período',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: AppSizes.s8),
+            Text(
+              'Cuando recibas tus primeras reservas, acá vas a ver la '
+              'evolución de tus ingresos, tus servicios más pedidos, '
+              'los horarios pico y tus mejores clientes.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                height: 1.5,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
