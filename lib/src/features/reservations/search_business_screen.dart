@@ -11,9 +11,11 @@ import 'package:reservpy/src/features/favorites/favorite_button.dart';
 
 // --- Local state -------------------------------------------------------------
 final _selectedCategoryProvider = StateProvider<BusinessCategory?>((ref) => null);
-final _businessFilterProvider = StateProvider<_BusinessFilter>((ref) => _BusinessFilter.all);
+final _businessFilterProvider =
+    StateProvider<_BusinessFilter>((ref) => _BusinessFilter.category);
 
-enum _BusinessFilter { all, open, recent }
+/// category = solo esta categoría · all = todas las categorías
+enum _BusinessFilter { category, all, open, recent }
 
 /// Two-page search screen:
 ///   Page 1 — Browse categories (grid with business counts)
@@ -60,7 +62,8 @@ class _SearchBusinessScreenState extends ConsumerState<SearchBusinessScreen> {
         searchFocusNode: _searchFocusNode,
         onBack: () {
           ref.read(_selectedCategoryProvider.notifier).state = null;
-          ref.read(_businessFilterProvider.notifier).state = _BusinessFilter.all;
+          ref.read(_businessFilterProvider.notifier).state =
+              _BusinessFilter.category;
           _searchController.clear();
         },
       );
@@ -551,10 +554,14 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
     final activeFilter = ref.watch(_businessFilterProvider);
     final now = DateTime.now();
 
-    // Filter by category
-    var filtered = allBusinesses
-        .where((b) => b.categoryId == widget.category.id && b.isActive)
-        .toList();
+    // Filter by category — salvo que el usuario elija "Todos"
+    // (= negocios de todas las categorías).
+    var filtered = allBusinesses.where((b) => b.isActive).toList();
+    if (activeFilter != _BusinessFilter.all) {
+      filtered = filtered
+          .where((b) => b.categoryId == widget.category.id)
+          .toList();
+    }
 
     // Filter by search text
     if (query.isNotEmpty) {
@@ -578,14 +585,13 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
         filtered =
             filtered.where((b) => b.createdAt.isAfter(sevenDaysAgo)).toList();
         break;
+      case _BusinessFilter.category:
       case _BusinessFilter.all:
         break;
     }
 
-    // Smart sort: open first, then by name
+    // Orden alfabético
     filtered.sort((a, b) {
-      if (a.isCurrentlyOpen && !b.isCurrentlyOpen) return -1;
-      if (!a.isCurrentlyOpen && b.isCurrentlyOpen) return 1;
       return a.name.toLowerCase().compareTo(b.name.toLowerCase());
     });
 
@@ -752,10 +758,19 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
         child: Row(
           children: [
             _FilterChipButton(
+              label: widget.category.name,
+              icon: Icons.label_rounded,
+              isActive: active == _BusinessFilter.category,
+              color: widget.category.color,
+              onTap: () => ref.read(_businessFilterProvider.notifier).state =
+                  _BusinessFilter.category,
+            ),
+            const SizedBox(width: AppSizes.s8),
+            _FilterChipButton(
               label: 'Todos',
               icon: Icons.apps_rounded,
               isActive: active == _BusinessFilter.all,
-              color: widget.category.color,
+              color: AppColors.primary,
               onTap: () => ref.read(_businessFilterProvider.notifier).state =
                   _BusinessFilter.all,
             ),
