@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:reservpy/src/core/constants/app_colors.dart';
 import 'package:reservpy/src/core/constants/app_sizes.dart';
@@ -177,11 +178,22 @@ class _ReservbotPanelState extends State<_ReservbotPanel> {
         _loading = false;
       });
     } catch (e) {
+      String msg;
+      if (e is FunctionException) {
+        final details = e.details;
+        final inner = details is Map ? (details['error'] as String? ?? '') : '';
+        if (inner.contains('503') || inner.contains('502') || inner.contains('529')) {
+          msg = 'Los servidores de IA están ocupados en este momento. Intentá de nuevo en unos segundos.';
+        } else if (inner.isNotEmpty) {
+          msg = inner;
+        } else {
+          msg = 'Hubo un problema al conectar con el asistente. Intentá de nuevo.';
+        }
+      } else {
+        msg = 'Hubo un problema al conectar con el asistente. Intentá de nuevo.';
+      }
       setState(() {
-        _chat.add(_ChatMessage(
-          _Sender.bot,
-          'Ups, hubo un problema: ${e.toString().replaceFirst('Exception: ', '')}',
-        ));
+        _chat.add(_ChatMessage(_Sender.bot, msg));
         _loading = false;
       });
     }
