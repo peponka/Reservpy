@@ -226,14 +226,24 @@ class _ReportsBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // El provider trae 2× el período: separamos actual vs anterior
+    // para poder mostrar tendencias.
+    final cutoff = DateTime.now()
+        .subtract(Duration(days: _periodToDays(period)));
+    final current =
+        reservations.where((r) => r.startTime.isAfter(cutoff)).toList();
+    final previous =
+        reservations.where((r) => !r.startTime.isAfter(cutoff)).toList();
+
     // Build enriched data sets for each section.
-    final revenueData = _computeRevenueData(reservations, services, period);
-    final popularServices = _computePopularServices(reservations, services);
-    final heatmapData = _computeHeatmap(reservations);
-    final clientStats = _computeClientStats(reservations, period);
-    final topClients = _computeTopClients(reservations, services);
-    final kpiSummary = _computeKpiSummary(reservations, services);
-    final insights = _computeBusinessInsights(reservations, services);
+    final revenueData = _computeRevenueData(current, services, period);
+    final popularServices = _computePopularServices(current, services);
+    final heatmapData = _computeHeatmap(current);
+    final clientStats = _computeClientStats(current, period);
+    final topClients = _computeTopClients(current, services);
+    final kpiSummary = _computeKpiSummary(current, services);
+    final kpiPrevious = _computeKpiSummary(previous, services);
+    final insights = _computeBusinessInsights(current, services);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -256,10 +266,11 @@ class _ReportsBody extends ConsumerWidget {
                 const SizedBox(height: AppSizes.s16),
 
                 // ── KPI Summary ──
-                _KpiSummarySection(kpi: kpiSummary),
+                _KpiSummarySection(
+                    kpi: kpiSummary, previous: kpiPrevious, period: period),
                 const SizedBox(height: AppSizes.s24),
 
-                if (reservations.isEmpty)
+                if (current.isEmpty)
                   // Sin reservas en el período: un mensaje amigable en vez
                   // de seis secciones vacías.
                   const _EmptyReportsCard()
@@ -290,7 +301,7 @@ class _ReportsBody extends ConsumerWidget {
 
                   // ── Export Excel/CSV ──
                   _ExportSection(
-                      reservations: reservations, services: services),
+                      reservations: current, services: services),
                 ],
                 const SizedBox(height: AppSizes.s40),
               ],
@@ -875,10 +886,32 @@ class _KpiSummaryData {
 
 class _KpiSummarySection extends StatelessWidget {
   final _KpiSummaryData kpi;
-  const _KpiSummarySection({required this.kpi});
+  final _KpiSummaryData previous;
+  final _ReportPeriod period;
+  const _KpiSummarySection(
+      {required this.kpi, required this.previous, required this.period});
+
+  String get _trendLabel {
+    switch (period) {
+      case _ReportPeriod.week:
+        return 'vs semana anterior';
+      case _ReportPeriod.month:
+        return 'vs mes anterior';
+      case _ReportPeriod.quarter:
+        return 'vs 3 meses previos';
+    }
+  }
+
+  double? _pctChange(double now, double before) {
+    if (before <= 0) return null;
+    return (now - before) / before * 100;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final bookingsTrend = _pctChange(
+        kpi.totalBookings.toDouble(), previous.totalBookings.toDouble());
+    final ticketTrend = _pctChange(kpi.avgTicket, previous.avgTicket);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -905,6 +938,8 @@ class _KpiSummarySection extends StatelessWidget {
                   label: 'Reservas totales',
                   value: '${kpi.totalBookings}',
                   subtitle: '${kpi.completedBookings} completadas',
+                  trendPercent: bookingsTrend,
+                  trendLabel: _trendLabel,
                 ),
                 _KpiCard(
                   icon: Icons.receipt_long_rounded,
@@ -912,6 +947,8 @@ class _KpiSummarySection extends StatelessWidget {
                   label: 'Ticket promedio',
                   value: _formatGuaranies(kpi.avgTicket),
                   subtitle: 'por reserva',
+                  trendPercent: ticketTrend,
+                  trendLabel: _trendLabel,
                 ),
                 _KpiCard(
                   icon: Icons.check_circle_outline_rounded,
@@ -951,6 +988,8 @@ class _KpiCard extends StatelessWidget {
   final bool showBar;
   final double barValue;
   final Color? barColor;
+  final double? trendPercent;
+  final String? trendLabel;
 
   const _KpiCard({
     required this.icon,
@@ -961,6 +1000,8 @@ class _KpiCard extends StatelessWidget {
     this.showBar = false,
     this.barValue = 0,
     this.barColor,
+    this.trendPercent,
+    this.trendLabel,
   });
 
   @override
@@ -1004,15 +1045,45 @@ class _KpiCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 2),
-          Text(
-            subtitle,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: AppColors.textMuted,
-              fontSize: 10.5,
+          if (trendPercent != null)
+            Row(
+              children: [
+                Icon(
+                  trendPercent! >= 0
+                      ? Icons.arrow_upward_rounded
+                      : Icons.arrow_downward_rounded,
+                  size: 11,
+                  color: trendPercent! >= 0
+                      ? AppColors.success
+                      : AppColors.error,
+                ),
+                const SizedBox(width: 2),
+                Expanded(
+                  child: Text(
+                    '${trendPercent!.abs().toStringAsFixed(0)}% ${trendLabel ?? ''}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: trendPercent! >= 0
+                          ? AppColors.success
+                          : AppColors.error,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 10.5,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            )
+          else
+            Text(
+              subtitle,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.textMuted,
+                fontSize: 10.5,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
           if (showBar) ...[
             const SizedBox(height: AppSizes.s8),
             ClipRRect(

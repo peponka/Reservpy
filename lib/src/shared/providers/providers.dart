@@ -353,7 +353,9 @@ final reportsDataProvider =
     return const ReportsData(reservations: [], services: []);
   }
   final now = DateTime.now();
-  final from = now.subtract(Duration(days: periodDays));
+  // Trae el doble del período: la pantalla separa "período actual" vs
+  // "período anterior" para mostrar tendencias (↑/↓ vs período previo).
+  final from = now.subtract(Duration(days: periodDays * 2));
   return ReportsRepository().getReportsData(
     businessId: business.id,
     from: from,
