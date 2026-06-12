@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 
 import 'package:reservpy/src/core/constants/app_colors.dart';
 import 'package:reservpy/src/core/constants/app_sizes.dart';
@@ -571,12 +573,30 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   // ─── Copy link ─────────────────────────────────────────
 
-  void _copyLink() {
+  String _getBusinessUrl() {
     final business = ref.read(currentBusinessProvider);
     final slug = (business?.name ?? 'tu-negocio')
         .toLowerCase()
         .replaceAll(RegExp(r'[^a-z0-9]+'), '-');
-    Clipboard.setData(ClipboardData(text: 'https://reservpy.com.py/$slug'));
+    return 'https://reservpy.com.py/$slug';
+  }
+
+  Future<void> _shareOnWhatsApp() async {
+    final url = _getBusinessUrl();
+    final waUrl = Uri.parse('https://wa.me/?text=${Uri.encodeComponent('¡Reservá un turno en mi negocio! $url')}');
+    if (await canLaunchUrl(waUrl)) {
+      await launchUrl(waUrl, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  Future<void> _shareLink() async {
+    final url = _getBusinessUrl();
+    await Share.share('¡Reservá un turno en mi negocio! $url', subject: 'Reservá en Reservpy');
+  }
+
+  void _copyLink() {
+    final url = _getBusinessUrl();
+    Clipboard.setData(ClipboardData(text: url));
     setState(() => _linkCopied = true);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -1609,11 +1629,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       icon: Icons.chat_rounded,
                       label: 'WhatsApp',
                       color: const Color(0xFF20A482),
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Compartir por WhatsApp (próximamente)')),
-                        );
-                      },
+                      onTap: _shareOnWhatsApp,
                     ),
                   ),
                   const SizedBox(width: AppSizes.s8),
@@ -1631,11 +1647,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       icon: Icons.share_rounded,
                       label: 'Compartir',
                       color: AppColors.accent,
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Compartir (próximamente)')),
-                        );
-                      },
+                      onTap: _shareLink,
                     ),
                   ),
                 ],
@@ -2343,31 +2355,35 @@ class _ShareButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          vertical: AppSizes.s12,
-          horizontal: AppSizes.s8,
-        ),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-          border: Border.all(color: color.withValues(alpha: 0.2)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 22, color: color),
-            const SizedBox(height: AppSizes.s4),
-            Text(
-              label,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w600,
+    return Material(
+      color: color.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            vertical: AppSizes.s12,
+            horizontal: AppSizes.s8,
+          ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+            border: Border.all(color: color.withValues(alpha: 0.2)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 22, color: color),
+              const SizedBox(height: AppSizes.s4),
+              Text(
+                label,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
