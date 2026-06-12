@@ -22,6 +22,19 @@ import 'package:reservpy/src/data/services/email_service.dart';
 
 const _uuid = Uuid();
 
+String _formatGs(double value) {
+  if (value == 0) return '0 Gs.';
+  final parts = value.toStringAsFixed(0).split('');
+  final buffer = StringBuffer();
+  var count = 0;
+  for (var i = parts.length - 1; i >= 0; i--) {
+    buffer.write(parts[i]);
+    count++;
+    if (count % 3 == 0 && i > 0) buffer.write('.');
+  }
+  return '${buffer.toString().split('').reversed.join('')} Gs.';
+}
+
 /// Confirm reservation screen. Shows a summary of the booking and lets the
 /// user add optional notes before confirming.
 class ConfirmReservationScreen extends ConsumerStatefulWidget {
@@ -101,43 +114,61 @@ class _ConfirmReservationScreenState
 
     final business =
         businesses.where((b) => b.id == widget.businessId).firstOrNull;
-    final service =
-        services.where((s) => s.id == widget.serviceId).firstOrNull;
+    // Selección múltiple: serviceId puede ser una lista separada por comas.
+    final selectedIds = widget.serviceId.split(',');
+    final selectedServices =
+        services.where((s) => selectedIds.contains(s.id)).toList();
 
-    if (business == null || service == null) return;
+    if (business == null || selectedServices.isEmpty) return;
 
     setState(() => _isSubmitting = true);
 
+    final totalMinutes = selectedServices.fold<int>(
+        0, (sum, s) => sum + s.durationMinutes);
     final endTime =
-        widget.selectedTime.add(Duration(minutes: service.durationMinutes));
+        widget.selectedTime.add(Duration(minutes: totalMinutes));
 
-    final reservation = Reservation(
-      id: _uuid.v4(),
-      businessId: widget.businessId,
-      clientId: user.id,
-      serviceId: widget.serviceId,
-      startTime: widget.selectedTime,
-      endTime: endTime,
-      status: ReservationStatus.pending,
-      notes: () {
-          final cats = ref.read(categoriesProvider).valueOrNull ?? [];
-          final catName = cats.isEmpty
-              ? 'Otros'
-              : cats.firstWhere(
-                  (c) => c.id == business.categoryId,
-                  orElse: () => cats.first,
-                ).name;
-          final fields = getFieldsForCategory(catName);
-          final serialized = _serializeFields(fields);
-          return serialized.isNotEmpty ? serialized : null;
-        }(),
-      createdAt: DateTime.now(),
-      clientName: user.fullName,
-      serviceName: service.name,
-      businessName: business.name,
-      employeeId: _selectedEmployee?.id,
-      employeeName: _selectedEmployee?.name,
-    );
+    final sharedNotes = () {
+      final cats = ref.read(categoriesProvider).valueOrNull ?? [];
+      final catName = cats.isEmpty
+          ? 'Otros'
+          : cats.firstWhere(
+              (c) => c.id == business.categoryId,
+              orElse: () => cats.first,
+            ).name;
+      final fields = getFieldsForCategory(catName);
+      final serialized = _serializeFields(fields);
+      return serialized.isNotEmpty ? serialized : null;
+    }();
+
+    // Un turno por servicio, en bloques consecutivos (uno termina y
+    // empieza el siguiente). Para el cliente es un solo turno corrido.
+    final reservations = <Reservation>[];
+    var blockStart = widget.selectedTime;
+    for (final svc in selectedServices) {
+      final blockEnd =
+          blockStart.add(Duration(minutes: svc.durationMinutes));
+      reservations.add(Reservation(
+        id: _uuid.v4(),
+        businessId: widget.businessId,
+        clientId: user.id,
+        serviceId: svc.id,
+        startTime: blockStart,
+        endTime: blockEnd,
+        status: ReservationStatus.pending,
+        notes: sharedNotes,
+        createdAt: DateTime.now(),
+        clientName: user.fullName,
+        serviceName: svc.name,
+        businessName: business.name,
+        employeeId: _selectedEmployee?.id,
+        employeeName: _selectedEmployee?.name,
+      ));
+      blockStart = blockEnd;
+    }
+    final reservation = reservations.first;
+    final combinedServiceNames =
+        selectedServices.map((s) => s.name).join(' + ');
 
     // Re-verify slot availability before creating (prevent race condition)
     try {
@@ -159,7 +190,9 @@ class _ConfirmReservationScreenState
         return;
       }
 
-      await ReservationRepository().create(reservation);
+      for (final r in reservations) {
+        await ReservationRepository().create(r);
+      }
 
       // Create recurring reservations if enabled
       if (_isRecurring) {
@@ -182,30 +215,37 @@ class _ConfirmReservationScreenState
           } else {
             nextStart = widget.selectedTime.add(offset);
           }
-          final nextEnd = nextStart.add(Duration(minutes: service.durationMinutes));
+          final nextEnd = nextStart.add(Duration(minutes: totalMinutes));
 
-          final recRes = Reservation(
-            id: _uuid.v4(),
-            businessId: widget.businessId,
-            clientId: user.id,
-            serviceId: widget.serviceId,
-            startTime: nextStart,
-            endTime: nextEnd,
-            status: ReservationStatus.pending,
-            notes: reservation.notes,
-            createdAt: DateTime.now(),
-            clientName: user.fullName,
-            serviceName: service.name,
-            businessName: business.name,
-            employeeId: _selectedEmployee?.id,
-            employeeName: _selectedEmployee?.name,
-          );
           // Best-effort: skip unavailable slots silently
           try {
             final avail = await ReservationRepository().isSlotAvailable(
               widget.businessId, nextStart, nextEnd,
             );
-            if (avail) await ReservationRepository().create(recRes);
+            if (avail) {
+              var recBlockStart = nextStart;
+              for (final svc in selectedServices) {
+                final recBlockEnd = recBlockStart
+                    .add(Duration(minutes: svc.durationMinutes));
+                await ReservationRepository().create(Reservation(
+                  id: _uuid.v4(),
+                  businessId: widget.businessId,
+                  clientId: user.id,
+                  serviceId: svc.id,
+                  startTime: recBlockStart,
+                  endTime: recBlockEnd,
+                  status: ReservationStatus.pending,
+                  notes: reservation.notes,
+                  createdAt: DateTime.now(),
+                  clientName: user.fullName,
+                  serviceName: svc.name,
+                  businessName: business.name,
+                  employeeId: _selectedEmployee?.id,
+                  employeeName: _selectedEmployee?.name,
+                ));
+                recBlockStart = recBlockEnd;
+              }
+            }
           } catch (_) {}
         }
       }
@@ -220,7 +260,7 @@ class _ConfirmReservationScreenState
           clientEmail: clientEmail,
           clientName: user.fullName,
           businessName: business.name,
-          serviceName: service.name,
+          serviceName: combinedServiceNames,
           startTime: widget.selectedTime,
           address: business.address,
           notes: reservation.notes,
@@ -232,7 +272,7 @@ class _ConfirmReservationScreenState
         businessId: business.id,
         type: NotificationType.newReservation,
         title: 'Nueva reserva',
-        body: '${user.fullName} reservó ${service.name} para el ${DateFormat('dd/MM HH:mm', 'es').format(widget.selectedTime)}',
+        body: '${user.fullName} reservó $combinedServiceNames para el ${DateFormat('dd/MM HH:mm', 'es').format(widget.selectedTime)}',
         reservationId: reservation.id,
       ).catchError((_) {});
 
@@ -243,7 +283,7 @@ class _ConfirmReservationScreenState
             businessEmail: owner.email,
             businessName: business.name,
             clientName: user.fullName,
-            serviceName: service.name,
+            serviceName: combinedServiceNames,
             startTime: widget.selectedTime,
             notes: reservation.notes,
           );
@@ -264,7 +304,7 @@ class _ConfirmReservationScreenState
       context.go(
         '/reservation-success'
         '?businessName=${Uri.encodeComponent(business.name)}'
-        '&serviceName=${Uri.encodeComponent(service.name)}'
+        '&serviceName=${Uri.encodeComponent(combinedServiceNames)}'
         '&date=${Uri.encodeComponent(widget.selectedTime.toIso8601String())}'
         '&endDate=${Uri.encodeComponent(endTime.toIso8601String())}',
       );
@@ -279,10 +319,12 @@ class _ConfirmReservationScreenState
 
     final business =
         businesses.where((b) => b.id == widget.businessId).firstOrNull;
-    final service =
-        services.where((s) => s.id == widget.serviceId).firstOrNull;
+    // Selección múltiple: serviceId puede traer varios ids separados por coma
+    final selIds = widget.serviceId.split(',');
+    final selServices =
+        services.where((s) => selIds.contains(s.id)).toList();
 
-    if (business == null || service == null) {
+    if (business == null || selServices.isEmpty) {
       return Scaffold(
         appBar: AppBar(title: const Text(AppStrings.confirmReservation)),
         body: const EmptyState(
@@ -291,6 +333,11 @@ class _ConfirmReservationScreenState
         ),
       );
     }
+    final totalMin = selServices.fold<int>(
+        0, (sum, s) => sum + s.durationMinutes);
+    final totalPrice = selServices.fold<double>(
+        0, (sum, s) => sum + (s.price ?? 0));
+    final combinedNames = selServices.map((s) => s.name).join(' + ');
 
     final categories = ref.watch(categoriesProvider).valueOrNull ?? [];
     final category = categories.isEmpty
@@ -300,7 +347,7 @@ class _ConfirmReservationScreenState
             orElse: () => categories.first,
           );
     final endTime =
-        widget.selectedTime.add(Duration(minutes: service.durationMinutes));
+        widget.selectedTime.add(Duration(minutes: totalMin));
 
     // Format date nicely: "Lunes 26 de Mayo"
     final dayName = DateFormat('EEEE', 'es').format(widget.selectedTime);
@@ -411,13 +458,17 @@ class _ConfirmReservationScreenState
 
                   const Divider(height: 1),
 
-                  // Service row
+                  // Service row(s) — uno por servicio elegido
                   _SummaryRow(
                     icon: Icons.spa_rounded,
                     iconColor: theme.colorScheme.primary,
-                    label: 'Servicio',
-                    value: service.name,
-                    trailing: service.formattedDuration,
+                    label: selServices.length == 1
+                        ? 'Servicio'
+                        : 'Servicios (${selServices.length})',
+                    value: combinedNames,
+                    trailing: totalMin < 60
+                        ? '$totalMin min'
+                        : '${totalMin ~/ 60}h ${totalMin % 60 == 0 ? '' : '${totalMin % 60} min'}',
                   ),
 
                   Divider(
@@ -458,8 +509,10 @@ class _ConfirmReservationScreenState
                   _SummaryRow(
                     icon: Icons.payments_rounded,
                     iconColor: Colors.amber.shade700,
-                    label: 'Precio',
-                    value: service.formattedPrice,
+                    label: selServices.length == 1
+                        ? 'Precio'
+                        : 'Precio total',
+                    value: _formatGs(totalPrice),
                     isHighlighted: true,
                   ),
                 ],

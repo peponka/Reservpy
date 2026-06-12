@@ -104,10 +104,16 @@ class _SelectTimeScreenState extends ConsumerState<SelectTimeScreen> {
       );
     }
 
-    // Resolve the selected service to get its real duration
+    // Resolve the selected service(s) — puede ser una lista separada por
+    // comas (selección múltiple) — y sumar la duración total.
     final services = ref.watch(businessServicesProvider(widget.businessId)).valueOrNull ?? [];
-    final service = services.where((s) => s.id == widget.serviceId).firstOrNull;
-    final serviceDuration = service?.durationMinutes ?? business.slotDurationMinutes;
+    final selectedIds = widget.serviceId.split(',');
+    final selectedServices =
+        services.where((s) => selectedIds.contains(s.id)).toList();
+    final serviceDuration = selectedServices.isEmpty
+        ? business.slotDurationMinutes
+        : selectedServices.fold<int>(
+            0, (sum, s) => sum + s.durationMinutes);
 
     // Use pre-fetched day reservations
     final dayReservations = _dayReservations;

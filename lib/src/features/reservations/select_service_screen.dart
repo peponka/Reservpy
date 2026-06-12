@@ -9,22 +9,63 @@ import 'package:reservpy/src/shared/models/models.dart';
 
 /// Premium business detail / service selection page.
 /// Standalone Scaffold — NOT rendered inside BusinessShell.
-class SelectServiceScreen extends ConsumerWidget {
+class SelectServiceScreen extends ConsumerStatefulWidget {
   final String businessId;
 
   const SelectServiceScreen({super.key, required this.businessId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SelectServiceScreen> createState() =>
+      _SelectServiceScreenState();
+}
+
+class _SelectServiceScreenState extends ConsumerState<SelectServiceScreen> {
+  String get businessId => widget.businessId;
+
+  /// Servicios elegidos por el cliente (selección múltiple).
+  final Set<String> _selectedIds = {};
+
+  final GlobalKey servicesKey = GlobalKey();
+
+  void _toggleService(String id) {
+    setState(() {
+      if (_selectedIds.contains(id)) {
+        _selectedIds.remove(id);
+      } else {
+        _selectedIds.add(id);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final services = ref.watch(businessServicesProvider(businessId)).valueOrNull ?? [];
     final businesses = ref.watch(businessesProvider).valueOrNull ?? [];
     final business = businesses.where((b) => b.id == businessId).firstOrNull;
     final businessName = business?.name ?? 'Negocio';
 
-    final servicesKey = GlobalKey();
+    // Resumen de la selección (en orden de lista, no de clic)
+    final selectedServices =
+        services.where((s) => _selectedIds.contains(s.id)).toList();
+    final totalMinutes = selectedServices.fold<int>(
+        0, (sum, s) => sum + s.durationMinutes);
+    final totalPrice =
+        selectedServices.fold<double>(0, (sum, s) => sum + (s.price ?? 0));
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
+      bottomNavigationBar: selectedServices.isEmpty
+          ? null
+          : _SelectionSummaryBar(
+              count: selectedServices.length,
+              totalMinutes: totalMinutes,
+              totalPrice: totalPrice,
+              onContinue: () {
+                final ids =
+                    selectedServices.map((s) => s.id).join(',');
+                context.push('/reserve/$businessId/time/$ids');
+              },
+            ),
       body: CustomScrollView(
         slivers: [
           // ── App Bar ──────────────────────────────────────────
@@ -63,6 +104,8 @@ class SelectServiceScreen extends ConsumerWidget {
                         key: servicesKey,
                         services: services,
                         businessId: businessId,
+                        selectedIds: _selectedIds,
+                        onToggle: _toggleService,
                       ),
 
                       const SizedBox(height: AppSizes.s48),
@@ -371,11 +414,15 @@ class _GalleryPlaceholder extends StatelessWidget {
 class _ServicesSection extends StatelessWidget {
   final List<ServiceModel> services;
   final String businessId;
+  final Set<String> selectedIds;
+  final ValueChanged<String> onToggle;
 
   const _ServicesSection({
     super.key,
     required this.services,
     required this.businessId,
+    required this.selectedIds,
+    required this.onToggle,
   });
 
   @override
@@ -394,7 +441,7 @@ class _ServicesSection extends StatelessWidget {
         ),
         const SizedBox(height: AppSizes.s4),
         Text(
-          'Elegí un servicio para ver horarios disponibles',
+          'Elegí uno o más servicios y después continuá al calendario',
           style: GoogleFonts.inter(
             fontSize: 15,
             color: AppColors.textSecondary,
@@ -416,7 +463,9 @@ class _ServicesSection extends StatelessWidget {
                     child: services.isEmpty
                         ? _EmptyServicesState()
                         : _ServiceCardsList(
-                            services: services, businessId: businessId),
+                            services: services,
+                            selectedIds: selectedIds,
+                            onToggle: onToggle),
                   ),
                   const SizedBox(width: AppSizes.s24),
                   // Sidebar
@@ -433,7 +482,9 @@ class _ServicesSection extends StatelessWidget {
                 services.isEmpty
                     ? _EmptyServicesState()
                     : _ServiceCardsList(
-                        services: services, businessId: businessId),
+                        services: services,
+                        selectedIds: selectedIds,
+                        onToggle: onToggle),
                 const SizedBox(height: AppSizes.s24),
                 _HowItWorksSidebar(),
               ],
@@ -447,11 +498,13 @@ class _ServicesSection extends StatelessWidget {
 
 class _ServiceCardsList extends StatelessWidget {
   final List<ServiceModel> services;
-  final String businessId;
+  final Set<String> selectedIds;
+  final ValueChanged<String> onToggle;
 
   const _ServiceCardsList({
     required this.services,
-    required this.businessId,
+    required this.selectedIds,
+    required this.onToggle,
   });
 
   @override
@@ -462,12 +515,124 @@ class _ServiceCardsList extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: AppSizes.s16),
           child: _PremiumServiceCard(
             service: service,
-            onSelect: () {
-              context.push('/reserve/$businessId/time/${service.id}');
-            },
+            isSelected: selectedIds.contains(service.id),
+            onSelect: () => onToggle(service.id),
           ),
         );
       }).toList(),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SELECTION SUMMARY BAR (selección múltiple de servicios)
+// ═══════════════════════════════════════════════════════════════
+class _SelectionSummaryBar extends StatelessWidget {
+  final int count;
+  final int totalMinutes;
+  final double totalPrice;
+  final VoidCallback onContinue;
+
+  const _SelectionSummaryBar({
+    required this.count,
+    required this.totalMinutes,
+    required this.totalPrice,
+    required this.onContinue,
+  });
+
+  String get _formattedPrice {
+    final parts = totalPrice.toStringAsFixed(0).split('');
+    final buffer = StringBuffer();
+    var c = 0;
+    for (var i = parts.length - 1; i >= 0; i--) {
+      buffer.write(parts[i]);
+      c++;
+      if (c % 3 == 0 && i > 0) buffer.write('.');
+    }
+    return '${buffer.toString().split('').reversed.join('')} Gs.';
+  }
+
+  String get _formattedDuration {
+    if (totalMinutes < 60) return '$totalMinutes min';
+    final h = totalMinutes ~/ 60;
+    final m = totalMinutes % 60;
+    return m == 0 ? '${h}h' : '${h}h $m min';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppSizes.s24, vertical: AppSizes.s12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border(
+            top: BorderSide(color: AppColors.divider),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 12,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    count == 1
+                        ? '1 servicio elegido'
+                        : '$count servicios elegidos',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '$_formattedPrice · $_formattedDuration',
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.accent,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSizes.s16),
+            SizedBox(
+              height: 48,
+              child: FilledButton.icon(
+                onPressed: onContinue,
+                icon: const Icon(Icons.calendar_month_rounded, size: 18),
+                label: Text(
+                  'Continuar',
+                  style: GoogleFonts.inter(
+                      fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: AppSizes.s24),
+                  shape: RoundedRectangleBorder(
+                    borderRadius:
+                        BorderRadius.circular(AppSizes.radiusFull),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -477,10 +642,12 @@ class _ServiceCardsList extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════
 class _PremiumServiceCard extends StatefulWidget {
   final ServiceModel service;
+  final bool isSelected;
   final VoidCallback onSelect;
 
   const _PremiumServiceCard({
     required this.service,
+    required this.isSelected,
     required this.onSelect,
   });
 
@@ -494,6 +661,7 @@ class _PremiumServiceCardState extends State<_PremiumServiceCard> {
   @override
   Widget build(BuildContext context) {
     final service = widget.service;
+    final selected = widget.isSelected;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -502,20 +670,24 @@ class _PremiumServiceCardState extends State<_PremiumServiceCard> {
         duration: const Duration(milliseconds: AppSizes.animNormal),
         curve: Curves.easeOut,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: selected
+              ? AppColors.primary.withValues(alpha: 0.04)
+              : Colors.white,
           borderRadius: BorderRadius.circular(AppSizes.radiusLg),
           border: Border.all(
-            color: _hovered
-                ? AppColors.primary.withValues(alpha: 0.4)
-                : AppColors.divider,
-            width: _hovered ? 1.5 : 1,
+            color: selected
+                ? AppColors.primary
+                : _hovered
+                    ? AppColors.primary.withValues(alpha: 0.4)
+                    : AppColors.divider,
+            width: selected ? 1.8 : (_hovered ? 1.5 : 1),
           ),
           boxShadow: [
             BoxShadow(
-              color: _hovered
+              color: (selected || _hovered)
                   ? AppColors.primary.withValues(alpha: 0.1)
                   : Colors.black.withValues(alpha: 0.04),
-              blurRadius: _hovered ? 16 : 6,
+              blurRadius: (selected || _hovered) ? 16 : 6,
               offset: const Offset(0, 2),
             ),
           ],
@@ -641,7 +813,9 @@ class _PremiumServiceCardState extends State<_PremiumServiceCard> {
                   Align(
                     alignment: Alignment.centerRight,
                     child: Material(
-                      color: _hovered ? AppColors.primary : Colors.transparent,
+                      color: (selected || _hovered)
+                          ? AppColors.primary
+                          : Colors.transparent,
                       borderRadius:
                           BorderRadius.circular(AppSizes.radiusFull),
                       child: InkWell(
@@ -659,7 +833,7 @@ class _PremiumServiceCardState extends State<_PremiumServiceCard> {
                             borderRadius:
                                 BorderRadius.circular(AppSizes.radiusFull),
                             border: Border.all(
-                              color: _hovered
+                              color: (selected || _hovered)
                                   ? AppColors.primary
                                   : AppColors.primary.withValues(alpha: 0.4),
                             ),
@@ -668,20 +842,22 @@ class _PremiumServiceCardState extends State<_PremiumServiceCard> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                'Seleccionar',
+                                selected ? 'Agregado' : 'Seleccionar',
                                 style: GoogleFonts.inter(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  color: _hovered
+                                  color: (selected || _hovered)
                                       ? Colors.white
                                       : AppColors.primary,
                                 ),
                               ),
                               const SizedBox(width: AppSizes.s6),
                               Icon(
-                                Icons.arrow_forward_rounded,
+                                selected
+                                    ? Icons.check_rounded
+                                    : Icons.add_rounded,
                                 size: 16,
-                                color: _hovered
+                                color: (selected || _hovered)
                                     ? Colors.white
                                     : AppColors.primary,
                               ),
