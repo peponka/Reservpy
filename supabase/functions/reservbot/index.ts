@@ -14,9 +14,10 @@ const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const MODEL = "gemini-2.0-flash";
-const GEMINI_URL =
-  `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+// Modelos en orden de preferencia — si uno está saturado (429/503) se prueba el siguiente.
+const MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-flash-lite"];
+const geminiUrl = (model: string) =>
+  `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 const MAX_LOOPS = 6;
 // Paraguay no usa horario de verano desde 2024 — UTC-3 fijo.
 const TZ_OFFSET = "-03:00";
@@ -407,26 +408,46 @@ Reglas:
 
   try {
     for (let i = 0; i < MAX_LOOPS; i++) {
-      const geminiRes = await fetch(GEMINI_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": apiKey,
-        },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: systemInstruction }] },
-          contents,
-          tools: [{ functionDeclarations: FUNCTION_DECLARATIONS }],
-        }),
+      const payload = JSON.stringify({
+        systemInstruction: { parts: [{ text: systemInstruction }] },
+        contents,
+        tools: [{ functionDeclarations: FUNCTION_DECLARATIONS }],
       });
 
-      if (!geminiRes.ok) {
-        const errBody = await geminiRes.text();
-        console.error("Gemini error:", geminiRes.status, errBody);
-        return json(
-          { error: `Error de Gemini (${geminiRes.status})` },
-          500,
-        );
+      // Probar cada modelo; ante 429/5xx pasar al siguiente, con un
+      // reintento extra (tras 1.5s) sobre el primero al agotar la lista.
+      let geminiRes: Response | null = null;
+      let lastStatus = 0;
+      const attempts = [...MODELS, MODELS[0]];
+      for (let a = 0; a < attempts.length; a++) {
+        if (a === attempts.length - 1) {
+          await new Promise((r) => setTimeout(r, 1500));
+        }
+        const res = await fetch(geminiUrl(attempts[a]), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": apiKey,
+          },
+          body: payload,
+        });
+        if (res.ok) {
+          geminiRes = res;
+          break;
+        }
+        lastStatus = res.status;
+        const errBody = await res.text();
+        console.error(`Gemini error (${attempts[a]}):`, res.status, errBody);
+        // Errores no recuperables (clave inválida, request malformado):
+        // no tiene sentido probar otro modelo.
+        if (res.status !== 429 && res.status < 500) break;
+      }
+
+      if (!geminiRes) {
+        const friendly = lastStatus === 429
+          ? "El asistente alcanzó el límite de uso por ahora. Esperá un minuto y volvé a intentar."
+          : "Los servidores de IA están saturados. Intentá de nuevo en unos segundos.";
+        return json({ error: friendly }, 500);
       }
 
       const data = await geminiRes.json();
