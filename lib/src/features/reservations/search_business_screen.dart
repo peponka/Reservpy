@@ -923,30 +923,36 @@ class _BusinessListPageState extends ConsumerState<_BusinessListPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Back button row
+          // Back button row — pastilla blanca destacada sobre el verde
           Row(
             children: [
               Material(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+                elevation: 2,
+                shadowColor: Colors.black.withValues(alpha: 0.25),
                 child: InkWell(
                   onTap: widget.onBack,
-                  borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-                  child: const Padding(
-                    padding: EdgeInsets.all(8),
-                    child: Icon(Icons.arrow_back_rounded,
-                        color: Colors.white, size: 20),
-                  ),
-                ),
-              ),
-              const SizedBox(width: AppSizes.s12),
-              Expanded(
-                child: Text(
-                  'Volver a categorías',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white.withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 9),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.arrow_back_rounded,
+                            color: AppColors.accent, size: 18),
+                        const SizedBox(width: AppSizes.s8),
+                        Text(
+                          'Volver a categorías',
+                          style: GoogleFonts.inter(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.accent,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
