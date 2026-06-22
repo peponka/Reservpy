@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:reservpy/src/core/constants/app_sizes.dart';
 import 'package:reservpy/src/core/constants/app_colors.dart';
+import 'package:reservpy/src/features/reviews/review_widgets.dart'
+    show ReviewDialog;
 import 'package:reservpy/src/shared/providers/providers.dart';
 import 'package:reservpy/src/shared/models/models.dart';
 
@@ -102,11 +105,29 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
       ..sort((a, b) => a.startTime.compareTo(b.startTime));
 
     // Unique businesses visited (completed only)
-    final businessesCount = myReservations
+    final completedReservations = myReservations
         .where((r) => r.status == ReservationStatus.completed)
-        .map((r) => r.businessId)
-        .toSet()
-        .length;
+        .toList()
+      ..sort((a, b) => b.startTime.compareTo(a.startTime));
+    final businessesCount = completedReservations.map((r) => r.businessId).toSet().length;
+
+    // Recent businesses for quick rebook (up to 3 unique, most recent first)
+    final seenBizIds = <String>{};
+    final recentBusinesses = <MapEntry<String, String>>[];
+    for (final r in completedReservations) {
+      if (!seenBizIds.contains(r.businessId) && r.businessName != null) {
+        seenBizIds.add(r.businessId);
+        recentBusinesses.add(MapEntry(r.businessId, r.businessName!));
+        if (recentBusinesses.length >= 3) break;
+      }
+    }
+
+    // Recently completed reservations (within last 48h) for review prompt
+    final recentlyCompleted = completedReservations
+        .where((r) =>
+            r.startTime.isAfter(now.subtract(const Duration(hours: 48))) &&
+            r.startTime.isBefore(now))
+        .toList();
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -140,6 +161,14 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                 ],
 
                 // -----------------------------------------------------------
+                // 1c. REVIEW PROMPT — if recently completed reservation
+                // -----------------------------------------------------------
+                if (recentlyCompleted.isNotEmpty) ...[
+                  _buildPendingReviewBanner(theme, colorScheme, recentlyCompleted.first),
+                  const SizedBox(height: AppSizes.s16),
+                ],
+
+                // -----------------------------------------------------------
                 // 2. STATS ROW — 3 KPI cards
                 // -----------------------------------------------------------
                 _buildStatsRow(
@@ -164,7 +193,15 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                 const SizedBox(height: AppSizes.s20),
 
                 // -----------------------------------------------------------
-                // 5. QUICK ACTIONS
+                // 5. NEGOCIOS FRECUENTES (rebook shortcuts)
+                // -----------------------------------------------------------
+                if (recentBusinesses.isNotEmpty) ...[
+                  _buildRecentBusinesses(theme, colorScheme, recentBusinesses),
+                  const SizedBox(height: AppSizes.s20),
+                ],
+
+                // -----------------------------------------------------------
+                // 6. QUICK ACTIONS
                 // -----------------------------------------------------------
                 _buildQuickActions(theme, colorScheme),
                 const SizedBox(height: AppSizes.s32),
@@ -1232,7 +1269,205 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
   }
 
   // -------------------------------------------------------------------
-  // 5. QUICK ACTIONS
+  // 1c. PENDING REVIEW BANNER
+  // -------------------------------------------------------------------
+  Widget _buildPendingReviewBanner(
+    ThemeData theme,
+    ColorScheme colorScheme,
+    Reservation r,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSizes.s16,
+        vertical: AppSizes.s12,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.3),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: const Icon(Icons.star_rounded, color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: AppSizes.s12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '¿Cómo estuvo tu turno?',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${r.serviceName ?? 'Servicio'} en ${r.businessName ?? 'el negocio'}',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSizes.s8),
+          TextButton(
+            onPressed: () async {
+              await showDialog<bool>(
+                context: context,
+                builder: (_) => ReviewDialog(
+                  businessId: r.businessId,
+                  businessName: r.businessName ?? 'Negocio',
+                  reservationId: r.id,
+                ),
+              );
+            },
+            style: TextButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppSizes.s12, vertical: AppSizes.s6),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppSizes.radiusSm)),
+            ),
+            child: Text(
+              'Calificar',
+              style: GoogleFonts.inter(
+                  fontSize: 12, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // -------------------------------------------------------------------
+  // 5b. NEGOCIOS FRECUENTES
+  // -------------------------------------------------------------------
+  Widget _buildRecentBusinesses(
+    ThemeData theme,
+    ColorScheme colorScheme,
+    List<MapEntry<String, String>> businesses,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSizes.s16),
+          child: Text(
+            'Volvé a reservar en',
+            style: GoogleFonts.inter(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: colorScheme.onSurface,
+            ),
+          ),
+        ),
+        ...businesses.map(
+          (biz) => Padding(
+            padding: const EdgeInsets.only(bottom: AppSizes.s8),
+            child: Material(
+              color: theme.cardTheme.color,
+              borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+              child: InkWell(
+                onTap: () => context.push('/reserve/${biz.key}/service'),
+                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSizes.s16,
+                    vertical: AppSizes.s12,
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                    border: Border.all(
+                        color: colorScheme.outline.withValues(alpha: 0.08)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 4,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.10),
+                          borderRadius:
+                              BorderRadius.circular(AppSizes.radiusSm),
+                        ),
+                        child: const Icon(Icons.storefront_rounded,
+                            color: AppColors.primary, size: 18),
+                      ),
+                      const SizedBox(width: AppSizes.s12),
+                      Expanded(
+                        child: Text(
+                          biz.value,
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: colorScheme.onSurface,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: AppSizes.s8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: AppSizes.s12, vertical: AppSizes.s6),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius:
+                              BorderRadius.circular(AppSizes.radiusSm),
+                        ),
+                        child: Text(
+                          'Reservar',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // -------------------------------------------------------------------
+  // 6. QUICK ACTIONS
   // -------------------------------------------------------------------
   Widget _buildQuickActions(ThemeData theme, ColorScheme colorScheme) {
     final actions = [

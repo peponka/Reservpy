@@ -6,6 +6,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:reservpy/src/core/constants/app_colors.dart';
 import 'package:reservpy/src/core/constants/app_sizes.dart';
+import 'package:reservpy/src/core/supabase/supabase_config.dart';
+import 'package:reservpy/src/data/repositories/review_repository.dart';
 import 'package:reservpy/src/shared/models/models.dart';
 import 'package:reservpy/src/shared/providers/providers.dart';
 
@@ -61,6 +63,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final user = ref.watch(currentUserProvider);
+    final business = ref.watch(currentBusinessProvider);
     final stats = ref.watch(enhancedDashboardStatsProvider);
     final allReservations =
         ref.watch(businessReservationsProvider).valueOrNull ?? [];
@@ -103,7 +106,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     theme, colorScheme, stats, isDesktop),
                 const SizedBox(height: AppSizes.s24),
 
-                // 5. BOTTOM: Popular services + Plan banner
+                // 5. REVIEW INSIGHTS IA
+                if (business != null) ...[
+                  _ReviewInsightsCard(
+                    businessId: business.id,
+                    businessName: business.name,
+                  ),
+                  const SizedBox(height: AppSizes.s24),
+                ],
+
+                // 6. BOTTOM: Popular services + Plan banner
                 _buildBottomSection(
                     theme, colorScheme, stats, reservationCount, isDesktop),
               ],
@@ -1324,4 +1336,254 @@ class _KpiData {
     required this.icon,
     required this.color,
   });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// REVIEW INSIGHTS CARD — análisis IA de reseñas del negocio
+// ═══════════════════════════════════════════════════════════════════
+
+class _ReviewInsightsCard extends StatefulWidget {
+  final String businessId;
+  final String businessName;
+
+  const _ReviewInsightsCard({
+    required this.businessId,
+    required this.businessName,
+  });
+
+  @override
+  State<_ReviewInsightsCard> createState() => _ReviewInsightsCardState();
+}
+
+class _ReviewInsightsCardState extends State<_ReviewInsightsCard> {
+  bool _loading = true;
+  int _count = 0;
+  double _avg = 0;
+  List<String> _insights = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final reviews = await ReviewRepository().fetchForBusiness(widget.businessId);
+      if (!mounted) return;
+
+      if (reviews.isEmpty) {
+        setState(() => _loading = false);
+        return;
+      }
+
+      _count = reviews.length;
+      _avg = reviews.map((r) => r.rating.toDouble()).reduce((a, b) => a + b) /
+          reviews.length;
+
+      final comments = reviews
+          .where((r) => r.comment.trim().isNotEmpty)
+          .map((r) => '${r.rating}★: ${r.comment.trim()}')
+          .take(20)
+          .join('\n');
+
+      if (comments.isNotEmpty) {
+        final res = await SupabaseConfig.client.functions.invoke(
+          'ai-generate',
+          body: {
+            'type': 'review_analysis',
+            'businessName': widget.businessName,
+            'comments': comments,
+            'avgRating': _avg,
+            'totalCount': _count,
+          },
+        );
+        final raw = (res.data as Map?)?['text'] as String? ?? '';
+        _insights = raw
+            .split('\n')
+            .map((l) => l.trim())
+            .where((l) => l.isNotEmpty)
+            .toList();
+      }
+    } catch (_) {}
+
+    if (mounted) setState(() => _loading = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    // No mostrar si no hay reseñas y ya cargó
+    if (!_loading && _count == 0) return const SizedBox.shrink();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.cardTheme.color,
+        borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSizes.s20, AppSizes.s20, AppSizes.s20, AppSizes.s12),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppSizes.s8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF7C3AED).withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+                  ),
+                  child: const Icon(Icons.auto_awesome_rounded,
+                      size: 20, color: Color(0xFF7C3AED)),
+                ),
+                const SizedBox(width: AppSizes.s12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Análisis de reseñas IA',
+                        style: GoogleFonts.inter(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                      if (!_loading && _count > 0)
+                        Text(
+                          '$_count reseña${_count != 1 ? 's' : ''} · $_avg★ promedio',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                // Estrellas promedio
+                if (!_loading && _count > 0)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: List.generate(5, (i) {
+                      return Icon(
+                        i < _avg.round()
+                            ? Icons.star_rounded
+                            : Icons.star_outline_rounded,
+                        size: 14,
+                        color: Colors.amber.shade600,
+                      );
+                    }),
+                  ),
+              ],
+            ),
+          ),
+
+          const Divider(height: 1),
+
+          // Body
+          Padding(
+            padding: const EdgeInsets.all(AppSizes.s20),
+            child: _loading
+                ? Row(
+                    children: [
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Color(0xFF7C3AED)),
+                      ),
+                      const SizedBox(width: AppSizes.s12),
+                      Text(
+                        'Analizando reseñas…',
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  )
+                : _insights.isEmpty
+                    ? Text(
+                        'No hay reseñas con comentarios para analizar.',
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                        ),
+                      )
+                    : Column(
+                        children: [
+                          _insightRow(
+                            context,
+                            Icons.thumb_up_rounded,
+                            const Color(0xFF10B981),
+                            _insights.isNotEmpty ? _insights[0] : '',
+                          ),
+                          if (_insights.length > 1) ...[
+                            const SizedBox(height: AppSizes.s12),
+                            _insightRow(
+                              context,
+                              Icons.trending_up_rounded,
+                              AppColors.warning,
+                              _insights[1],
+                            ),
+                          ],
+                          if (_insights.length > 2) ...[
+                            const SizedBox(height: AppSizes.s12),
+                            _insightRow(
+                              context,
+                              Icons.lightbulb_rounded,
+                              const Color(0xFF7C3AED),
+                              _insights[2],
+                            ),
+                          ],
+                        ],
+                      ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _insightRow(
+      BuildContext context, IconData icon, Color color, String text) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 28,
+          height: 28,
+          margin: const EdgeInsets.only(top: 1),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Icon(icon, size: 15, color: color),
+        ),
+        const SizedBox(width: AppSizes.s12),
+        Expanded(
+          child: Text(
+            text,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              color: Theme.of(context).colorScheme.onSurface,
+              height: 1.5,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }

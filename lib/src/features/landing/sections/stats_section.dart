@@ -35,11 +35,11 @@ class StatsSection extends StatelessWidget {
                 alignment: WrapAlignment.center,
                 children: [
                   _StatCard(
-                    icon: Icons.calendar_month_rounded,
+                    icon: Icons.phone_disabled_rounded,
                     iconBg: LandingColors.primaryTint,
                     iconColor: LandingColors.primary,
-                    value: '1.200+',
-                    label: 'Turnos en Paraguay',
+                    value: '0 llamadas',
+                    label: 'Para reservar un turno',
                     width: itemWidth,
                   ).animate().fadeIn(delay: 0.ms, duration: 500.ms).slideY(
                       begin: 0.15, end: 0, delay: 0.ms, duration: 500.ms),

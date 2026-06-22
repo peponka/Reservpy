@@ -800,6 +800,15 @@ class _ReservationCardState extends ConsumerState<_ReservationCard> {
                             }
                           },
                         ),
+                      if (r.status == ReservationStatus.completed ||
+                          r.status == ReservationStatus.cancelled)
+                        _CompactActionBtn(
+                          icon: Icons.replay_rounded,
+                          label: 'Reservar de nuevo',
+                          color: AppColors.primary,
+                          outlined: true,
+                          onTap: () => context.push('/reserve/${r.businessId}/service'),
+                        ),
                     ],
                   ),
                 ],

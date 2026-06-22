@@ -10,7 +10,7 @@ class TestimonialsSection extends StatelessWidget {
     _Testimonial(
       quote:
           'Desde que uso ReservPy, mis pacientes reservan solos y yo dejé de atender WhatsApp todo el día. Es simple, rápido y mis pacientes lo aman.',
-      name: 'Sofía Rodríguez',
+      name: 'Sofía R.',
       title: 'Psicóloga',
       city: 'Asunción',
       initials: 'SR',
@@ -20,7 +20,7 @@ class TestimonialsSection extends StatelessWidget {
     _Testimonial(
       quote:
           'Configuré mi barbería en 5 minutos. Ahora mis clientes eligen el servicio, el horario y listo. No volvería al cuaderno nunca más.',
-      name: 'Martín González',
+      name: 'Martín G.',
       title: 'Dueño de peluquería',
       city: 'Ciudad del Este',
       initials: 'MG',
@@ -30,7 +30,7 @@ class TestimonialsSection extends StatelessWidget {
     _Testimonial(
       quote:
           'El panel de control me da toda la información que necesito. Veo mis turnos del día, los ingresos de la semana y las cancelaciones. Todo clarísimo.',
-      name: 'Laura Martínez',
+      name: 'Laura M.',
       title: 'Nutricionista',
       city: 'Encarnación',
       initials: 'LM',

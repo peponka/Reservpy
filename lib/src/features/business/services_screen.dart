@@ -5,6 +5,7 @@ import 'package:reservpy/src/core/constants/app_sizes.dart';
 import 'package:reservpy/src/core/widgets/widgets.dart';
 import 'package:reservpy/src/shared/providers/providers.dart';
 import 'package:reservpy/src/shared/models/models.dart';
+import 'package:reservpy/src/core/supabase/supabase_config.dart';
 import 'package:reservpy/src/data/repositories/service_repository.dart';
 
 class ServicesScreen extends ConsumerWidget {
@@ -836,8 +837,38 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
   late final TextEditingController _priceCtrl;
   late int _durationMinutes;
   late bool _isActive;
+  bool _generatingDesc = false;
 
   bool get _isEditing => widget.service != null;
+
+  Future<void> _generateDescription() async {
+    final name = _nameCtrl.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Escribí el nombre del servicio primero')),
+      );
+      return;
+    }
+    setState(() => _generatingDesc = true);
+    try {
+      final res = await SupabaseConfig.client.functions.invoke(
+        'ai-generate',
+        body: {'type': 'service_description', 'serviceName': name},
+      );
+      final text = (res.data as Map?)?['text'] as String?;
+      if (text != null && text.isNotEmpty && mounted) {
+        _descCtrl.text = text;
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo generar la descripción')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _generatingDesc = false);
+    }
+  }
 
   @override
   void initState() {
@@ -984,8 +1015,33 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
                       hint: 'Breve descripción del servicio…',
                       maxLines: 2,
                     ),
+                    const SizedBox(height: AppSizes.s8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: _generatingDesc
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : TextButton.icon(
+                              onPressed: _generateDescription,
+                              icon: const Text('✨', style: TextStyle(fontSize: 13)),
+                              label: const Text(
+                                'Generar con IA',
+                                style: TextStyle(fontSize: 12),
+                              ),
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: AppSizes.s8, vertical: AppSizes.s4),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                visualDensity: VisualDensity.compact,
+                              ),
+                            ),
+                    ),
 
-                    const SizedBox(height: AppSizes.s16),
+                    const SizedBox(height: AppSizes.s12),
 
                     // ── Price ──
                     AppTextField(
