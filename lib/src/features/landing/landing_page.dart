@@ -87,7 +87,9 @@ class _LandingPageState extends State<LandingPage> {
                   const SizedBox(height: 72),
 
                   // 1. Hero
-                  const HeroSection(),
+                  HeroSection(
+                    onDemoPressed: () => _scrollToSection(_howItWorksKey),
+                  ),
 
                   // 2. Dashboard Mockup
                   const DashboardMockup(),

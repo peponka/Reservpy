@@ -6,7 +6,9 @@ import 'package:reservpy/src/features/landing/landing_theme.dart';
 
 /// Hero section with badge, gradient title, dual CTAs and guarantees.
 class HeroSection extends StatelessWidget {
-  const HeroSection({super.key});
+  const HeroSection({super.key, this.onDemoPressed});
+
+  final VoidCallback? onDemoPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -109,14 +111,7 @@ class HeroSection extends StatelessWidget {
                     ),
                     _OutlineCta(
                       label: 'Ver demo en vivo',
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Scrollá para ver cómo funciona'),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      },
+                      onTap: onDemoPressed ?? () {},
                     ),
                   ],
                 )
