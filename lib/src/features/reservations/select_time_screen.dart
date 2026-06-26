@@ -91,7 +91,7 @@ class _SelectTimeScreenState extends ConsumerState<SelectTimeScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final businesses = ref.watch(businessesProvider).valueOrNull ?? [];
-    final blockedSlots = ref.watch(blockedSlotsProvider).valueOrNull ?? [];
+    final blockedSlots = ref.watch(blockedSlotsForBusinessProvider(widget.businessId)).valueOrNull ?? [];
 
     final business = businesses.where((b) => b.id == widget.businessId).firstOrNull;
     if (business == null) {

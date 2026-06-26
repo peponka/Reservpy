@@ -9,8 +9,8 @@ import 'package:reservpy/src/data/repositories/admin_repository.dart';
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 
-final _adminBusinessesProvider = FutureProvider<List<Business>>((ref) async {
-  return AdminRepository().getAllBusinessesAdmin();
+final _adminBusinessesProvider = FutureProvider<List<AdminBusiness>>((ref) async {
+  return AdminRepository().getAllBusinesses();
 });
 
 // ── Screen ────────────────────────────────────────────────────────────────────

@@ -770,7 +770,8 @@ class _ReservationCardState extends ConsumerState<_ReservationCard> {
                           isLoading: _isCancelling,
                           onTap: () => _showCancelDialog(context, r),
                         ),
-                      if (r.status != ReservationStatus.cancelled)
+                      if (r.status == ReservationStatus.completed ||
+                          (r.status != ReservationStatus.cancelled && r.endTime.isBefore(DateTime.now())))
                         _CompactActionBtn(
                           icon: Icons.star_outline_rounded,
                           label: 'Calificar',

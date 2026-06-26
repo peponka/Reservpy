@@ -1162,7 +1162,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Plan Pro activo ?',
+                    'Plan Pro activo ✓',
                     style: GoogleFonts.inter(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
@@ -1464,7 +1464,7 @@ class _ReviewInsightsCardState extends State<_ReviewInsightsCard> {
                       ),
                       if (!_loading && _count > 0)
                         Text(
-                          '$_count reseña${_count != 1 ? 's' : ''} · $_avg★ promedio',
+                          '$_count reseña${_count != 1 ? 's' : ''} · ${_avg.toStringAsFixed(1)}★ promedio',
                           style: GoogleFonts.inter(
                             fontSize: 12,
                             color: AppColors.textSecondary,

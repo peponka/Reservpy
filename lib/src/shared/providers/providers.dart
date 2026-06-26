@@ -300,8 +300,11 @@ final enhancedDashboardStatsProvider = Provider<EnhancedDashboardStats>((ref) {
     final totalMinutes = (business.closingTime.hour * 60 + business.closingTime.minute) -
         (business.openingTime.hour * 60 + business.openingTime.minute);
     final totalSlots = totalMinutes ~/ business.slotDurationMinutes;
+    final activeTodayCount = todayReservations
+        .where((r) => r.status != ReservationStatus.cancelled)
+        .length;
     if (totalSlots > 0) {
-      occupancy = (todayReservations.length / totalSlots * 100).clamp(0, 100);
+      occupancy = (activeTodayCount / totalSlots * 100).clamp(0, 100);
     }
   }
 
