@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:uuid/uuid.dart';
 import 'package:reservpy/src/core/constants/app_colors.dart';
 import 'package:reservpy/src/core/constants/app_sizes.dart';
 import 'package:reservpy/src/shared/models/models.dart';
 import 'package:reservpy/src/shared/providers/providers.dart';
+import 'package:reservpy/src/data/repositories/service_repository.dart';
+
+const _uuid = Uuid();
 
 /// Servicios screen matching ReservPy's admin/services page.
 class ServicesScreen extends ConsumerWidget {
@@ -16,8 +20,12 @@ class ServicesScreen extends ConsumerWidget {
     final colorScheme = theme.colorScheme;
     final business = ref.watch(currentBusinessProvider);
     final services = business != null
-        ? ref.watch(businessServicesProvider(business.id)).valueOrNull ?? <ServiceModel>[]
+        ? ref.watch(businessServicesProvider(business.id)).value ?? <ServiceModel>[]
         : <ServiceModel>[];
+
+    void refresh() {
+      if (business != null) ref.invalidate(businessServicesProvider(business.id));
+    }
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSizes.s24),
@@ -48,7 +56,9 @@ class ServicesScreen extends ConsumerWidget {
                 ),
               ),
               FilledButton.icon(
-                onPressed: () {},
+                onPressed: business == null
+                    ? null
+                    : () => _showAddEditDialog(context, ref, business.id, null, refresh),
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text('Nuevo servicio'),
                 style: FilledButton.styleFrom(
@@ -68,7 +78,6 @@ class ServicesScreen extends ConsumerWidget {
             builder: (context, constraints) {
               final isWide = constraints.maxWidth >= 600;
 
-              // Compute KPI values from services
               final activeCount = services.where((s) => s.isActive).length;
               final avgDuration = services.isNotEmpty
                   ? (services.fold<int>(
@@ -336,7 +345,10 @@ class ServicesScreen extends ConsumerWidget {
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               TextButton(
-                                onPressed: () {},
+                                onPressed: business == null
+                                    ? null
+                                    : () => _showAddEditDialog(
+                                        context, ref, business.id, service, refresh),
                                 child: Text(
                                   'Editar',
                                   style: TextStyle(
@@ -346,11 +358,10 @@ class ServicesScreen extends ConsumerWidget {
                                 ),
                               ),
                               TextButton(
-                                onPressed: () {},
+                                onPressed: () => _toggleActive(
+                                    context, ref, service, refresh),
                                 child: Text(
-                                  service.isActive
-                                      ? 'Pausar'
-                                      : 'Activar',
+                                  service.isActive ? 'Pausar' : 'Activar',
                                   style: const TextStyle(
                                     color: AppColors.warning,
                                     fontSize: 12,
@@ -366,7 +377,9 @@ class ServicesScreen extends ConsumerWidget {
                 ),
                 // Add new service row
                 InkWell(
-                  onTap: () {},
+                  onTap: business == null
+                      ? null
+                      : () => _showAddEditDialog(context, ref, business.id, null, refresh),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 20,
@@ -396,6 +409,142 @@ class ServicesScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+}
+
+Future<void> _showAddEditDialog(
+  BuildContext context,
+  WidgetRef ref,
+  String businessId,
+  ServiceModel? existing,
+  VoidCallback onSaved,
+) async {
+  final nameCtrl = TextEditingController(text: existing?.name ?? '');
+  final descCtrl = TextEditingController(text: existing?.description ?? '');
+  final durationCtrl = TextEditingController(
+      text: existing?.durationMinutes.toString() ?? '30');
+  final priceCtrl = TextEditingController(
+      text: existing?.price?.toStringAsFixed(0) ?? '');
+  final formKey = GlobalKey<FormState>();
+  bool saving = false;
+
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setState) => AlertDialog(
+        title: Text(existing == null ? 'Nuevo servicio' : 'Editar servicio'),
+        content: SingleChildScrollView(
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: nameCtrl,
+                  decoration: const InputDecoration(labelText: 'Nombre *'),
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: descCtrl,
+                  decoration: const InputDecoration(labelText: 'Descripción'),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: durationCtrl,
+                  decoration:
+                      const InputDecoration(labelText: 'Duración (min) *'),
+                  keyboardType: TextInputType.number,
+                  validator: (v) {
+                    final n = int.tryParse(v ?? '');
+                    return (n == null || n <= 0) ? 'Ingresá minutos válidos' : null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: priceCtrl,
+                  decoration:
+                      const InputDecoration(labelText: 'Precio (Gs.) — vacío = Gratis'),
+                  keyboardType: TextInputType.number,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: saving
+                ? null
+                : () async {
+                    if (!formKey.currentState!.validate()) return;
+                    setState(() => saving = true);
+                    try {
+                      final service = ServiceModel(
+                        id: existing?.id ?? _uuid.v4(),
+                        businessId: businessId,
+                        name: nameCtrl.text.trim(),
+                        description: descCtrl.text.trim().isEmpty
+                            ? null
+                            : descCtrl.text.trim(),
+                        durationMinutes: int.parse(durationCtrl.text),
+                        price: priceCtrl.text.trim().isEmpty
+                            ? null
+                            : double.tryParse(priceCtrl.text.trim()),
+                        isActive: existing?.isActive ?? true,
+                        sortOrder: existing?.sortOrder ?? 0,
+                      );
+                      if (existing == null) {
+                        await ServiceRepository().create(service);
+                      } else {
+                        await ServiceRepository().update(service);
+                      }
+                      if (ctx.mounted) Navigator.of(ctx).pop(true);
+                    } catch (e) {
+                      setState(() => saving = false);
+                      if (ctx.mounted) {
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                          SnackBar(content: Text('Error: $e')),
+                        );
+                      }
+                    }
+                  },
+            child: saving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(existing == null ? 'Crear' : 'Guardar'),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  if (confirmed == true) onSaved();
+}
+
+Future<void> _toggleActive(
+  BuildContext context,
+  WidgetRef ref,
+  ServiceModel service,
+  VoidCallback onDone,
+) async {
+  try {
+    await ServiceRepository().toggleActive(service.id, !service.isActive);
+    onDone();
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
   }
 }
 
@@ -462,8 +611,6 @@ class _ServiceKpi extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          // FittedBox para que valores largos (₲ 1.234.567) se ajusten solos
-          // y no se corten.
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,

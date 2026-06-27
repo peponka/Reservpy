@@ -130,10 +130,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       // ── Role-based route guard ──
-      // Business owners and employees CAN access /client
-      // Only block pure clients from /business management dashboard
+      // Business owners and employees CAN access /client.
+      // Block pure clients from ALL owner-management routes.
       if (isLoggedIn && user != null) {
-        if (!user.canBeBusiness && state.matchedLocation == '/business') {
+        final loc = state.matchedLocation;
+        final isOwnerRoute = loc == '/business' ||
+            (loc.startsWith('/business-') && !loc.startsWith('/business-detail'));
+        if (!user.canBeBusiness && isOwnerRoute) {
           return '/client';
         }
       }

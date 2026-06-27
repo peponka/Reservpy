@@ -1270,16 +1270,18 @@ class _DayView extends ConsumerWidget {
                       child: AppButton(
                         label: AppStrings.confirm,
                         icon: Icons.check_rounded,
-                        onPressed: () {
-                          _updateStatus(
+                        onPressed: () async {
+                          final ok = await _updateStatus(
                             ref,
                             reservation,
                             ReservationStatus.confirmed,
                           );
+                          if (!context.mounted) return;
                           Navigator.of(sheetContext).pop();
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Reserva confirmada'),
+                            SnackBar(
+                              content: Text(ok ? 'Reserva confirmada' : 'Error al confirmar'),
+                              backgroundColor: ok ? null : Colors.red.shade600,
                             ),
                           );
                         },
@@ -1291,16 +1293,18 @@ class _DayView extends ConsumerWidget {
                         label: AppStrings.cancel,
                         icon: Icons.close_rounded,
                         isOutlined: true,
-                        onPressed: () {
-                          _updateStatus(
+                        onPressed: () async {
+                          final ok = await _updateStatus(
                             ref,
                             reservation,
                             ReservationStatus.cancelled,
                           );
+                          if (!context.mounted) return;
                           Navigator.of(sheetContext).pop();
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Reserva cancelada'),
+                            SnackBar(
+                              content: Text(ok ? 'Reserva cancelada' : 'Error al cancelar'),
+                              backgroundColor: ok ? null : Colors.red.shade600,
                             ),
                           );
                         },
@@ -1315,16 +1319,18 @@ class _DayView extends ConsumerWidget {
                   icon: Icons.cancel_outlined,
                   backgroundColor: theme.colorScheme.error,
                   foregroundColor: Colors.white,
-                  onPressed: () {
-                    _updateStatus(
+                  onPressed: () async {
+                    final ok = await _updateStatus(
                       ref,
                       reservation,
                       ReservationStatus.cancelled,
                     );
+                    if (!context.mounted) return;
                     Navigator.of(sheetContext).pop();
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Reserva cancelada'),
+                      SnackBar(
+                        content: Text(ok ? 'Reserva cancelada' : 'Error al cancelar'),
+                        backgroundColor: ok ? null : Colors.red.shade600,
                       ),
                     );
                   },
@@ -1376,13 +1382,12 @@ class _DayView extends ConsumerWidget {
     );
   }
 
-  void _updateStatus(
+  Future<bool> _updateStatus(
       WidgetRef ref, Reservation reservation, ReservationStatus newStatus) async {
     try {
       await ReservationRepository().updateStatus(reservation.id, newStatus.name);
       ref.invalidate(businessReservationsProvider);
 
-      // Send cancellation email if status changed to cancelled
       if (newStatus == ReservationStatus.cancelled) {
         final business = ref.read(currentBusinessProvider);
         if (reservation.clientId != null) ProfileRepository().getProfile(reservation.clientId!).then((client) {
@@ -1398,8 +1403,9 @@ class _DayView extends ConsumerWidget {
           }
         }).catchError((_) {});
       }
+      return true;
     } catch (_) {
-      // silently fail — the UI will show stale data until next refresh
+      return false;
     }
   }
 
@@ -1441,8 +1447,11 @@ class _WeekView extends ConsumerWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    const startHour = 7;
-    const endHour = 20;
+    final biz = ref.watch(currentBusinessProvider);
+    final startHour = biz?.openingTime.hour ?? 7;
+    final endHour = (biz != null
+        ? biz.closingTime.hour + (biz.closingTime.minute > 0 ? 1 : 0)
+        : 20);
     const hourHeight = 64.0;
     final hoursCount = endHour - startHour + 1;
 
@@ -1794,16 +1803,18 @@ class _WeekView extends ConsumerWidget {
                       child: AppButton(
                         label: AppStrings.confirm,
                         icon: Icons.check_rounded,
-                        onPressed: () {
-                          _updateStatus(
+                        onPressed: () async {
+                          final ok = await _updateStatus(
                             ref,
                             reservation,
                             ReservationStatus.confirmed,
                           );
+                          if (!context.mounted) return;
                           Navigator.of(sheetContext).pop();
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Reserva confirmada'),
+                            SnackBar(
+                              content: Text(ok ? 'Reserva confirmada' : 'Error al confirmar'),
+                              backgroundColor: ok ? null : Colors.red.shade600,
                             ),
                           );
                         },
@@ -1815,16 +1826,18 @@ class _WeekView extends ConsumerWidget {
                         label: AppStrings.cancel,
                         icon: Icons.close_rounded,
                         isOutlined: true,
-                        onPressed: () {
-                          _updateStatus(
+                        onPressed: () async {
+                          final ok = await _updateStatus(
                             ref,
                             reservation,
                             ReservationStatus.cancelled,
                           );
+                          if (!context.mounted) return;
                           Navigator.of(sheetContext).pop();
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Reserva cancelada'),
+                            SnackBar(
+                              content: Text(ok ? 'Reserva cancelada' : 'Error al cancelar'),
+                              backgroundColor: ok ? null : Colors.red.shade600,
                             ),
                           );
                         },
@@ -1838,16 +1851,18 @@ class _WeekView extends ConsumerWidget {
                   icon: Icons.cancel_outlined,
                   backgroundColor: theme.colorScheme.error,
                   foregroundColor: Colors.white,
-                  onPressed: () {
-                    _updateStatus(
+                  onPressed: () async {
+                    final ok = await _updateStatus(
                       ref,
                       reservation,
                       ReservationStatus.cancelled,
                     );
+                    if (!context.mounted) return;
                     Navigator.of(sheetContext).pop();
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Reserva cancelada'),
+                      SnackBar(
+                        content: Text(ok ? 'Reserva cancelada' : 'Error al cancelar'),
+                        backgroundColor: ok ? null : Colors.red.shade600,
                       ),
                     );
                   },
@@ -1861,13 +1876,12 @@ class _WeekView extends ConsumerWidget {
     );
   }
 
-  void _updateStatus(
+  Future<bool> _updateStatus(
       WidgetRef ref, Reservation reservation, ReservationStatus newStatus) async {
     try {
       await ReservationRepository().updateStatus(reservation.id, newStatus.name);
       ref.invalidate(businessReservationsProvider);
 
-      // Send cancellation email if status changed to cancelled
       if (newStatus == ReservationStatus.cancelled) {
         final business = ref.read(currentBusinessProvider);
         if (reservation.clientId != null) ProfileRepository().getProfile(reservation.clientId!).then((client) {
@@ -1883,8 +1897,9 @@ class _WeekView extends ConsumerWidget {
           }
         }).catchError((_) {});
       }
+      return true;
     } catch (_) {
-      // silently fail — the UI will show stale data until next refresh
+      return false;
     }
   }
 

@@ -205,10 +205,13 @@ class _ConfirmReservationScreenState
 
           DateTime nextStart;
           if (_recurrenceType == 'monthly') {
+            final targetMonth = widget.selectedTime.month + i;
+            // Clamp day to last valid day of target month (e.g. Jan 31 + 1m → Feb 28)
+            final lastDay = DateTime(widget.selectedTime.year, targetMonth + 1, 0).day;
             nextStart = DateTime(
               widget.selectedTime.year,
-              widget.selectedTime.month + i,
-              widget.selectedTime.day,
+              targetMonth,
+              widget.selectedTime.day > lastDay ? lastDay : widget.selectedTime.day,
               widget.selectedTime.hour,
               widget.selectedTime.minute,
             );

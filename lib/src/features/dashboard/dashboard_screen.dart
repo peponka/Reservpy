@@ -69,7 +69,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ref.watch(businessReservationsProvider).valueOrNull ?? [];
 
     final userName = user?.firstName ?? 'Usuario';
-    final reservationCount = allReservations.length;
+    final reservationCount = allReservations
+        .where((r) => r.status != ReservationStatus.cancelled)
+        .length;
 
     return LayoutBuilder(
       builder: (context, constraints) {
