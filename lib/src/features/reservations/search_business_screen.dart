@@ -114,9 +114,9 @@ class _CategoriesPage extends ConsumerWidget {
         final width = constraints.maxWidth;
         int crossCount;
         if (width >= 1000) {
-          crossCount = 5;
-        } else if (width >= 700) {
           crossCount = 4;
+        } else if (width >= 700) {
+          crossCount = 3;
         } else if (width >= 480) {
           crossCount = 3;
         } else {
