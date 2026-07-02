@@ -55,10 +55,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
 
   bool _obscurePassword = true;
-  bool _obscureConfirm = true;
   bool _isLoading = false;
   String? _selectedCategoryId;
 
@@ -101,7 +99,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
-    _confirmPasswordController.dispose();
     for (final c in _otpControllers) {
       c.dispose();
     }
@@ -479,17 +476,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                     emailController: _emailController,
                     phoneController: _phoneController,
                     passwordController: _passwordController,
-                    confirmPasswordController: _confirmPasswordController,
                     selectedCategoryId: _selectedCategoryId,
                     onCategoryChanged: (v) => setState(() => _selectedCategoryId = v),
                     categories: ref.watch(categoriesProvider).valueOrNull ?? [],
                     obscurePassword: _obscurePassword,
-                    obscureConfirm: _obscureConfirm,
                     isLoading: _isLoading,
                     onTogglePassword: () =>
                         setState(() => _obscurePassword = !_obscurePassword),
-                    onToggleConfirm: () =>
-                        setState(() => _obscureConfirm = !_obscureConfirm),
                     onSubmit: _handleFormSubmit,
                     onSwitchRole: () => _goToStep(0),
                   ),
@@ -993,15 +986,12 @@ class _StepRegistrationForm extends StatelessWidget {
   final TextEditingController emailController;
   final TextEditingController phoneController;
   final TextEditingController passwordController;
-  final TextEditingController confirmPasswordController;
   final String? selectedCategoryId;
   final ValueChanged<String?> onCategoryChanged;
   final List<BusinessCategory> categories;
   final bool obscurePassword;
-  final bool obscureConfirm;
   final bool isLoading;
   final VoidCallback onTogglePassword;
-  final VoidCallback onToggleConfirm;
   final VoidCallback onSubmit;
   final VoidCallback onSwitchRole;
 
@@ -1014,15 +1004,12 @@ class _StepRegistrationForm extends StatelessWidget {
     required this.emailController,
     required this.phoneController,
     required this.passwordController,
-    required this.confirmPasswordController,
     required this.selectedCategoryId,
     required this.onCategoryChanged,
     required this.categories,
     required this.obscurePassword,
-    required this.obscureConfirm,
     required this.isLoading,
     required this.onTogglePassword,
-    required this.onToggleConfirm,
     required this.onSubmit,
     required this.onSwitchRole,
   });
@@ -1236,51 +1223,24 @@ class _StepRegistrationForm extends StatelessWidget {
 
                 const SizedBox(height: AppSizes.s16),
 
-                // Password (campo completo, a lo ancho)
-                Column(
-                  children: [
-                    AppTextField(
-                      controller: passwordController,
-                      label: AppStrings.password,
-                      hint: '••••••••',
-                      prefixIcon: Icons.lock_outline_rounded,
-                      obscureText: obscurePassword,
-                      validator: Validators.password,
-                      suffix: IconButton(
-                        icon: Icon(
-                          obscurePassword
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
-                          size: 20,
-                          color: colorScheme.onSurface.withValues(alpha: 0.5),
-                        ),
-                        onPressed: onTogglePassword,
-                      ),
+                // Password
+                AppTextField(
+                  controller: passwordController,
+                  label: AppStrings.password,
+                  hint: '••••••••',
+                  prefixIcon: Icons.lock_outline_rounded,
+                  obscureText: obscurePassword,
+                  validator: Validators.password,
+                  suffix: IconButton(
+                    icon: Icon(
+                      obscurePassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      size: 20,
+                      color: colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
-                    const SizedBox(height: AppSizes.s16),
-                    // Confirmar contraseña (abajo, a lo ancho)
-                    AppTextField(
-                      controller: confirmPasswordController,
-                      label: AppStrings.confirmPassword,
-                      hint: '••••••••',
-                      prefixIcon: Icons.lock_outline_rounded,
-                      obscureText: obscureConfirm,
-                      validator: (v) => Validators.confirmPassword(
-                        v,
-                        passwordController.text,
-                      ),
-                      suffix: IconButton(
-                        icon: Icon(
-                          obscureConfirm
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
-                          size: 20,
-                          color: colorScheme.onSurface.withValues(alpha: 0.5),
-                        ),
-                        onPressed: onToggleConfirm,
-                      ),
-                    ),
-                  ],
+                    onPressed: onTogglePassword,
+                  ),
                 )
                     .animate()
                     .fadeIn(delay: 350.ms, duration: 400.ms)
@@ -1535,34 +1495,6 @@ class _StepRegistrationForm extends StatelessWidget {
                     .animate()
                     .fadeIn(delay: 350.ms, duration: 400.ms)
                     .slideY(begin: 0.08, end: 0, delay: 350.ms, duration: 400.ms),
-
-                const SizedBox(height: AppSizes.s16),
-
-                // Confirm password
-                AppTextField(
-                  controller: confirmPasswordController,
-                  label: AppStrings.confirmPassword,
-                  hint: '••••••••',
-                  prefixIcon: Icons.lock_outline_rounded,
-                  obscureText: obscureConfirm,
-                  validator: (v) => Validators.confirmPassword(
-                    v,
-                    passwordController.text,
-                  ),
-                  suffix: IconButton(
-                    icon: Icon(
-                      obscureConfirm
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
-                      size: 20,
-                      color: colorScheme.onSurface.withValues(alpha: 0.5),
-                    ),
-                    onPressed: onToggleConfirm,
-                  ),
-                )
-                    .animate()
-                    .fadeIn(delay: 400.ms, duration: 400.ms)
-                    .slideY(begin: 0.08, end: 0, delay: 400.ms, duration: 400.ms),
 
                 const SizedBox(height: AppSizes.s24),
 
