@@ -91,6 +91,16 @@ class _ReservPyAppState extends ConsumerState<ReservPyApp> {
     final user = ref.read(currentUserProvider);
     final activeRole = ref.read(activeRoleProvider);
 
+    // If Google Sign-In started from a reservation the user was confirming
+    // as a guest, send them straight back to it instead of the dashboard.
+    final pendingRedirect = ref.read(pendingRedirectProvider);
+    if (pendingRedirect != null) {
+      ref.read(pendingRedirectProvider.notifier).state = null;
+      ref.read(activeRoleProvider.notifier).state = UserRole.client;
+      router.go(pendingRedirect);
+      return;
+    }
+
     if (user != null && user.isMultiRole) {
       router.go('/select-role');
     } else if (activeRole == UserRole.businessOwner ||

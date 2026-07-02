@@ -78,13 +78,38 @@ final routerProvider = Provider<GoRouter>((ref) {
       final activeRole = ref.read(activeRoleProvider);
       final adminSessionActive = ref.read(adminSessionActiveProvider);
 
-      final isPublicPage = state.matchedLocation == '/' ||
-          state.matchedLocation == '/login' ||
-          state.matchedLocation == '/register' ||
-          state.matchedLocation == '/forgot-password' ||
-          state.matchedLocation == '/onboarding' ||
-          state.matchedLocation == '/select-role' ||
-          state.matchedLocation == '/admin-login';
+      final loc = state.matchedLocation;
+
+      // Browsing a business and picking a service/time doesn't require an
+      // account — only confirming the reservation does. This lets a shared
+      // business link (or a Google search result) open directly instead of
+      // bouncing new visitors to the landing page.
+      final isGuestBrowsingRoute = loc.startsWith('/business-detail/') ||
+          (loc.startsWith('/reserve/') && !loc.contains('/confirm/'));
+
+      final isPublicPage = loc == '/' ||
+          loc == '/login' ||
+          loc == '/register' ||
+          loc == '/forgot-password' ||
+          loc == '/onboarding' ||
+          loc == '/select-role' ||
+          loc == '/admin-login' ||
+          isGuestBrowsingRoute;
+
+      // A guest reached the final confirm step of a reservation — stash
+      // where they were headed and send them to register. They land back
+      // here automatically once they finish creating an account.
+      if (!isLoggedIn && loc.startsWith('/reserve/') && loc.contains('/confirm/')) {
+        ref.read(pendingRedirectProvider.notifier).state = state.uri.toString();
+        return '/register';
+      }
+
+      // Guest bailed out back to the landing page instead of finishing
+      // registration — drop the stashed reservation so a later, unrelated
+      // login doesn't unexpectedly resurrect it.
+      if (!isLoggedIn && loc == '/' && ref.read(pendingRedirectProvider) != null) {
+        ref.read(pendingRedirectProvider.notifier).state = null;
+      }
 
       // ── Admin guard ────────────────────────────────────────────────────
       // /admin requires an explicit admin login via /admin-login.
@@ -133,7 +158,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Business owners and employees CAN access /client.
       // Block pure clients from ALL owner-management routes.
       if (isLoggedIn && user != null) {
-        final loc = state.matchedLocation;
         final isOwnerRoute = loc == '/business' ||
             (loc.startsWith('/business-') && !loc.startsWith('/business-detail'));
         if (!user.canBeBusiness && isOwnerRoute) {

@@ -45,6 +45,11 @@ final activeRoleProvider = StateProvider<UserRole>((ref) => UserRole.client);
 /// Points to the same provider as activeRoleProvider.
 final selectedRoleProvider = activeRoleProvider;
 
+/// Deep link a guest was trying to reach when the router bounced them to
+/// /register (e.g. confirming a reservation). Read once after a successful
+/// login/registration to send them back instead of the default dashboard.
+final pendingRedirectProvider = StateProvider<String?>((ref) => null);
+
 /// All roles for the current user (fetched from user_roles table).
 final userRolesProvider = FutureProvider<List<UserRole>>((ref) async {
   final user = ref.watch(currentUserProvider);

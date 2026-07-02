@@ -350,6 +350,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
           );
         } else {
           if (!mounted) return;
+
+          // If registration started from a reservation the user was
+          // confirming as a guest, send them straight back to it.
+          final pendingRedirect = ref.read(pendingRedirectProvider);
+          if (pendingRedirect != null) {
+            ref.read(pendingRedirectProvider.notifier).state = null;
+            GoRouter.of(context).go(pendingRedirect);
+            return;
+          }
+
           GoRouter.of(context).go('/client');
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

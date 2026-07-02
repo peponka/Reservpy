@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:reservpy/src/core/constants/app_colors.dart';
@@ -76,7 +77,21 @@ class _FavoriteButtonState extends ConsumerState<FavoriteButton>
 
   Future<void> _toggle(bool wasFav) async {
     final userId = SupabaseConfig.client.auth.currentUser?.id;
-    if (userId == null) return;
+    if (userId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Creá una cuenta para guardar favoritos'),
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'Registrarme',
+              onPressed: () => context.go('/register'),
+            ),
+          ),
+        );
+      }
+      return;
+    }
 
     setState(() => _isToggling = true);
     _animCtrl.forward(from: 0);

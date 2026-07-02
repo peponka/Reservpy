@@ -100,6 +100,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
         if (!mounted) return;
 
+        // If we bounced here from a reservation the user was confirming as
+        // a guest, send them straight back to it instead of the dashboard.
+        final pendingRedirect = ref.read(pendingRedirectProvider);
+        if (pendingRedirect != null) {
+          ref.read(pendingRedirectProvider.notifier).state = null;
+          ref.read(activeRoleProvider.notifier).state = UserRole.client;
+          context.go(pendingRedirect);
+          return;
+        }
+
         // Route based on number of roles
         final user = ref.read(currentUserProvider)!;
         if (user.isMultiRole) {
