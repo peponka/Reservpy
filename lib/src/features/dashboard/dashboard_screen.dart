@@ -1188,7 +1188,104 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       );
     }
 
-    // -- Free plan: show upgrade banner --
+    // -- Still inside the free trial: show a countdown banner --
+    if (business?.subscriptionStatus == 'trial') {
+      final daysLeft = business!.trialDaysLeft;
+      final isUrgent = daysLeft <= 7;
+      final urgentColors = isDark
+          ? [const Color(0xFFDC2626), const Color(0xFFB91C1C)]
+          : [const Color(0xFFEF4444), const Color(0xFFF87171)];
+
+      return Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSizes.s24,
+          vertical: AppSizes.s20,
+        ),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: isUrgent
+                ? urgentColors
+                : [AppColors.primary, isDark ? AppColors.accent : AppColors.accentLight],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(AppSizes.radiusXl),
+          boxShadow: [
+            BoxShadow(
+              color: (isUrgent ? const Color(0xFFEF4444) : AppColors.primary)
+                  .withValues(alpha: 0.2),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(AppSizes.s8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+              ),
+              child: Icon(
+                isUrgent ? Icons.timer_rounded : Icons.workspace_premium_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: AppSizes.s16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    daysLeft > 0
+                        ? 'Te queda${daysLeft == 1 ? '' : 'n'} $daysLeft día${daysLeft == 1 ? '' : 's'} de prueba gratis'
+                        : 'Tu prueba gratis vence hoy',
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: AppSizes.s4),
+                  Text(
+                    'Activá el plan Pro para no perder el acceso',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.white.withValues(alpha: 0.85),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(
+              height: 38,
+              child: ElevatedButton(
+                onPressed: () {
+                  ref.read(businessNavIndexProvider.notifier).state = 7;
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: isUrgent ? const Color(0xFFDC2626) : AppColors.accent,
+                  padding: const EdgeInsets.symmetric(horizontal: AppSizes.s16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+                  ),
+                ),
+                child: Text(
+                  'Ver planes',
+                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // -- Free plan (trial already expired): show upgrade banner --
     final usage = (reservationCount / 10).clamp(0.0, 1.0);
 
     return Container(

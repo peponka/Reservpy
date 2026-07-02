@@ -274,6 +274,11 @@ class Business {
   final List<int> reminderHoursBefore;
   final String plan;
   final DateTime? planActivatedAt;
+  /// End date of the 1-month free trial, counted from this business's own
+  /// creation date. Null for businesses created before the trial system.
+  final DateTime? trialEndsAt;
+  /// 'trial' | 'active' (paid) | 'expired'.
+  final String subscriptionStatus;
   /// Days of the week the business is open (1=Mon, 2=Tue, ..., 7=Sun).
   final List<int> workingDays;
 
@@ -300,6 +305,8 @@ class Business {
     this.reminderHoursBefore = const [24],
     this.plan = 'free',
     this.planActivatedAt,
+    this.trialEndsAt,
+    this.subscriptionStatus = 'trial',
     this.workingDays = const [1, 2, 3, 4, 5, 6],
   });
 
@@ -328,6 +335,10 @@ class Business {
     planActivatedAt: json['plan_activated_at'] != null
         ? DateTime.tryParse(json['plan_activated_at'] as String)
         : null,
+    trialEndsAt: json['trial_ends_at'] != null
+        ? DateTime.tryParse(json['trial_ends_at'] as String)
+        : null,
+    subscriptionStatus: json['subscription_status'] as String? ?? 'trial',
     workingDays: (json['working_days'] as List<dynamic>?)?.cast<int>() ?? [1, 2, 3, 4, 5, 6],
   );
 
@@ -369,6 +380,17 @@ class Business {
   /// Whether this business is on the Pro plan.
   bool get isPro => plan == 'pro';
 
+  /// Whether this business currently has Pro-level access — either because
+  /// it's a paying customer, or because it's still inside its free trial.
+  bool get hasActiveAccess => isPro || subscriptionStatus == 'trial';
+
+  /// Days left in the free trial. 0 if not in a trial or already expired.
+  int get trialDaysLeft {
+    if (subscriptionStatus != 'trial' || trialEndsAt == null) return 0;
+    final days = trialEndsAt!.difference(DateTime.now()).inHours / 24;
+    return days > 0 ? days.ceil() : 0;
+  }
+
   /// Whether the reservation can still be cancelled based on the policy.
   bool canCancelReservation(DateTime startTime) {
     final hoursUntil = startTime.difference(DateTime.now()).inHours;
@@ -398,6 +420,8 @@ class Business {
     List<int>? reminderHoursBefore,
     String? plan,
     DateTime? planActivatedAt,
+    DateTime? trialEndsAt,
+    String? subscriptionStatus,
     List<int>? workingDays,
   }) {
     return Business(
@@ -423,6 +447,8 @@ class Business {
       reminderHoursBefore: reminderHoursBefore ?? this.reminderHoursBefore,
       plan: plan ?? this.plan,
       planActivatedAt: planActivatedAt ?? this.planActivatedAt,
+      trialEndsAt: trialEndsAt ?? this.trialEndsAt,
+      subscriptionStatus: subscriptionStatus ?? this.subscriptionStatus,
       workingDays: workingDays ?? this.workingDays,
     );
   }
