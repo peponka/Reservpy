@@ -30,7 +30,7 @@ function getWhatsAppMessage(type, data) {
     case "reservation_cancelled_client":
       return `❌ *Turno cancelado — ReservPy*\n\nHola ${name}, tu turno fue cancelado.\n\n📋 ${service}\n🏢 ${business}\n📅 ${date}\n${reason ? "Motivo: " + reason : ""}\n`;
     case "reservation_cancelled_business":
-      return `₝� *Turno cancelado — ReservPy*\n\nHola ${name}.\n\n👤 ${clientName}\n📋 ${service}\n📅 ${date}\n`;
+      return `₝� *Turno cancelado — ReservPy*\n\nHola ${name}.\n\n👤 ${clientName}\n📋 ${service}\n📅 ${date}\n`;
     default: return `Mensaje ReservPy: ${type}`;
   }
 }
@@ -42,11 +42,15 @@ Deno.serve(async (req) => {
   if (!auth) return new Response(JSON.stringify({error:"Unauthorized"}),{status:401});
   const supabase = createClient(Deno.env.get("SUPABASE_URL"),Deno.env.get("SUPABASE_ANON_KEY"),{global:{headers:{Authorization:auth}}});
   const {data:{user},error:authErr} = await supabase.auth.getUser();
-  if (authErr || !user) return new Response(JSON.stringify({error:"Unauthorized"}),{ status:41});
+  if (authErr || !user) return new Response(JSON.stringify({error:"Unauthorized"}),{status:401});
   const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
   const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
-  const fromNum = Deno.env.get("TWILIO_WHATSAPP_FROM") ?? "whatsapp:+14155238886";
+  // Sin fallback al sandbox de EE.UU. (+14155238886): si falta la variable
+  // preferimos fallar a la vista antes que mandarle a un cliente paraguayo
+  // un mensaje desde un numero extranjero.
+  const fromNum = Deno.env.get("TWILIO_WHATSAPP_FROM");
   if (!accountSid || !authToken) return new Response(JSON.stringify({error:"Twilio not configured"}),{status:500});
+  if (!fromNum) return new Response(JSON.stringify({error:"Missing TWILIO_WHATSAPP_FROM (numero remitente)"}),{status:500});
   try {
     const {type,to,data} = await req.json();
     if (!type || !to) return new Response(JSON.stringify({error:"Missing type or to"}),{status:400});

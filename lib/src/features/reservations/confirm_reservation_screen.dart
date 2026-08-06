@@ -295,8 +295,21 @@ class _ConfirmReservationScreenState
     } catch (e) {
       if (mounted) {
         setState(() => _isSubmitting = false);
+        // La base tiene un candado (constraint reservations_no_overlap) que
+        // rechaza turnos solapados. El chequeo de arriba puede pasar y aun asi
+        // perder la carrera si otro cliente reserva el mismo horario en el
+        // mismo instante: ese caso cae aca y hay que explicarlo en criollo,
+        // no mostrar el error crudo de Postgres.
+        final err = e.toString();
+        final esHorarioTomado = err.contains('reservations_no_overlap') ||
+            err.contains('23P01');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al crear reserva: $e')),
+          SnackBar(
+            content: Text(esHorarioTomado
+                ? 'Este horario acaba de ser reservado por otra persona. Elegí otro.'
+                : 'Error al crear reserva: $e'),
+            backgroundColor: const Color(0xFFE53E3E),
+          ),
         );
         return;
       }

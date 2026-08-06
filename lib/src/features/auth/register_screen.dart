@@ -1459,17 +1459,50 @@ class _StepRegistrationForm extends StatelessWidget {
 
                 const SizedBox(height: AppSizes.s16),
 
-                // Phone (optional)
+                // Phone (required: es el canal de los recordatorios de WhatsApp)
                 AppTextField(
                   controller: phoneController,
-                  label: '${AppStrings.phone} (opcional)',
+                  label: AppStrings.phone,
                   hint: '+595 981 123456',
                   prefixIcon: Icons.phone_outlined,
                   keyboardType: TextInputType.phone,
+                  validator: Validators.phone,
                 )
                     .animate()
                     .fadeIn(delay: 300.ms, duration: 400.ms)
                     .slideY(begin: 0.08, end: 0, delay: 300.ms, duration: 400.ms),
+
+                const SizedBox(height: AppSizes.s8),
+                Padding(
+                  padding: const EdgeInsets.only(left: AppSizes.s4),
+                  child: Row(
+                    children: [
+                      Icon(Icons.chat_bubble_outline_rounded,
+                          size: 14,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withOpacity(0.5)),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Te avisamos por WhatsApp cuando se acerque tu turno',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withOpacity(0.55),
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+                    .animate()
+                    .fadeIn(delay: 320.ms, duration: 400.ms),
 
                 const SizedBox(height: AppSizes.s16),
 

@@ -55,7 +55,24 @@ class ReservationRepository {
     await _client.from('reservations').update(updates).eq('id', id);
   }
 
-  /// Check if a time slot is available
+  /// Check if a time slot is available.
+  ///
+  /// OJO: chequea por NEGOCIO, no por empleado. Hoy es correcto porque la
+  /// tabla `employees` esta vacia, pero cuando entre un negocio con 2+
+  /// personas esto va a bloquear toda la agenda por un solo turno (dos
+  /// peluqueros no podrian atender en paralelo = facturacion perdida).
+  ///
+  /// Este chequeo NO es la proteccion real contra turnos duplicados: corre
+  /// del lado del cliente y hay una carrera entre el chequeo y el insert.
+  /// La proteccion de verdad es el constraint `reservations_no_overlap`
+  /// (exclusion constraint sobre business_id + rango de tiempo) en la base.
+  ///
+  /// Al hacerlo por empleado hay que cambiar LAS DOS COSAS A LA VEZ: este
+  /// metodo y el constraint. Si se cambia solo este, la app va a ofrecer
+  /// horarios que la base despues rechaza. En el constraint no alcanza con
+  /// agregar `employee_id` (es nullable, y en un exclusion constraint dos
+  /// NULL no colisionan, asi que se perderia la proteccion del caso comun):
+  /// hay que discriminar por `COALESCE(employee_id, business_id)`.
   Future<bool> isSlotAvailable(String businessId, DateTime startTime, DateTime endTime) async {
     final data = await _client
         .from('reservations')

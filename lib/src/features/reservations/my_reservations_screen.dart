@@ -555,9 +555,21 @@ class _ReservationCardState extends ConsumerState<_ReservationCard> {
     final statusColor = _statusColor(r.status);
     final statusLabel = _statusLabel(r.status);
     final statusIcon = _statusIcon(r.status);
-    final canCancel =
-        r.status == ReservationStatus.pending ||
+    // La politica de cancelacion del negocio ("hasta X horas antes") se le
+    // mostraba al cliente en la ficha del negocio pero NO se aplicaba: se podia
+    // cancelar 5 minutos antes del turno y el negocio perdia el horario.
+    // canCancelReservation() ya existia en el modelo y nadie lo llamaba.
+    // Tambien cubre el caso de turnos ya pasados (horas restantes negativas).
+    final biz = ref
+        .watch(businessesProvider)
+        .valueOrNull
+        ?.where((b) => b.id == r.businessId)
+        .firstOrNull;
+    // Si el negocio todavia no cargo, no bloqueamos al cliente.
+    final dentroDePlazo = biz?.canCancelReservation(r.startTime) ?? true;
+    final activa = r.status == ReservationStatus.pending ||
         r.status == ReservationStatus.confirmed;
+    final canCancel = activa && dentroDePlazo;
     final isPast = r.startTime.isBefore(DateTime.now());
     final canReschedule = canCancel && !isPast;
 
@@ -769,6 +781,21 @@ class _ReservationCardState extends ConsumerState<_ReservationCard> {
                           outlined: false,
                           isLoading: _isCancelling,
                           onTap: () => _showCancelDialog(context, r),
+                        ),
+                      // Si el turno sigue activo pero ya paso el plazo, el boton
+                      // desaparece: sin esta linea el cliente no entiende por que.
+                      if (activa && !dentroDePlazo && !isPast && biz != null)
+                        Text(
+                          'Ya no se puede cancelar online '
+                          '(hasta ${biz.cancellationHoursPolicy}h antes). '
+                          'Comunicate con el negocio.',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withOpacity(0.55),
+                              ),
                         ),
                       if (r.status == ReservationStatus.completed ||
                           (r.status != ReservationStatus.cancelled && r.endTime.isBefore(DateTime.now())))
