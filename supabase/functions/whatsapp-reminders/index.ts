@@ -64,11 +64,14 @@ Deno.serve(async () => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  // Ventana 23-25hs: el cron corre cada hora, asi que cada turno cae en la
-  // ventana una sola vez. whatsapp_reminder_sent evita repetirlo igual.
+  // Cada negocio elige a cuantas horas antes le llega el recordatorio a sus
+  // clientes (business.reminder_hours_before, ej [2,24]). Como no sabemos de
+  // antemano que valores configuro cada negocio, traemos TODO lo que podria
+  // matchear cualquier horario razonable (1h a 49h desde ahora) y filtramos
+  // en el codigo. whatsapp_reminder_sent evita reenviar el mismo turno.
   const now = Date.now();
-  const wStart = new Date(now + 23 * 3600_000).toISOString();
-  const wEnd = new Date(now + 25 * 3600_000).toISOString();
+  const wStart = new Date(now + 1 * 3600_000).toISOString();
+  const wEnd = new Date(now + 49 * 3600_000).toISOString();
 
   // OJO: reservations NO tiene columnas service_name/business_name (el codigo
   // viejo las pedia y por eso fallaba con "column does not exist"). Los nombres
@@ -77,7 +80,7 @@ Deno.serve(async () => {
     .from("reservations")
     .select(
       "id,start_time,is_manual,manual_client_name,manual_client_phone," +
-        "services(name),businesses(name)," +
+        "services(name),businesses(name,reminders_enabled,reminder_hours_before)," +
         "profiles:client_id(first_name,last_name,phone)",
     )
     .in("status", ["pending", "confirmed"])
@@ -108,7 +111,30 @@ Deno.serve(async () => {
   for (const res of reservations) {
     const perfil = uno<{ first_name?: string; last_name?: string; phone?: string }>(res.profiles);
     const servicio = uno<{ name?: string }>(res.services);
-    const negocio = uno<{ name?: string }>(res.businesses);
+    const negocio = uno<{
+      name?: string;
+      reminders_enabled?: boolean;
+      reminder_hours_before?: number[];
+    }>(res.businesses);
+
+    // El negocio puede haber desactivado los recordatorios desde
+    // "Configuracion > Recordatorios" en la app.
+    if (negocio?.reminders_enabled === false) { skipped++; continue; }
+
+    // Solo enviamos si faltan ~N horas para el turno, donde N es uno de los
+    // horarios que el negocio configuro (default 24hs si no configuro nada).
+    // Tolerancia de 1hs para cubrir que el cron corre una vez por hora.
+    const horariosConfigurados = negocio?.reminder_hours_before?.length
+      ? negocio.reminder_hours_before
+      : [24];
+    const horasHastaElTurno = (new Date(res.start_time as string).getTime() - now) / 3600_000;
+    // Tolerancia de 1hs (igual que el rango original de 23-25hs para el caso
+    // de 24hs) para garantizar que, corriendo el cron una vez por hora, el
+    // turno caiga en la ventana de al menos una ejecucion.
+    const matcheaAlgunHorario = horariosConfigurados.some(
+      (h) => Math.abs(horasHastaElTurno - h) <= 1,
+    );
+    if (!matcheaAlgunHorario) { skipped++; continue; }
 
     // Las reservas cargadas a mano por el negocio (turnos por telefono) no
     // tienen profile: el nombre y el telefono del cliente van en la propia fila.

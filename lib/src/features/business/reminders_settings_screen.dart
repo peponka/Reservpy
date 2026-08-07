@@ -5,54 +5,102 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
 import '../../core/widgets/widgets.dart';
 import '../../shared/providers/providers.dart';
+import '../../data/repositories/business_repository.dart';
 
-// ─── Local Providers ───────────────────────────────────────────
-final _remindersEnabledProvider = StateProvider<bool>((ref) => true);
-final _selectedTimingsProvider = StateProvider<Set<int>>((ref) => {1, 3}); // indices
-final _confirmationEmailProvider = StateProvider<bool>((ref) => true);
-final _cancellationEmailProvider = StateProvider<bool>((ref) => false);
+// ─── Real reminder offsets, in hours before the appointment ────
+const List<int> _hourOptions = [2, 6, 12, 24, 48];
 
 /// Reminders Settings Screen.
 ///
-/// Allows business owners to configure automatic email reminders
-/// for their clients before each reservation.
+/// Allows business owners to configure the automatic WhatsApp reminders
+/// sent to their clients before each reservation. Every change is saved
+/// immediately to the business record — there is no separate save step.
 class RemindersSettingsScreen extends ConsumerWidget {
   const RemindersSettingsScreen({super.key});
+
+  Future<void> _toggleEnabled(
+    BuildContext context,
+    WidgetRef ref,
+    String businessId,
+    bool value,
+  ) async {
+    try {
+      await BusinessRepository().updateField(businessId, 'reminders_enabled', value);
+      ref.invalidate(ownerBusinessProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(value
+                ? 'Recordatorios activados'
+                : 'Recordatorios desactivados'),
+            backgroundColor: AppColors.primary,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al guardar: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
+  Future<void> _toggleHour(
+    BuildContext context,
+    WidgetRef ref,
+    String businessId,
+    List<int> currentHours,
+    int hour,
+  ) async {
+    final updated = List<int>.from(currentHours);
+    if (updated.contains(hour)) {
+      if (updated.length == 1) return; // keep at least one timing selected
+      updated.remove(hour);
+    } else {
+      updated.add(hour);
+    }
+    updated.sort();
+    try {
+      await BusinessRepository().updateField(businessId, 'reminder_hours_before', updated);
+      ref.invalidate(ownerBusinessProvider);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al guardar: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final remindersEnabled = ref.watch(_remindersEnabledProvider);
     final business = ref.watch(currentBusinessProvider);
-    final businessName = business?.name ?? 'Mi Negocio';
+
+    if (business == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Recordatorios')),
+        body: const EmptyState(
+          icon: Icons.notifications_off_outlined,
+          title: 'Sin negocio',
+          subtitle: 'Creá tu negocio para configurar los recordatorios.',
+        ),
+      );
+    }
+
+    final remindersEnabled = business.remindersEnabled;
+    final selectedHours = business.reminderHoursBefore.isEmpty
+        ? const [24]
+        : business.reminderHoursBefore;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Recordatorios'),
         centerTitle: false,
-        actions: [
-          // Save button
-          Padding(
-            padding: const EdgeInsets.only(right: AppSizes.s8),
-            child: FilledButton.tonalIcon(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('Configuración guardada correctamente'),
-                    backgroundColor: AppColors.success,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-                    ),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.save_rounded, size: 18),
-              label: const Text('Guardar'),
-            ),
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(
@@ -67,7 +115,7 @@ class RemindersSettingsScreen extends ConsumerWidget {
               children: [
                 // ─── Subtitle ────────────────────────────────
                 Text(
-                  'Configurá los emails automáticos para tus clientes',
+                  'Recordatorios automáticos por WhatsApp para tus clientes',
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
@@ -82,7 +130,7 @@ class RemindersSettingsScreen extends ConsumerWidget {
                 _MainToggleCard(
                   enabled: remindersEnabled,
                   onChanged: (val) =>
-                      ref.read(_remindersEnabledProvider.notifier).state = val,
+                      _toggleEnabled(context, ref, business.id, val),
                 )
                     .animate()
                     .fadeIn(delay: 100.ms, duration: 400.ms)
@@ -102,13 +150,18 @@ class RemindersSettingsScreen extends ConsumerWidget {
                             const SectionHeader(title: 'Horarios de envío'),
                             const SizedBox(height: AppSizes.s4),
                             Text(
-                              'Elegí cuándo enviar los recordatorios antes del turno',
+                              'Elegí cuándo enviar el recordatorio antes del turno',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: colorScheme.onSurface.withValues(alpha: 0.5),
                               ),
                             ),
                             const SizedBox(height: AppSizes.s12),
-                            const _TimingChips(),
+                            _TimingChips(
+                              selectedHours: selectedHours,
+                              onToggle: (hour) => _toggleHour(
+                                context, ref, business.id, selectedHours, hour,
+                              ),
+                            ),
                             const SizedBox(height: AppSizes.s24),
                           ],
                         )
@@ -118,7 +171,7 @@ class RemindersSettingsScreen extends ConsumerWidget {
                       : const SizedBox.shrink(),
                 ),
 
-                // ─── Email Preview ───────────────────────────
+                // ─── WhatsApp Preview ────────────────────────
                 AnimatedSize(
                   duration: 300.ms,
                   curve: Curves.easeInOut,
@@ -127,9 +180,9 @@ class RemindersSettingsScreen extends ConsumerWidget {
                       ? Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const SectionHeader(title: 'Vista previa del email'),
+                            const SectionHeader(title: 'Así lo recibe tu cliente'),
                             const SizedBox(height: AppSizes.s8),
-                            _EmailPreviewCard(businessName: businessName),
+                            _WhatsAppPreviewCard(businessName: business.name),
                             const SizedBox(height: AppSizes.s24),
                           ],
                         )
@@ -139,49 +192,43 @@ class RemindersSettingsScreen extends ConsumerWidget {
                       : const SizedBox.shrink(),
                 ),
 
-                // ─── Additional Email Toggles ────────────────
-                const SectionHeader(title: 'Emails adicionales'),
-                const SizedBox(height: AppSizes.s8),
-                _EmailToggleCard(
+                // ─── Other automatic emails (always on) ──────
+                const SectionHeader(title: 'Emails automáticos'),
+                const SizedBox(height: AppSizes.s4),
+                Text(
+                  'Estos se envían siempre, no se pueden desactivar',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
+                ),
+                const SizedBox(height: AppSizes.s12),
+                _AlwaysOnRow(
                   icon: Icons.check_circle_outline_rounded,
                   iconColor: AppColors.success,
                   title: 'Email de confirmación',
-                  subtitle: 'Enviar un email al cliente cuando reserva un turno',
-                  value: ref.watch(_confirmationEmailProvider),
-                  onChanged: (val) =>
-                      ref.read(_confirmationEmailProvider.notifier).state = val,
+                  subtitle: 'Se envía al cliente y al negocio cuando se reserva un turno',
                 )
                     .animate()
                     .fadeIn(delay: 400.ms, duration: 400.ms)
                     .slideY(begin: 0.1, end: 0, delay: 400.ms, duration: 400.ms),
-
-                _EmailToggleCard(
+                const SizedBox(height: AppSizes.s8),
+                _AlwaysOnRow(
                   icon: Icons.cancel_outlined,
                   iconColor: AppColors.error,
                   title: 'Notificación de cancelación',
-                  subtitle: 'Enviar un email al cliente cuando se cancela su turno',
-                  value: ref.watch(_cancellationEmailProvider),
-                  onChanged: (val) =>
-                      ref.read(_cancellationEmailProvider.notifier).state = val,
+                  subtitle: 'Se envía al cliente y al negocio cuando se cancela un turno',
                 )
                     .animate()
-                    .fadeIn(delay: 500.ms, duration: 400.ms)
-                    .slideY(begin: 0.1, end: 0, delay: 500.ms, duration: 400.ms),
-
-                const SizedBox(height: AppSizes.s24),
-
-                // ─── Stats ───────────────────────────────────
-                const SectionHeader(title: 'Estadísticas de emails'),
-                const SizedBox(height: AppSizes.s8),
-                const _EmailStatsSection(),
+                    .fadeIn(delay: 480.ms, duration: 400.ms)
+                    .slideY(begin: 0.1, end: 0, delay: 480.ms, duration: 400.ms),
 
                 const SizedBox(height: AppSizes.s24),
 
                 // ─── Info Banner ─────────────────────────────
                 _InfoBanner()
                     .animate()
-                    .fadeIn(delay: 800.ms, duration: 400.ms)
-                    .slideY(begin: 0.1, end: 0, delay: 800.ms, duration: 400.ms),
+                    .fadeIn(delay: 600.ms, duration: 400.ms)
+                    .slideY(begin: 0.1, end: 0, delay: 600.ms, duration: 400.ms),
 
                 const SizedBox(height: AppSizes.s40),
               ],
@@ -212,7 +259,6 @@ class _MainToggleCard extends StatelessWidget {
       padding: const EdgeInsets.all(AppSizes.s20),
       child: Row(
         children: [
-          // Icon container
           Container(
             width: 52,
             height: 52,
@@ -228,7 +274,6 @@ class _MainToggleCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSizes.s16),
-          // Text
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -241,7 +286,7 @@ class _MainToggleCard extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSizes.s4),
                 Text(
-                  'Enviar emails de recordatorio antes de cada turno',
+                  'Enviar un WhatsApp de recordatorio antes de cada turno',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurface.withValues(alpha: 0.55),
                   ),
@@ -250,7 +295,6 @@ class _MainToggleCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSizes.s12),
-          // Switch
           Switch.adaptive(
             value: enabled,
             onChanged: onChanged,
@@ -266,27 +310,22 @@ class _MainToggleCard extends StatelessWidget {
 // ─── Timing Chips ──────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════
 
-class _TimingChips extends ConsumerWidget {
-  const _TimingChips();
+class _TimingChips extends StatelessWidget {
+  final List<int> selectedHours;
+  final ValueChanged<int> onToggle;
 
-  static const _timings = [
-    '2 horas antes',
-    '6 horas antes',
-    '12 horas antes',
-    '24 horas antes',
-    '48 horas antes',
-  ];
+  const _TimingChips({required this.selectedHours, required this.onToggle});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final selected = ref.watch(_selectedTimingsProvider);
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Wrap(
       spacing: AppSizes.s8,
       runSpacing: AppSizes.s8,
-      children: List.generate(_timings.length, (index) {
-        final isSelected = selected.contains(index);
+      children: List.generate(_hourOptions.length, (index) {
+        final hour = _hourOptions[index];
+        final isSelected = selectedHours.contains(hour);
         return FilterChip(
           selected: isSelected,
           label: Row(
@@ -300,7 +339,7 @@ class _TimingChips extends ConsumerWidget {
                     : theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
               const SizedBox(width: AppSizes.s6),
-              Text(_timings[index]),
+              Text('$hour horas antes'),
             ],
           ),
           selectedColor: AppColors.primary,
@@ -320,15 +359,7 @@ class _TimingChips extends ConsumerWidget {
                   : theme.colorScheme.outline.withValues(alpha: 0.2),
             ),
           ),
-          onSelected: (val) {
-            final current = Set<int>.from(selected);
-            if (val) {
-              current.add(index);
-            } else {
-              current.remove(index);
-            }
-            ref.read(_selectedTimingsProvider.notifier).state = current;
-          },
+          onSelected: (_) => onToggle(hour),
         )
             .animate()
             .fadeIn(
@@ -347,13 +378,13 @@ class _TimingChips extends ConsumerWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// ─── Email Preview Card ────────────────────────────────────────
+// ─── WhatsApp Preview Card ─────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════
 
-class _EmailPreviewCard extends StatelessWidget {
+class _WhatsAppPreviewCard extends StatelessWidget {
   final String businessName;
 
-  const _EmailPreviewCard({required this.businessName});
+  const _WhatsAppPreviewCard({required this.businessName});
 
   @override
   Widget build(BuildContext context) {
@@ -365,7 +396,6 @@ class _EmailPreviewCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ─── Email header bar ──────────────────────────
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(
@@ -382,278 +412,40 @@ class _EmailPreviewCard extends StatelessWidget {
             child: Row(
               children: [
                 Icon(
-                  Icons.email_outlined,
+                  Icons.chat_bubble_outline_rounded,
                   size: 18,
                   color: colorScheme.onSurface.withValues(alpha: 0.5),
                 ),
                 const SizedBox(width: AppSizes.s8),
                 Text(
-                  'Vista previa',
+                  'Mensaje de WhatsApp',
                   style: theme.textTheme.labelMedium?.copyWith(
                     color: colorScheme.onSurface.withValues(alpha: 0.5),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const Spacer(),
-                StatusBadge(label: 'PREVIEW', color: AppColors.info),
+                StatusBadge(label: 'EJEMPLO', color: AppColors.info),
               ],
             ),
           ),
-
-          // ─── Email metadata ────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSizes.s16, AppSizes.s16, AppSizes.s16, 0,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _EmailMetaRow(
-                  label: 'De:',
-                  value: 'ReservPy <noreply@reservpy.com.py>',
-                ),
-                const SizedBox(height: AppSizes.s6),
-                _EmailMetaRow(
-                  label: 'Para:',
-                  value: 'cliente@email.com',
-                ),
-                const SizedBox(height: AppSizes.s6),
-                _EmailMetaRow(
-                  label: 'Asunto:',
-                  value: 'Recordatorio: Tu turno en $businessName es mañana',
-                  isBold: true,
-                ),
-              ],
-            ),
-          ),
-
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: AppSizes.s16),
-            child: Divider(height: AppSizes.s24),
-          ),
-
-          // ─── Email body ────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSizes.s16),
-            child: _EmailBody(businessName: businessName),
-          ),
-
-          const SizedBox(height: AppSizes.s16),
-        ],
-      ),
-    );
-  }
-}
-
-class _EmailMetaRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool isBold;
-
-  const _EmailMetaRow({
-    required this.label,
-    required this.value,
-    this.isBold = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 52,
-          child: Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurface.withValues(alpha: 0.45),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: theme.textTheme.bodySmall?.copyWith(
-              fontWeight: isBold ? FontWeight.w600 : FontWeight.w400,
-              color: isBold
-                  ? colorScheme.onSurface
-                  : colorScheme.onSurface.withValues(alpha: 0.7),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _EmailBody extends StatelessWidget {
-  final String businessName;
-
-  const _EmailBody({required this.businessName});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppSizes.s20),
-      decoration: BoxDecoration(
-        color: colorScheme.outline.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-        border: Border.all(
-          color: colorScheme.outline.withValues(alpha: 0.12),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Logo area
-          Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-                ),
-                child: const Icon(
-                  Icons.calendar_month_rounded,
-                  size: 18,
-                  color: AppColors.primary,
-                ),
-              ),
-              const SizedBox(width: AppSizes.s8),
-              Text(
-                'ReservPy',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: AppSizes.s20),
-
-          // Greeting
-          Text(
-            '¡Hola, María! 👋',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-
-          const SizedBox(height: AppSizes.s12),
-
-          Text(
-            'Te recordamos que tenés un turno próximo:',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurface.withValues(alpha: 0.7),
-              height: 1.5,
-            ),
-          ),
-
-          const SizedBox(height: AppSizes.s16),
-
-          // Appointment details box
-          Container(
-            width: double.infinity,
             padding: const EdgeInsets.all(AppSizes.s16),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-              border: Border.all(
-                color: AppColors.primary.withValues(alpha: 0.15),
-              ),
-            ),
-            child: Column(
-              children: [
-                _AppointmentDetailRow(
-                  icon: Icons.store_rounded,
-                  label: 'Negocio',
-                  value: businessName,
-                ),
-                const SizedBox(height: AppSizes.s12),
-                _AppointmentDetailRow(
-                  icon: Icons.design_services_rounded,
-                  label: 'Servicio',
-                  value: 'Corte de pelo',
-                ),
-                const SizedBox(height: AppSizes.s12),
-                _AppointmentDetailRow(
-                  icon: Icons.calendar_today_rounded,
-                  label: 'Fecha',
-                  value: 'Miércoles, 28 de mayo 2026',
-                ),
-                const SizedBox(height: AppSizes.s12),
-                _AppointmentDetailRow(
-                  icon: Icons.access_time_rounded,
-                  label: 'Hora',
-                  value: '10:00 hs.',
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: AppSizes.s20),
-
-          // CTA Button (static, non-functional)
-          Center(
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSizes.s24,
-                vertical: AppSizes.s12,
-              ),
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSizes.s16),
               decoration: BoxDecoration(
-                color: AppColors.primary,
+                color: const Color(0xFFDCF8C6),
                 borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.check_circle_rounded,
-                    size: 18,
-                    color: Colors.white,
-                  ),
-                  const SizedBox(width: AppSizes.s8),
-                  Text(
-                    'Confirmar asistencia',
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
+              child: Text(
+                'Hola María 👋 te recordamos tu turno en $businessName '
+                'para el servicio Corte de pelo el miércoles 28/05 a las 10:00 hs.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: Colors.black87,
+                  height: 1.5,
+                ),
               ),
-            ),
-          ),
-
-          const SizedBox(height: AppSizes.s16),
-
-          // Footer text
-          Center(
-            child: Text(
-              'Si necesitás cancelar, hacelo desde la app.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurface.withValues(alpha: 0.4),
-                fontSize: 11,
-              ),
-              textAlign: TextAlign.center,
             ),
           ),
         ],
@@ -662,68 +454,21 @@ class _EmailBody extends StatelessWidget {
   }
 }
 
-class _AppointmentDetailRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _AppointmentDetailRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: AppColors.primary),
-        const SizedBox(width: AppSizes.s8),
-        SizedBox(
-          width: 70,
-          child: Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurface.withValues(alpha: 0.5),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: theme.textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 // ═══════════════════════════════════════════════════════════════
-// ─── Email Toggle Card ─────────────────────────────────────────
+// ─── Always-on Info Row (non-toggleable) ────────────────────────
 // ═══════════════════════════════════════════════════════════════
 
-class _EmailToggleCard extends StatelessWidget {
+class _AlwaysOnRow extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final String title;
   final String subtitle;
-  final bool value;
-  final ValueChanged<bool> onChanged;
 
-  const _EmailToggleCard({
+  const _AlwaysOnRow({
     required this.icon,
     required this.iconColor,
     required this.title,
     required this.subtitle,
-    required this.value,
-    required this.onChanged,
   });
 
   @override
@@ -769,159 +514,10 @@ class _EmailToggleCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSizes.s8),
-          Switch.adaptive(
-            value: value,
-            onChanged: onChanged,
-            activeTrackColor: AppColors.primary,
-          ),
+          StatusBadge(label: 'ACTIVO', color: AppColors.success),
         ],
       ),
     );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// ─── Email Stats Section ───────────────────────────────────────
-// ═══════════════════════════════════════════════════════════════
-
-class _EmailStatsSection extends StatelessWidget {
-  const _EmailStatsSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Use a responsive grid: 3 columns on wider screens, stack on narrow
-        if (constraints.maxWidth >= 500) {
-          return Row(
-            children: [
-              Expanded(
-                child: _StatMiniCard(
-                  icon: Icons.send_rounded,
-                  color: AppColors.info,
-                  value: '47',
-                  label: 'Emails enviados\neste mes',
-                  delay: 600,
-                ),
-              ),
-              const SizedBox(width: AppSizes.s12),
-              Expanded(
-                child: _StatMiniCard(
-                  icon: Icons.visibility_rounded,
-                  color: AppColors.warning,
-                  value: '68%',
-                  label: 'Tasa de\napertura',
-                  delay: 680,
-                ),
-              ),
-              const SizedBox(width: AppSizes.s12),
-              Expanded(
-                child: _StatMiniCard(
-                  icon: Icons.thumb_up_alt_rounded,
-                  color: AppColors.success,
-                  value: '32',
-                  label: 'Confirmaciones\nrecibidas',
-                  delay: 760,
-                ),
-              ),
-            ],
-          );
-        }
-        // Narrow layout — vertical
-        return Column(
-          children: [
-            _StatMiniCard(
-              icon: Icons.send_rounded,
-              color: AppColors.info,
-              value: '47',
-              label: 'Emails enviados este mes',
-              delay: 600,
-            ),
-            const SizedBox(height: AppSizes.s8),
-            _StatMiniCard(
-              icon: Icons.visibility_rounded,
-              color: AppColors.warning,
-              value: '68%',
-              label: 'Tasa de apertura',
-              delay: 680,
-            ),
-            const SizedBox(height: AppSizes.s8),
-            _StatMiniCard(
-              icon: Icons.thumb_up_alt_rounded,
-              color: AppColors.success,
-              value: '32',
-              label: 'Confirmaciones recibidas',
-              delay: 760,
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _StatMiniCard extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String value;
-  final String label;
-  final int delay;
-
-  const _StatMiniCard({
-    required this.icon,
-    required this.color,
-    required this.value,
-    required this.label,
-    this.delay = 0,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return AppCard(
-      padding: const EdgeInsets.all(AppSizes.s16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(AppSizes.radiusSm),
-            ),
-            child: Icon(icon, size: 18, color: color),
-          ),
-          const SizedBox(height: AppSizes.s12),
-          Text(
-            value,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: AppSizes.s4),
-          Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-              height: 1.3,
-            ),
-          ),
-        ],
-      ),
-    )
-        .animate()
-        .fadeIn(
-          delay: Duration(milliseconds: delay),
-          duration: 400.ms,
-        )
-        .slideY(
-          begin: 0.15,
-          end: 0,
-          delay: Duration(milliseconds: delay),
-          duration: 400.ms,
-        );
   }
 }
 
@@ -975,8 +571,9 @@ class _InfoBanner extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSizes.s6),
                 Text(
-                  'Los emails se envían automáticamente a los clientes que tienen turnos reservados. '
-                  'Podés elegir múltiples horarios de envío para maximizar la tasa de asistencia.',
+                  'Se envían automáticamente por WhatsApp a los clientes con turnos '
+                  'reservados, en los horarios que elijas arriba. Los cambios se '
+                  'guardan al instante, no hace falta tocar ningún botón.',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurface.withValues(alpha: 0.6),
                     height: 1.5,
