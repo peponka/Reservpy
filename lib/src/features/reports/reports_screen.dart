@@ -153,46 +153,52 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               final sortedServices = serviceCount.entries.toList()
                 ..sort((a, b) => b.value.compareTo(a.value));
 
-              return Column(
-                children: [
-                  // Summary cards
-                  GridView.count(
-                    crossAxisCount: 4,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 1.8,
-                    children: [
-                      _StatCard(
-                        label: 'Total',
-                        value: '${monthReservations.length}',
-                        icon: Icons.calendar_month_rounded,
-                        color: AppColors.primary,
-                      ),
-                      _StatCard(
-                        label: 'Confirmadas',
-                        value: '${confirmed + completed}',
-                        icon: Icons.check_circle_rounded,
-                        color: AppColors.success,
-                      ),
-                      _StatCard(
-                        label: 'Pendientes',
-                        value: '$pending',
-                        icon: Icons.schedule_rounded,
-                        color: Colors.amber.shade700,
-                      ),
-                      _StatCard(
-                        label: 'Canceladas',
-                        value: '$cancelled',
-                        icon: Icons.cancel_rounded,
-                        color: AppColors.error,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSizes.s24),
+              final statCards = [
+                _StatCard(
+                  label: 'Total',
+                  value: '${monthReservations.length}',
+                  icon: Icons.calendar_month_rounded,
+                  color: AppColors.primary,
+                ),
+                _StatCard(
+                  label: 'Confirmadas',
+                  value: '${confirmed + completed}',
+                  icon: Icons.check_circle_rounded,
+                  color: AppColors.success,
+                ),
+                _StatCard(
+                  label: 'Pendientes',
+                  value: '$pending',
+                  icon: Icons.schedule_rounded,
+                  color: Colors.amber.shade700,
+                ),
+                _StatCard(
+                  label: 'Canceladas',
+                  value: '$cancelled',
+                  icon: Icons.cancel_rounded,
+                  color: AppColors.error,
+                ),
+              ];
 
-                  // Service breakdown
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  final crossAxisCount = constraints.maxWidth < 720 ? 2 : 4;
+                  final childAspectRatio = constraints.maxWidth < 720 ? 1.45 : 1.8;
+
+                  return Column(
+                    children: [
+                      GridView.count(
+                        crossAxisCount: crossAxisCount,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: childAspectRatio,
+                        children: statCards,
+                      ),
+                      const SizedBox(height: AppSizes.s24),
+
+                      // Service breakdown
                   if (sortedServices.isNotEmpty)
                     Container(
                       padding: const EdgeInsets.all(20),
@@ -258,42 +264,44 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                     ),
                   const SizedBox(height: AppSizes.s24),
 
-                  // Generate PDF button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: ElevatedButton.icon(
-                      onPressed: _isGenerating
-                          ? null
-                          : () => _generatePdf(
-                                monthReservations,
-                                sortedServices,
-                              ),
-                      icon: _isGenerating
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white))
-                          : const Icon(Icons.picture_as_pdf_rounded, size: 20),
-                      label: Text(
-                        _isGenerating ? 'Generando...' : 'Generar PDF',
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
+                      // Generate PDF button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton.icon(
+                          onPressed: _isGenerating
+                              ? null
+                              : () => _generatePdf(
+                                    monthReservations,
+                                    sortedServices,
+                                  ),
+                          icon: _isGenerating
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: Colors.white))
+                              : const Icon(Icons.picture_as_pdf_rounded, size: 20),
+                          label: Text(
+                            _isGenerating ? 'Generando...' : 'Generar PDF',
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
                         ),
                       ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                    ],
+                  );
+                },
               );
             },
           ),
@@ -309,9 +317,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     setState(() => _isGenerating = true);
 
     try {
-      final business = ref.read(currentBusinessProvider).value;
+      final business = ref.read(currentBusinessProvider);
       final monthName = DateFormat('MMMM yyyy', 'es').format(_selectedMonth);
-      final bName = business?.name ?? 'Mi Negocio';
+      final bName = business?.name ?? 'Tu negocio';
 
       final pdf = pw.Document();
 

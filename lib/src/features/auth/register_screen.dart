@@ -30,7 +30,7 @@ import 'package:reservpy/src/data/services/email_service.dart';
 /// Multi-step registration screen with:
 ///   Step 1 ? Role selection (business vs client)
 ///   Step 2 ? Registration form (split-screen for business)
-///   Step 3 ? Email verification (simulated OTP + success)
+///   Step 3 ? Email confirmation guidance
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
@@ -338,6 +338,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
           // 4) Invalidar para que el panel cargue el negocio recién creado.
           ref.invalidate(businessesProvider);
           ref.invalidate(ownerBusinessProvider);
+          ref.invalidate(currentBusinessProvider);
+          ref.invalidate(servicesProvider);
           ref.invalidate(businessServicesProvider(created.id));
 
           if (!mounted) return;
@@ -360,7 +362,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
           GoRouter.of(context).go('/client');
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('¡Cuenta creada con éxito! ??'),
+              content: const Text('¡Cuenta creada con éxito! ?'),
               backgroundColor: const Color(0xFF20A482),
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 3),
@@ -403,34 +405,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   // -------------------------------------------------------------
 
   Future<void> _handleVerify() async {
-    final code = _otpControllers.map((c) => c.text).join();
-    if (code.length < 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Ingresá los 6 dígitos del código'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.radiusMd)),
-        ),
-      );
-      return;
-    }
-
-    setState(() => _isVerifying = true);
-    await Future.delayed(const Duration(seconds: 2));
     if (!mounted) return;
-
-    setState(() {
-      _isVerifying = false;
-      _isVerified = true;
-    });
-    _checkAnimController.forward();
-
-    // After showing success, create user + navigate
-    await Future.delayed(const Duration(seconds: 2));
-    if (!mounted) return;
-    _completeRegistration();
+    context.go('/login');
   }
 
   void _completeRegistration() {
@@ -1095,7 +1071,7 @@ class _StepRegistrationForm extends StatelessWidget {
 
                 const SizedBox(height: AppSizes.s24),
 
-                // Google button (placeholder)
+                // Google button
                 _GoogleSignUpButton()
                     .animate()
                     .fadeIn(delay: 100.ms, duration: 400.ms)
@@ -1934,8 +1910,6 @@ class _VerificationForm extends StatelessWidget {
     return Column(
       children: [
         const SizedBox(height: AppSizes.s40),
-
-        // Mail icon
         Container(
           width: 80,
           height: 80,
@@ -1957,27 +1931,26 @@ class _VerificationForm extends StatelessWidget {
               duration: 500.ms,
               curve: Curves.elasticOut,
             ),
-
         const SizedBox(height: AppSizes.s24),
-
         Text(
-          'Verificá tu email',
+          'Revisa tu email',
           style: theme.textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.w800,
           ),
         )
             .animate()
             .fadeIn(delay: 100.ms, duration: 400.ms),
-
         const SizedBox(height: AppSizes.s8),
-
         Text.rich(
           TextSpan(
-            text: 'Enviamos un código de 6 dígitos a ',
+            text: 'Te enviamos un enlace de confirmacion a ',
             children: [
               TextSpan(
                 text: email.isNotEmpty ? email : 'tu correo',
-                style: TextStyle(fontWeight: FontWeight.w600),
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const TextSpan(
+                text: '. Abri ese enlace para activar tu cuenta y despues inicia sesion.',
               ),
             ],
           ),
@@ -1988,113 +1961,77 @@ class _VerificationForm extends StatelessWidget {
         )
             .animate()
             .fadeIn(delay: 150.ms, duration: 400.ms),
-
-        const SizedBox(height: AppSizes.s40),
-
-        // OTP fields
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(6, (i) {
-            return Container(
-              width: 48,
-              height: 56,
-              margin: EdgeInsets.only(
-                right: i < 5 ? (i == 2 ? AppSizes.s16 : AppSizes.s8) : 0,
-              ),
-              child: TextField(
-                controller: otpControllers[i],
-                focusNode: otpFocusNodes[i],
-                textAlign: TextAlign.center,
-                keyboardType: TextInputType.number,
-                maxLength: 1,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: InputDecoration(
-                  counterText: '',
-                  contentPadding: EdgeInsets.zero,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    borderSide: BorderSide(
-                      color: colorScheme.outline.withValues(alpha: 0.3),
+        const SizedBox(height: AppSizes.s32),
+        AppCard(
+          padding: const EdgeInsets.all(AppSizes.s20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.check_circle_outline_rounded, color: colorScheme.primary),
+                  const SizedBox(width: AppSizes.s10),
+                  Expanded(
+                    child: Text(
+                      '1. Busca el mensaje en tu bandeja principal, spam o promociones.',
+                      style: theme.textTheme.bodyMedium,
                     ),
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    borderSide: BorderSide(
-                      color: colorScheme.primary,
-                      width: 2,
+                ],
+              ),
+              const SizedBox(height: AppSizes.s12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.open_in_new_rounded, color: colorScheme.primary),
+                  const SizedBox(width: AppSizes.s10),
+                  Expanded(
+                    child: Text(
+                      '2. Toca el enlace de confirmacion para activar la cuenta.',
+                      style: theme.textTheme.bodyMedium,
                     ),
                   ),
-                  filled: true,
-                  fillColor: colorScheme.surface,
-                ),
-                onChanged: (value) {
-                  if (value.isNotEmpty && i < 5) {
-                    otpFocusNodes[i + 1].requestFocus();
-                  } else if (value.isEmpty && i > 0) {
-                    otpFocusNodes[i - 1].requestFocus();
-                  }
-                  // Auto-verify when all filled
-                  if (i == 5 && value.isNotEmpty) {
-                    final code =
-                        otpControllers.map((c) => c.text).join();
-                    if (code.length == 6) {
-                      Future.delayed(
-                        const Duration(milliseconds: 300),
-                        onVerify,
-                      );
-                    }
-                  }
-                },
+                ],
               ),
-            );
-          }),
+              const SizedBox(height: AppSizes.s12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.login_rounded, color: colorScheme.primary),
+                  const SizedBox(width: AppSizes.s10),
+                  Expanded(
+                    child: Text(
+                      '3. Cuando ya este confirmada, entra desde la pantalla de inicio de sesion.',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         )
             .animate()
             .fadeIn(delay: 250.ms, duration: 400.ms)
             .slideY(begin: 0.1, end: 0, delay: 250.ms, duration: 400.ms),
-
         const SizedBox(height: AppSizes.s32),
-
-        // Verify CTA
         SizedBox(
           width: double.infinity,
           child: AppButton(
-            label: 'Verificar cuenta',
-            icon: Icons.verified_rounded,
+            label: 'Ir al login',
+            icon: Icons.login_rounded,
             isLoading: isVerifying,
-            onPressed: isVerifying ? null : onVerify,
+            onPressed: isVerifying ? null : onGoToLogin,
           ),
         )
             .animate()
             .fadeIn(delay: 350.ms, duration: 400.ms)
             .slideY(begin: 0.08, end: 0, delay: 350.ms, duration: 400.ms),
-
-        const SizedBox(height: AppSizes.s24),
-
-        // Expiry info
-        Text(
-          'El código expira en 15 minutos.',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: colorScheme.onSurface.withValues(alpha: 0.5),
-          ),
-          textAlign: TextAlign.center,
-        )
-            .animate()
-            .fadeIn(delay: 400.ms, duration: 400.ms),
-
-        const SizedBox(height: AppSizes.s4),
-
-        // Resend link
+        const SizedBox(height: AppSizes.s16),
         GestureDetector(
           onTap: onGoToLogin,
           child: Text(
-            '¿No llegó? Registrate de nuevo',
+            'Si no lo encontras, volve a intentar el registro con el correo correcto.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: colorScheme.primary,
               fontWeight: FontWeight.w600,
@@ -2104,35 +2041,11 @@ class _VerificationForm extends StatelessWidget {
         )
             .animate()
             .fadeIn(delay: 425.ms, duration: 400.ms),
-
-        const SizedBox(height: AppSizes.s16),
-
-        // Wrong email link
-        GestureDetector(
-          onTap: () {
-            // Navigate back to form step
-            // This is handled by the back button in the top bar
-          },
-          child: Text(
-            'Escribí mal mi correo',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurface.withValues(alpha: 0.5),
-              decoration: TextDecoration.underline,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        )
-            .animate()
-            .fadeIn(delay: 450.ms, duration: 400.ms),
-
         const SizedBox(height: AppSizes.s32),
       ],
     );
   }
 }
-
-// --- Verification Success -----------------------------------------------
-
 class _VerificationSuccess extends StatelessWidget {
   final Animation<double> checkAnimation;
   final VoidCallback onContinue;
@@ -2152,8 +2065,6 @@ class _VerificationSuccess extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         const SizedBox(height: AppSizes.s64),
-
-        // Animated checkmark
         ScaleTransition(
           scale: checkAnimation,
           child: Container(
@@ -2180,11 +2091,9 @@ class _VerificationSuccess extends StatelessWidget {
             ),
           ),
         ),
-
         const SizedBox(height: AppSizes.s32),
-
         Text(
-          '¡Cuenta verificada!',
+          'Cuenta confirmada',
           style: theme.textTheme.headlineMedium?.copyWith(
             fontWeight: FontWeight.w800,
             color: AppColors.success,
@@ -2193,11 +2102,9 @@ class _VerificationSuccess extends StatelessWidget {
             .animate()
             .fadeIn(delay: 300.ms, duration: 400.ms)
             .slideY(begin: 0.1, end: 0, delay: 300.ms, duration: 400.ms),
-
         const SizedBox(height: AppSizes.s8),
-
         Text(
-          'Tu email fue confirmado. Ya podés ingresar.',
+          'Tu email ya fue confirmado. Ahora podes iniciar sesion.',
           style: theme.textTheme.bodyLarge?.copyWith(
             color: colorScheme.onSurface.withValues(alpha: 0.6),
           ),
@@ -2205,66 +2112,23 @@ class _VerificationSuccess extends StatelessWidget {
         )
             .animate()
             .fadeIn(delay: 450.ms, duration: 400.ms),
-
         const SizedBox(height: AppSizes.s40),
-
-        // Confetti-like dots (decorative)
-        SizedBox(
-          height: 40,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(5, (i) {
-              final colors = [
-                AppColors.primary,
-                AppColors.success,
-                AppColors.info,
-                AppColors.warning,
-                AppColors.primary,
-              ];
-              return Container(
-                width: 8,
-                height: 8,
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                decoration: BoxDecoration(
-                  color: colors[i],
-                  shape: BoxShape.circle,
-                ),
-              )
-                  .animate()
-                  .fadeIn(
-                    delay: Duration(milliseconds: 500 + i * 100),
-                    duration: 300.ms,
-                  )
-                  .scale(
-                    begin: const Offset(0, 0),
-                    end: const Offset(1, 1),
-                    delay: Duration(milliseconds: 500 + i * 100),
-                    duration: 400.ms,
-                    curve: Curves.elasticOut,
-                  );
-            }),
-          ),
-        ),
-
-        const SizedBox(height: AppSizes.s32),
-
-        // CTA
         SizedBox(
           width: double.infinity,
           child: _GradientButton(
-            label: 'Ir a iniciar sesión ?',
+            label: 'Ir a iniciar sesion',
             onPressed: onContinue,
           ),
         )
             .animate()
             .fadeIn(delay: 700.ms, duration: 400.ms)
             .slideY(begin: 0.08, end: 0, delay: 700.ms, duration: 400.ms),
-
         const SizedBox(height: AppSizes.s32),
       ],
     );
   }
 }
+
 
 // ---------------------------------------------------------------------------
 // SHARED WIDGETS

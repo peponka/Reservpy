@@ -3,10 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:math' as math;
 import 'dart:convert';
-import 'dart:io';
 import 'dart:ui' as dart_ui;
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
@@ -110,7 +108,7 @@ class _PremiumGate extends StatelessWidget {
                   ?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: AppSizes.s8),
           Text(
-            'Esta sección es exclusiva del plan Pro.\nUplgradá para acceder a todos tus reportes, métricas de ingresos, clientes frecuentes y más.',
+            'Esta seccion es exclusiva del plan Pro.\nActualiza para acceder a todos tus reportes, metricas de ingresos, clientes frecuentes y mas.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium
                 ?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.6)),
@@ -121,13 +119,13 @@ class _PremiumGate extends StatelessWidget {
           _FeatureRow(icon: Icons.star_rounded, label: 'Servicios más populares'),
           _FeatureRow(icon: Icons.access_time_rounded, label: 'Horarios pico de tu negocio'),
           _FeatureRow(icon: Icons.people_outline_rounded, label: 'Clientes frecuentes y nuevos'),
-          _FeatureRow(icon: Icons.download_rounded, label: 'Exportar a Excel para tu contador'),
+          _FeatureRow(icon: Icons.download_rounded, label: 'Exportar reportes CSV para tu contador'),
           const SizedBox(height: AppSizes.s32),
           // CTA button
           FilledButton.icon(
             onPressed: () => context.push('/upgrade'),
             icon: const Icon(Icons.rocket_launch_rounded),
-            label: const Text('Upgradear a Pro'),
+            label: const Text('Actualizar a Pro'),
             style: FilledButton.styleFrom(
               backgroundColor: const Color(0xFFFFA000),
               foregroundColor: Colors.white,
@@ -2094,7 +2092,7 @@ class _ExportSection extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Descargá un archivo CSV compatible con Excel',
+                      'Descarga archivos CSV para compartir o abrir en Excel',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.outline,
                       ),
@@ -2115,7 +2113,7 @@ class _ExportSection extends StatelessWidget {
                   child: ElevatedButton.icon(
                     onPressed: () => _exportCsv(context, reservations, services),
                     icon: const Icon(Icons.download_rounded, size: 18),
-                    label: const Text('Exportar Reservas',
+                    label: const Text('CSV de reservas',
                         style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF217346),
@@ -2135,7 +2133,7 @@ class _ExportSection extends StatelessWidget {
                   child: OutlinedButton.icon(
                     onPressed: () => _exportServicesSummary(context, reservations, services),
                     icon: const Icon(Icons.summarize_rounded, size: 18),
-                    label: const Text('Resumen Servicios',
+                    label: const Text('CSV por servicio',
                         style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFF217346),
@@ -2208,13 +2206,12 @@ class _ExportSection extends StatelessWidget {
 
       final csvContent = '$bom$header\n$rows';
       final bytes = utf8.encode(csvContent);
-      final base64Data = base64Encode(bytes);
-      final dataUri = 'data:text/csv;charset=utf-8;base64,$base64Data';
-
-      final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/reservas_reporte.csv');
-      await file.writeAsBytes(bytes);
-      await Share.shareXFiles([XFile(file.path)], text: 'Reporte de reservas');
+      final file = XFile.fromData(
+        bytes,
+        mimeType: 'text/csv',
+        name: 'reservas_reporte.csv',
+      );
+      await Share.shareXFiles([file], text: 'Reporte de reservas');
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -2283,13 +2280,12 @@ class _ExportSection extends StatelessWidget {
       final totalRow = 'TOTAL,$totalCount,${totalRevenue.toStringAsFixed(0)},100%';
       final csvContent = '$bom$header\n$rows\n\n$totalRow';
       final bytes = utf8.encode(csvContent);
-      final base64Data = base64Encode(bytes);
-      final dataUri = 'data:text/csv;charset=utf-8;base64,$base64Data';
-
-      final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/resumen_servicios.csv');
-      await file.writeAsBytes(bytes);
-      await Share.shareXFiles([XFile(file.path)], text: 'Resumen de servicios');
+      final file = XFile.fromData(
+        bytes,
+        mimeType: 'text/csv',
+        name: 'resumen_servicios.csv',
+      );
+      await Share.shareXFiles([file], text: 'Resumen de servicios');
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

@@ -65,7 +65,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final user = ref.watch(currentUserProvider);
-    final allReservations = ref.watch(clientReservationsProvider).valueOrNull ?? [];
+    final allReservations = ref.watch(groupedClientReservationsProvider);
 
     final userName = user?.firstName ?? 'Usuario';
 

@@ -126,6 +126,25 @@ CREATE POLICY "Reservations: read own" ON public.reservations FOR SELECT USING (
 CREATE POLICY "Reservations: client insert" ON public.reservations FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY "Reservations: update own" ON public.reservations FOR UPDATE USING (client_id = auth.uid() OR EXISTS (SELECT 1 FROM public.businesses WHERE id = business_id AND owner_id = auth.uid()));
 
+-- 6. RESERVATION REMINDER DELIVERIES
+CREATE TABLE IF NOT EXISTS public.reservation_reminder_deliveries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  reservation_id UUID NOT NULL REFERENCES public.reservations(id) ON DELETE CASCADE,
+  reminder_hours_before INT NOT NULL,
+  sent_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (reservation_id, reminder_hours_before)
+);
+
+ALTER TABLE public.reservation_reminder_deliveries ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Reservation reminder deliveries: read own" ON public.reservation_reminder_deliveries FOR SELECT USING (
+  EXISTS (
+    SELECT 1
+    FROM public.reservations r
+    JOIN public.businesses b ON b.id = r.business_id
+    WHERE r.id = reservation_id AND (b.owner_id = auth.uid() OR r.client_id = auth.uid())
+  )
+);
+
 -- 6. BLOCKED SLOTS
 CREATE TABLE IF NOT EXISTS public.blocked_slots (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -140,7 +159,39 @@ ALTER TABLE public.blocked_slots ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Blocked slots: public read" ON public.blocked_slots FOR SELECT USING (true);
 CREATE POLICY "Blocked slots: owner manage" ON public.blocked_slots FOR ALL USING (EXISTS (SELECT 1 FROM public.businesses WHERE id = business_id AND owner_id = auth.uid()));
 
--- 7. EMPLOYEES
+-- 7. BUSINESS CLIENT NOTES
+CREATE TABLE IF NOT EXISTS public.business_client_notes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  business_id UUID NOT NULL REFERENCES public.businesses(id) ON DELETE CASCADE,
+  client_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  note TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (business_id, client_id)
+);
+
+ALTER TABLE public.business_client_notes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Business client notes: read" ON public.business_client_notes FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.businesses WHERE id = business_id AND owner_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+);
+CREATE POLICY "Business client notes: insert" ON public.business_client_notes FOR INSERT WITH CHECK (
+  EXISTS (SELECT 1 FROM public.businesses WHERE id = business_id AND owner_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+);
+CREATE POLICY "Business client notes: update" ON public.business_client_notes FOR UPDATE USING (
+  EXISTS (SELECT 1 FROM public.businesses WHERE id = business_id AND owner_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+) WITH CHECK (
+  EXISTS (SELECT 1 FROM public.businesses WHERE id = business_id AND owner_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+);
+CREATE POLICY "Business client notes: delete" ON public.business_client_notes FOR DELETE USING (
+  EXISTS (SELECT 1 FROM public.businesses WHERE id = business_id AND owner_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
+-- 8. EMPLOYEES
 CREATE TABLE IF NOT EXISTS public.employees (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   business_id UUID NOT NULL REFERENCES public.businesses(id) ON DELETE CASCADE,
@@ -157,7 +208,7 @@ ALTER TABLE public.employees ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Employees: public read" ON public.employees FOR SELECT USING (true);
 CREATE POLICY "Employees: owner manage" ON public.employees FOR ALL USING (EXISTS (SELECT 1 FROM public.businesses WHERE id = business_id AND owner_id = auth.uid()));
 
--- 8. INDEXES
+-- 9. INDEXES
 CREATE INDEX IF NOT EXISTS idx_businesses_owner ON public.businesses(owner_id);
 CREATE INDEX IF NOT EXISTS idx_businesses_category ON public.businesses(category_id);
 CREATE INDEX IF NOT EXISTS idx_services_business ON public.services(business_id);
@@ -165,9 +216,12 @@ CREATE INDEX IF NOT EXISTS idx_reservations_business ON public.reservations(busi
 CREATE INDEX IF NOT EXISTS idx_reservations_client ON public.reservations(client_id);
 CREATE INDEX IF NOT EXISTS idx_reservations_start ON public.reservations(start_time);
 CREATE INDEX IF NOT EXISTS idx_blocked_slots_business ON public.blocked_slots(business_id);
+CREATE INDEX IF NOT EXISTS idx_reservation_reminder_deliveries_reservation ON public.reservation_reminder_deliveries(reservation_id);
 CREATE INDEX IF NOT EXISTS idx_employees_business ON public.employees(business_id);
+CREATE INDEX IF NOT EXISTS idx_business_client_notes_business ON public.business_client_notes(business_id);
+CREATE INDEX IF NOT EXISTS idx_business_client_notes_client ON public.business_client_notes(client_id);
 
--- 9. SEED CATEGORIES (25)
+-- 10. SEED CATEGORIES (25)
 INSERT INTO public.categories (name, icon, color, sort_order) VALUES
   ('Peluqueria / Barberia', 'content_cut', '#FF7043', 1),
   ('Belleza y estetica', 'spa', '#E040FB', 2),

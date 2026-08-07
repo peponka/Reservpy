@@ -48,6 +48,23 @@ class ReservationRepository {
     return Reservation.fromJson(data);
   }
 
+  /// Count active reservations for a business inside a calendar month.
+  Future<int> countActiveForBusinessInMonth(
+    String businessId,
+    DateTime month,
+  ) async {
+    final startOfMonth = DateTime(month.year, month.month);
+    final startOfNextMonth = DateTime(month.year, month.month + 1);
+    final data = await _client
+        .from('reservations')
+        .select('id')
+        .eq('business_id', businessId)
+        .neq('status', 'cancelled')
+        .gte('start_time', startOfMonth.toIso8601String())
+        .lt('start_time', startOfNextMonth.toIso8601String());
+    return (data as List).length;
+  }
+
   /// Update status
   Future<void> updateStatus(String id, String status, {String? cancellationReason}) async {
     final updates = <String, dynamic>{'status': status, 'updated_at': DateTime.now().toIso8601String()};

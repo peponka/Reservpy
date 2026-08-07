@@ -6,6 +6,7 @@ import 'package:reservpy/src/core/constants/app_sizes.dart';
 import 'package:reservpy/src/core/constants/app_colors.dart';
 import 'package:reservpy/src/shared/providers/providers.dart';
 import 'package:reservpy/src/shared/models/models.dart';
+import 'package:reservpy/src/features/photos/photo_widgets.dart';
 
 /// Premium business detail / service selection page.
 /// Standalone Scaffold — NOT rendered inside BusinessShell.
@@ -39,14 +40,38 @@ class _SelectServiceScreenState extends ConsumerState<SelectServiceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final services = ref.watch(businessServicesProvider(businessId)).valueOrNull ?? [];
-    final businesses = ref.watch(businessesProvider).valueOrNull ?? [];
-    final business = businesses.where((b) => b.id == businessId).firstOrNull;
+    final businessAsync = ref.watch(businessByIdProvider(businessId));
+    final servicesAsync = ref.watch(businessServicesProvider(businessId));
+    final services = servicesAsync.valueOrNull ?? [];
+    final activeServices = services.where((s) => s.isActive).toList();
+    final business = businessAsync.valueOrNull;
     final businessName = business?.name ?? 'Negocio';
+    final servicesLoading = servicesAsync.isLoading && servicesAsync.valueOrNull == null;
+
+    if (businessAsync.isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (business == null) {
+      return Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: () => context.pop(),
+          ),
+        ),
+        body: const EmptyState(
+          icon: Icons.storefront_outlined,
+          title: 'Negocio no encontrado',
+        ),
+      );
+    }
 
     // Resumen de la selección (en orden de lista, no de clic)
     final selectedServices =
-        services.where((s) => _selectedIds.contains(s.id)).toList();
+        activeServices.where((s) => _selectedIds.contains(s.id)).toList();
     final totalMinutes = selectedServices.fold<int>(
         0, (sum, s) => sum + s.durationMinutes);
     final totalPrice =
@@ -95,25 +120,31 @@ class _SelectServiceScreenState extends ConsumerState<SelectServiceScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // ── Gallery Placeholder ──────────────
-                      _GalleryPlaceholder(),
+                      PhotoCarousel(businessId: businessId),
 
                       const SizedBox(height: AppSizes.s32),
 
                       // ── Services Section ─────────────────
-                      _ServicesSection(
-                        key: servicesKey,
-                        services: services,
-                        businessId: businessId,
-                        selectedIds: _selectedIds,
-                        onToggle: _toggleService,
-                      ),
+                      if (servicesLoading)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: AppSizes.s32),
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      else
+                        _ServicesSection(
+                          key: servicesKey,
+                          services: activeServices,
+                          businessId: businessId,
+                          selectedIds: _selectedIds,
+                          onToggle: _toggleService,
+                        ),
 
                       const SizedBox(height: AppSizes.s48),
 
                       // ── Business Info ────────────────────
                       _BusinessInfoSections(
                         business: business,
-                        serviceCount: services.length,
+                        serviceCount: activeServices.length,
                       ),
                     ],
                   ),
@@ -347,66 +378,6 @@ class _CircleIconButton extends StatelessWidget {
 
 // ═══════════════════════════════════════════════════════════════
 // GALLERY PLACEHOLDER
-// ═══════════════════════════════════════════════════════════════
-class _GalleryPlaceholder extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppSizes.s32),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppSizes.radiusXl),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0A2540), Color(0xFF1A3A5C)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.accent.withValues(alpha: 0.25),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(AppSizes.radiusLg),
-            ),
-            child: const Icon(
-              Icons.photo_library_rounded,
-              size: 32,
-              color: Colors.white70,
-            ),
-          ),
-          const SizedBox(height: AppSizes.s16),
-          Text(
-            'Galería pendiente',
-            style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: AppSizes.s8),
-          Text(
-            'Subí fotos desde Configuración para destacar el negocio',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              color: Colors.white.withValues(alpha: 0.6),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // ═══════════════════════════════════════════════════════════════
 // SERVICES SECTION
@@ -912,7 +883,7 @@ class _EmptyServicesState extends StatelessWidget {
           ),
           const SizedBox(height: AppSizes.s16),
           Text(
-            'Este negocio no tiene servicios\ndisponibles aún.',
+            'Este negocio no tiene servicios disponibles aun.',
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               fontSize: 15,
@@ -1077,6 +1048,8 @@ class _BusinessInfoSections extends StatelessWidget {
     required this.serviceCount,
   });
 
+  String get _businessId => business?.id ?? '';
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -1091,7 +1064,7 @@ class _BusinessInfoSections extends StatelessWidget {
               Expanded(
                 child: Column(
                   children: [
-                    _TeamSection(),
+                    _TeamSection(businessId: _businessId),
                     const SizedBox(height: AppSizes.s24),
                     _AboutSection(description: business?.description),
                   ],
@@ -1114,7 +1087,7 @@ class _BusinessInfoSections extends StatelessWidget {
 
         return Column(
           children: [
-            _TeamSection(),
+            _TeamSection(businessId: _businessId),
             const SizedBox(height: AppSizes.s24),
             _AboutSection(description: business?.description),
             const SizedBox(height: AppSizes.s24),
@@ -1129,9 +1102,19 @@ class _BusinessInfoSections extends StatelessWidget {
 }
 
 // ── Team Section ───────────────────────────────────────────────
-class _TeamSection extends StatelessWidget {
+class _TeamSection extends ConsumerWidget {
+  final String businessId;
+
+  const _TeamSection({required this.businessId});
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final employeesAsync = ref.watch(businessEmployeesProvider(businessId));
+    final employees = employeesAsync.valueOrNull ?? [];
+    final employeesLoading = employeesAsync.isLoading && employeesAsync.valueOrNull == null;
+    final previewEmployees = employees.take(3).toList();
+    final hasEmployees = previewEmployees.isNotEmpty;
+
     return _InfoCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1143,46 +1126,93 @@ class _TeamSection extends StatelessWidget {
           const SizedBox(height: AppSizes.s16),
           Row(
             children: [
-              // Stacked avatars placeholder
               SizedBox(
                 width: 72,
                 height: 36,
-                child: Stack(
-                  children: List.generate(3, (i) {
-                    return Positioned(
-                      left: i * 20.0,
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: [
-                            AppColors.primary,
-                            AppColors.primaryDark,
-                            AppColors.accentLight,
-                          ][i],
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
+                child: employeesLoading
+                    ? const Align(
+                        alignment: Alignment.centerLeft,
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2.2),
                         ),
-                        child: Center(
-                          child: Icon(
-                            Icons.person_rounded,
-                            size: 16,
-                            color: Colors.white.withValues(alpha: 0.8),
+                      )
+                    : hasEmployees
+                        ? Stack(
+                            children: List.generate(previewEmployees.length, (i) {
+                              final employee = previewEmployees[i];
+                              final background = [
+                                AppColors.primary,
+                                AppColors.primaryDark,
+                                AppColors.accentLight,
+                              ][i % 3];
+                              return Positioned(
+                                left: i * 20.0,
+                                child: CircleAvatar(
+                                  radius: 18,
+                                  backgroundColor: background,
+                                  backgroundImage: employee.avatarUrl != null && employee.avatarUrl!.isNotEmpty
+                                      ? NetworkImage(employee.avatarUrl!)
+                                      : null,
+                                  child: employee.avatarUrl == null || employee.avatarUrl!.isEmpty
+                                      ? Text(
+                                          employee.initials,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : null,
+                                ),
+                              );
+                            }),
+                          )
+                        : Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.person_outline_rounded,
+                              size: 18,
+                              color: AppColors.primary,
+                            ),
                           ),
-                        ),
-                      ),
-                    );
-                  }),
-                ),
               ),
               const SizedBox(width: AppSizes.s12),
               Expanded(
-                child: Text(
-                  'Equipo disponible para atenderte',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      employeesLoading
+                          ? 'Cargando equipo'
+                          : hasEmployees
+                              ? '${employees.length} integrante${employees.length == 1 ? '' : 's'} del equipo'
+                              : 'Atencion gestionada por el negocio',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: AppSizes.s4),
+                    Text(
+                      employeesLoading
+                          ? 'Estamos cargando quienes atienden este negocio.'
+                          : hasEmployees
+                              ? previewEmployees.map((e) => e.name).join(' - ')
+                              : 'Todavia no cargaron miembros del equipo en esta ficha publica.',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

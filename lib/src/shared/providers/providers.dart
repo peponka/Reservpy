@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:reservpy/src/core/utils/reservation_grouping.dart';
 import '../models/models.dart';
 import 'package:reservpy/src/core/supabase/supabase_config.dart';
-import '../mock_data.dart';
 import 'package:reservpy/src/data/repositories/category_repository.dart';
 import 'package:reservpy/src/data/repositories/business_repository.dart';
 import 'package:reservpy/src/data/repositories/profile_repository.dart';
@@ -88,6 +88,11 @@ final currentBusinessProvider = Provider<Business?>((ref) {
 
 final selectedBusinessProvider = StateProvider<Business?>((ref) => null);
 
+final businessByIdProvider = FutureProvider.family<Business?, String>((ref, businessId) async {
+  if (businessId.trim().isEmpty) return null;
+  return BusinessRepository().getById(businessId);
+});
+
 final businessServicesProvider = FutureProvider.family<List<ServiceModel>, String>((ref, businessId) async {
   return ServiceRepository().getByBusiness(businessId);
 });
@@ -97,7 +102,8 @@ final categoriesProvider = FutureProvider<List<BusinessCategory>>((ref) async {
   try {
     return await CategoryRepository().getAll();
   } catch (_) {
-    return mockCategories;
+    // Avoid inventing categories when the real source is unavailable.
+    return [];
   }
 });
 
@@ -115,6 +121,11 @@ final clientReservationsProvider = FutureProvider<List<Reservation>>((ref) async
   final user = ref.watch(currentUserProvider);
   if (user == null) return [];
   return ReservationRepository().getByClient(user.id);
+});
+
+final groupedClientReservationsProvider = Provider<List<Reservation>>((ref) {
+  final reservations = ref.watch(clientReservationsProvider).valueOrNull ?? [];
+  return groupReservationsForDisplay(reservations);
 });
 
 // ─── Dashboard ───────────────────────────────────────────
@@ -215,6 +226,12 @@ final employeesProvider = FutureProvider<List<Employee>>((ref) async {
   final business = ref.watch(currentBusinessProvider);
   if (business == null) return [];
   return EmployeeRepository().getByBusiness(business.id);
+});
+
+/// Active employees for any business id, used by public business-facing screens.
+final businessEmployeesProvider = FutureProvider.family<List<Employee>, String>((ref, businessId) async {
+  if (businessId.trim().isEmpty) return [];
+  return EmployeeRepository().getActiveByBusiness(businessId);
 });
 
 // ─── Day-based Filtering ──────────────────────────────────────

@@ -217,11 +217,13 @@ class _CategoriesPage extends ConsumerWidget {
                             return _CategoryCard(
                               category: cat,
                               businessCount: count,
-                              onTap: () {
-                                ref
-                                    .read(_selectedCategoryProvider.notifier)
-                                    .state = cat;
-                              },
+                              onTap: count > 0
+                                  ? () {
+                                      ref
+                                          .read(_selectedCategoryProvider.notifier)
+                                          .state = cat;
+                                    }
+                                  : null,
                             );
                           },
                         ),
@@ -402,7 +404,7 @@ class _CategoriesPage extends ConsumerWidget {
 class _CategoryCard extends StatefulWidget {
   final BusinessCategory category;
   final int businessCount;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const _CategoryCard({
     required this.category,
@@ -421,8 +423,12 @@ class _CategoryCardState extends State<_CategoryCard> {
   Widget build(BuildContext context) {
     final cat = widget.category;
 
+    final isEnabled = widget.onTap != null;
+
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
+      onEnter: (_) {
+        if (isEnabled) setState(() => _isHovered = true);
+      },
       onExit: (_) => setState(() => _isHovered = false),
       child: GestureDetector(
         onTap: widget.onTap,
@@ -431,9 +437,11 @@ class _CategoryCardState extends State<_CategoryCard> {
           curve: Curves.easeOut,
           transform: Matrix4.translationValues(0, _isHovered ? -4 : 0, 0),
           decoration: BoxDecoration(
-            color: _isHovered
-                ? cat.color.withValues(alpha: 0.06)
-                : Colors.white,
+            color: !isEnabled
+                ? AppColors.backgroundLight
+                : _isHovered
+                    ? cat.color.withValues(alpha: 0.06)
+                    : Colors.white,
             borderRadius: BorderRadius.circular(AppSizes.radiusLg),
             border: Border.all(
               color: _isHovered
@@ -460,11 +468,14 @@ class _CategoryCardState extends State<_CategoryCard> {
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: cat.color.withValues(alpha: _isHovered ? 0.2 : 0.12),
+                  color: cat.color.withValues(alpha: !isEnabled ? 0.08 : (_isHovered ? 0.2 : 0.12)),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(cat.icon,
-                    color: cat.color, size: _isHovered ? 28 : 26),
+                child: Icon(
+                  cat.icon,
+                  color: isEnabled ? cat.color : AppColors.textMuted,
+                  size: _isHovered ? 28 : 26,
+                ),
               ),
               const SizedBox(height: AppSizes.s8),
               // Label
@@ -499,7 +510,7 @@ class _CategoryCardState extends State<_CategoryCard> {
                 child: Text(
                   widget.businessCount > 0
                       ? '${widget.businessCount} negocio${widget.businessCount == 1 ? '' : 's'}'
-                      : 'Próximamente',
+                      : 'Sin negocios aun',
                   style: GoogleFonts.inter(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
@@ -1414,6 +1425,7 @@ class _BusinessCardState extends ConsumerState<_BusinessCard> {
     final category = widget.category;
     final services =
         ref.watch(businessServicesProvider(business.id)).valueOrNull ?? [];
+    final activeServices = services.where((s) => s.isActive).toList();
     final isOpen = business.isCurrentlyOpen;
     final initial =
         business.name.isNotEmpty ? business.name[0].toUpperCase() : '?';
@@ -1421,8 +1433,8 @@ class _BusinessCardState extends ConsumerState<_BusinessCard> {
     // Is new? (< 7 days)
     final isNew = DateTime.now().difference(business.createdAt).inDays < 7;
 
-    // Price range
-    final prices = services
+    // Price range only from services that can actually be booked
+    final prices = activeServices
         .where((s) => s.price != null && s.price! > 0)
         .map((s) => s.price!)
         .toList()

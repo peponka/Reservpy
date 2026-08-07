@@ -17,6 +17,8 @@ import 'package:reservpy/src/data/repositories/business_repository.dart';
 import 'package:reservpy/src/features/photos/photo_widgets.dart';
 import 'package:reservpy/src/features/promotions/promotions_widget.dart';
 import 'package:reservpy/src/features/qr/qr_share_widget.dart';
+import 'package:reservpy/src/core/utils/string_utils.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -152,19 +154,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
-  String _slugFromName(String name) {
-    return name
-        .toLowerCase()
-        .replaceAll(RegExp(r'[áàäâ]'), 'a')
-        .replaceAll(RegExp(r'[éèëê]'), 'e')
-        .replaceAll(RegExp(r'[íìïî]'), 'i')
-        .replaceAll(RegExp(r'[óòöô]'), 'o')
-        .replaceAll(RegExp(r'[úùüû]'), 'u')
-        .replaceAll(RegExp(r'ñ'), 'n')
-        .replaceAll(RegExp(r'[^a-z0-9\s-]'), '')
-        .trim()
-        .replaceAll(RegExp(r'\s+'), '-');
-  }
 
   Future<void> _pickAndUploadLogo(Business business) async {
     final picker = ImagePicker();
@@ -192,6 +181,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       final url = storage.getPublicUrl(path);
       await BusinessRepository().update(business.copyWith(logoUrl: url));
       ref.invalidate(businessesProvider);
+      ref.invalidate(ownerBusinessProvider);
+      ref.invalidate(currentBusinessProvider);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -232,22 +223,31 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _saveBusinessData(Business business) async {
     setState(() => _isSaving = true);
 
+    final trimmedPhone = _phoneController.text.trim();
+    final trimmedAddress = _addressController.text.trim();
+    final trimmedDescription = _descriptionController.text.trim();
+    final parsedCancellationHours = int.tryParse(_cancellationController.text);
+    final cancellationHours = parsedCancellationHours == null
+        ? business.cancellationHoursPolicy
+        : parsedCancellationHours < 0
+            ? 0
+            : parsedCancellationHours;
+
     final updatedBusiness = business.copyWith(
       name: _nameController.text.trim(),
-      phone: _phoneController.text.trim(),
-      address: _addressController.text.trim(),
-      description: _descriptionController.text.trim(),
+      phone: trimmedPhone,
+      address: trimmedAddress,
+      description: trimmedDescription,
       latitude: _latitude,
       longitude: _longitude,
-      cancellationHoursPolicy:
-          int.tryParse(_cancellationController.text) ??
-          business.cancellationHoursPolicy,
+      cancellationHoursPolicy: cancellationHours,
     );
 
     try {
       await BusinessRepository().update(updatedBusiness);
-      // Invalidate to re-fetch from Supabase
       ref.invalidate(businessesProvider);
+      ref.invalidate(ownerBusinessProvider);
+      ref.invalidate(currentBusinessProvider);
 
       if (!mounted) return;
 
@@ -388,7 +388,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     const SizedBox(height: AppSizes.s24),
 
                     // ── Reminders Navigation ─────────────────────
-                    _buildRemindersCard(theme, colorScheme),
+                    _buildRemindersCard(theme, colorScheme, business),
                     const SizedBox(height: AppSizes.s24),
 
                     // ── Photos Manager ───────────────────────────
@@ -446,6 +446,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ColorScheme colorScheme,
     Business business,
   ) {
+
     return Container(
       padding: const EdgeInsets.all(AppSizes.s24),
       decoration: BoxDecoration(
@@ -921,6 +922,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 await BusinessRepository().delete(business.id);
                 ref.invalidate(businessesProvider);
                 ref.invalidate(ownerBusinessProvider);
+                ref.invalidate(currentBusinessProvider);
                 if (mounted) {
                   context.go('/onboarding');
                 }
@@ -948,7 +950,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   // ═══════════════════════════════════════════════════════════
   // Reminders Card (navigate to RemindersSettingsScreen)
   // ═══════════════════════════════════════════════════════════
-  Widget _buildRemindersCard(ThemeData theme, ColorScheme colorScheme) {
+  Widget _buildRemindersCard(ThemeData theme, ColorScheme colorScheme, Business business) {
+    final reminderSummary = business.remindersEnabled
+        ? business.reminderHoursBefore.isEmpty
+            ? 'Activos sin horario definido'
+            : 'Activos ${business.reminderHoursBefore.map((h) => '${h}h').join(', ')} antes'
+        : 'Desactivados';
+
     return Container(
       decoration: BoxDecoration(
         color: theme.cardTheme.color,
@@ -975,7 +983,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: const Icon(Icons.notifications_active_rounded, color: Colors.amber, size: 22),
         ),
         title: const Text('Recordatorios'),
-        subtitle: const Text('Configurar notificaciones automáticas'),
+        subtitle: Text(reminderSummary),
         trailing: const Icon(Icons.chevron_right_rounded),
         onTap: () => context.push('/business-reminders'),
       ),
@@ -986,8 +994,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   // a. Public URL Row
   // ═══════════════════════════════════════════════════════════
   Widget _buildPublicUrlRow(Business business) {
-    final slug = _slugFromName(business.name);
-    final url = 'https://www.reservpy.com/b/$slug';
+    final url = publicBusinessUrl(business.id);
 
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -1084,13 +1091,51 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           );
 
+          final openButton = SizedBox(
+            height: 32,
+            width: isNarrow ? double.infinity : 96,
+            child: OutlinedButton.icon(
+              onPressed: () async {
+                await launchUrl(
+                  Uri.parse(url),
+                  mode: LaunchMode.externalApplication,
+                );
+              },
+              icon: const Icon(Icons.open_in_new_rounded, size: 14),
+              label: Text(
+                'Abrir',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: BorderSide(
+                  color: AppColors.primary.withValues(alpha: 0.28),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(AppSizes.radiusSm),
+                ),
+              ),
+            ),
+          );
+
           if (isNarrow) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 iconAndText,
                 const SizedBox(height: AppSizes.s12),
-                copyButton,
+                Row(
+                  children: [
+                    Expanded(child: copyButton),
+                    const SizedBox(width: AppSizes.s8),
+                    Expanded(child: openButton),
+                  ],
+                ),
               ],
             );
           }
@@ -1100,6 +1145,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               Expanded(child: iconAndText),
               const SizedBox(width: AppSizes.s12),
               copyButton,
+              const SizedBox(width: AppSizes.s8),
+              openButton,
             ],
           );
         },

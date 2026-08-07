@@ -7,6 +7,7 @@ import 'package:reservpy/src/core/utils/date_utils.dart';
 import 'package:reservpy/src/shared/providers/providers.dart';
 import 'package:reservpy/src/shared/models/models.dart';
 import 'package:reservpy/src/data/repositories/business_repository.dart';
+import 'package:reservpy/src/data/repositories/blocked_slot_repository.dart';
 
 class AvailabilityScreen extends ConsumerStatefulWidget {
   const AvailabilityScreen({super.key});
@@ -56,6 +57,8 @@ class _AvailabilityScreenState extends ConsumerState<AvailabilityScreen> {
     try {
       await BusinessRepository().updateField(business.id, 'working_days', updatedDays);
       ref.invalidate(ownerBusinessProvider);
+      ref.invalidate(currentBusinessProvider);
+      ref.invalidate(businessesProvider);
       if (mounted) {
         final dayName = _dayNames[dayNum - 1];
         ScaffoldMessenger.of(context).showSnackBar(
@@ -163,6 +166,8 @@ class _AvailabilityScreenState extends ConsumerState<AvailabilityScreen> {
       );
       await BusinessRepository().update(updated);
       ref.invalidate(businessesProvider);
+      ref.invalidate(ownerBusinessProvider);
+      ref.invalidate(currentBusinessProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Horario actualizado correctamente')),
@@ -179,14 +184,269 @@ class _AvailabilityScreenState extends ConsumerState<AvailabilityScreen> {
     }
   }
 
+  String _twoDigits(int value) => value.toString().padLeft(2, '0');
+
+  String _formatBlockedSlotDate(DateTime value) {
+    return '${_twoDigits(value.day)}/${_twoDigits(value.month)}/${value.year}';
+  }
+
+  String _formatBlockedSlotTime(DateTime value) {
+    return '${_twoDigits(value.hour)}:${_twoDigits(value.minute)}';
+  }
+
+  Future<void> _showAddBlockedSlotDialog(Business business) async {
+    DateTime selectedDate = DateTime.now();
+    TimeOfDay startTime = business.openingTime;
+    TimeOfDay endTime = TimeOfDay(
+      hour: business.openingTime.hour + 1 > 23 ? 23 : business.openingTime.hour + 1,
+      minute: business.openingTime.minute,
+    );
+    final reasonController = TextEditingController();
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            return AlertDialog(
+              title: const Text('Bloquear fecha u horario'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.event_rounded),
+                      title: const Text('Fecha'),
+                      trailing: TextButton(
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: dialogContext,
+                            initialDate: selectedDate,
+                            firstDate: DateTime.now().subtract(const Duration(days: 1)),
+                            lastDate: DateTime.now().add(const Duration(days: 365)),
+                          );
+                          if (picked != null) {
+                            setDialogState(() => selectedDate = picked);
+                          }
+                        },
+                        child: Text(_formatBlockedSlotDate(selectedDate)),
+                      ),
+                    ),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.login_rounded),
+                      title: const Text('Desde'),
+                      trailing: TextButton(
+                        onPressed: () async {
+                          final picked = await showTimePicker(
+                            context: dialogContext,
+                            initialTime: startTime,
+                          );
+                          if (picked != null) {
+                            setDialogState(() => startTime = picked);
+                          }
+                        },
+                        child: Text(AppDateUtils.timeOfDayToString(startTime.hour, startTime.minute)),
+                      ),
+                    ),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.logout_rounded),
+                      title: const Text('Hasta'),
+                      trailing: TextButton(
+                        onPressed: () async {
+                          final picked = await showTimePicker(
+                            context: dialogContext,
+                            initialTime: endTime,
+                          );
+                          if (picked != null) {
+                            setDialogState(() => endTime = picked);
+                          }
+                        },
+                        child: Text(AppDateUtils.timeOfDayToString(endTime.hour, endTime.minute)),
+                      ),
+                    ),
+                    TextField(
+                      controller: reasonController,
+                      minLines: 1,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        labelText: 'Motivo (opcional)',
+                        prefixIcon: Icon(Icons.notes_rounded),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final startDt = DateTime(
+                      selectedDate.year,
+                      selectedDate.month,
+                      selectedDate.day,
+                      startTime.hour,
+                      startTime.minute,
+                    );
+                    final endDt = DateTime(
+                      selectedDate.year,
+                      selectedDate.month,
+                      selectedDate.day,
+                      endTime.hour,
+                      endTime.minute,
+                    );
+                    if (!endDt.isAfter(startDt)) {
+                      ScaffoldMessenger.of(dialogContext).showSnackBar(
+                        const SnackBar(content: Text('La hora final debe ser posterior a la inicial')),
+                      );
+                      return;
+                    }
+
+                    try {
+                      await BlockedSlotRepository().create(
+                        BlockedSlot(
+                          id: '',
+                          businessId: business.id,
+                          startTime: startDt,
+                          endTime: endDt,
+                          reason: reasonController.text.trim().isEmpty
+                              ? null
+                              : reasonController.text.trim(),
+                        ),
+                      );
+                      ref.invalidate(blockedSlotsProvider);
+                      ref.invalidate(blockedSlotsForBusinessProvider(business.id));
+                      if (dialogContext.mounted) {
+                        Navigator.of(dialogContext).pop();
+                      }
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Excepcion guardada correctamente')),
+                        );
+                      }
+                    } catch (e) {
+                      if (dialogContext.mounted) {
+                        ScaffoldMessenger.of(dialogContext).showSnackBar(
+                          SnackBar(content: Text('No se pudo guardar la excepcion: $e')),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('Guardar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    reasonController.dispose();
+  }
+
+  Future<void> _deleteBlockedSlot(Business business, BlockedSlot slot) async {
+    try {
+      await BlockedSlotRepository().delete(slot.id);
+      ref.invalidate(blockedSlotsProvider);
+      ref.invalidate(blockedSlotsForBusinessProvider(business.id));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Excepcion eliminada correctamente')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo eliminar la excepcion: $e')),
+        );
+      }
+    }
+  }
+
+  Widget _buildBlockedSlotRow(
+    ThemeData theme,
+    ColorScheme colorScheme,
+    Business business,
+    BlockedSlot slot,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSizes.s12),
+      padding: const EdgeInsets.all(AppSizes.s16),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.warning.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+            ),
+            child: const Icon(Icons.event_busy_rounded, color: AppColors.warning, size: 20),
+          ),
+          const SizedBox(width: AppSizes.s12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _formatBlockedSlotDate(slot.startTime),
+                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: AppSizes.s4),
+                Text(
+                  '${_formatBlockedSlotTime(slot.startTime)} - ${_formatBlockedSlotTime(slot.endTime)}',
+                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                ),
+                if (slot.reason != null && slot.reason!.trim().isNotEmpty) ...[
+                  const SizedBox(height: AppSizes.s6),
+                  Text(
+                    slot.reason!,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurface.withValues(alpha: 0.72),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: () => _deleteBlockedSlot(business, slot),
+            tooltip: 'Eliminar bloqueo',
+            icon: const Icon(Icons.delete_outline_rounded),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final business = ref.watch(currentBusinessProvider);
+    final ownerBusinessAsync = ref.watch(ownerBusinessProvider);
+    final ownerBusiness = ownerBusinessAsync.valueOrNull;
+    final business = ref.watch(currentBusinessProvider) ?? ownerBusiness;
+    final blockedSlotsAsync = business == null
+        ? const AsyncValue<List<BlockedSlot>>.data([])
+        : ref.watch(blockedSlotsForBusinessProvider(business.id));
+    final blockedSlots = blockedSlotsAsync.valueOrNull ?? [];
+    final blockedSlotsLoading = blockedSlotsAsync.isLoading && blockedSlotsAsync.valueOrNull == null;
 
     if (business == null) {
-      return const Center(child: Text('No se encontró el negocio.'));
+      if (ownerBusinessAsync.isLoading) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      return const Center(child: Text('No se encontro el negocio.'));
     }
 
     final weekDays = _buildSchedule(business);
@@ -348,16 +608,14 @@ class _AvailabilityScreenState extends ConsumerState<AvailabilityScreen> {
 
                 const SizedBox(height: AppSizes.s24),
 
-                // ── Excepciones Card ──
+                // Excepciones card
                 Container(
                   padding: const EdgeInsets.all(AppSizes.s20),
                   decoration: BoxDecoration(
                     color: theme.cardTheme.color,
-                    borderRadius:
-                        BorderRadius.circular(AppSizes.radiusLg),
+                    borderRadius: BorderRadius.circular(AppSizes.radiusLg),
                     border: Border.all(
-                      color:
-                          colorScheme.outline.withValues(alpha: 0.08),
+                      color: colorScheme.outline.withValues(alpha: 0.08),
                     ),
                     boxShadow: [
                       BoxShadow(
@@ -378,87 +636,89 @@ class _AvailabilityScreenState extends ConsumerState<AvailabilityScreen> {
                             size: 20,
                           ),
                           const SizedBox(width: AppSizes.s8),
-                          Text(
-                            'Excepciones / fechas específicas',
-                            style:
-                                theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(width: AppSizes.s12),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSizes.s8,
-                              vertical: AppSizes.s2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: colorScheme.outline
-                                  .withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(
-                                  AppSizes.radiusFull),
-                            ),
+                          Expanded(
                             child: Text(
-                              '0 configuradas',
-                              style:
-                                  theme.textTheme.bodySmall?.copyWith(
-                                color: colorScheme.outline,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
+                              'Excepciones / fechas especificas',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
+                          ),
+                          FilledButton.tonalIcon(
+                            onPressed: () => _showAddBlockedSlotDialog(business),
+                            icon: const Icon(Icons.add_rounded, size: 18),
+                            label: const Text('Agregar'),
                           ),
                         ],
                       ),
-                      const SizedBox(height: AppSizes.s20),
-                      Container(
-                        padding: const EdgeInsets.all(AppSizes.s32),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              colorScheme.outline
-                                  .withValues(alpha: 0.02),
-                              colorScheme.outline
-                                  .withValues(alpha: 0.05),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(
-                              AppSizes.radiusLg),
-                          border: Border.all(
-                            color: colorScheme.outline
-                                .withValues(alpha: 0.06),
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            Icon(
-                              Icons.event_busy_rounded,
-                              size: 36,
-                              color: colorScheme.outline
-                                  .withValues(alpha: 0.4),
-                            ),
-                            const SizedBox(height: AppSizes.s12),
-                            Text(
-                              'No hay fechas específicas configuradas.',
-                              style: theme.textTheme.titleSmall
-                                  ?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: AppSizes.s4),
-                            Text(
-                              'Usá excepciones para fechas fuera de lo habitual o días no laborables.',
-                              style: theme.textTheme.bodySmall
-                                  ?.copyWith(
-                                color: colorScheme.outline,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
+                      const SizedBox(height: AppSizes.s12),
+                      Text(
+                        'Usa este bloque para cierres puntuales, feriados o franjas horarias que no queres ofrecer.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurface.withValues(alpha: 0.68),
                         ),
                       ),
+                      const SizedBox(height: AppSizes.s20),
+                      if (blockedSlotsLoading)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(AppSizes.s24),
+                          decoration: BoxDecoration(
+                            color: colorScheme.outline.withValues(alpha: 0.04),
+                            borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+                            border: Border.all(
+                              color: colorScheme.outline.withValues(alpha: 0.08),
+                            ),
+                          ),
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        )
+                      else if (blockedSlots.isEmpty)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(AppSizes.s24),
+                          decoration: BoxDecoration(
+                            color: colorScheme.outline.withValues(alpha: 0.04),
+                            borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+                            border: Border.all(
+                              color: colorScheme.outline.withValues(alpha: 0.08),
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.event_available_rounded,
+                                size: 32,
+                                color: colorScheme.outline.withValues(alpha: 0.45),
+                              ),
+                              const SizedBox(height: AppSizes.s10),
+                              Text(
+                                'Todavia no cargaste excepciones.',
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: AppSizes.s4),
+                              Text(
+                                'Cuando necesites cerrar una fecha o bloquear una franja horaria, agregala desde aca.',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.onSurface.withValues(alpha: 0.6),
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        ...blockedSlots.map(
+                          (slot) => _buildBlockedSlotRow(
+                            theme,
+                            colorScheme,
+                            business,
+                            slot,
+                          ),
+                        ),
                     ],
                   ),
                 ),

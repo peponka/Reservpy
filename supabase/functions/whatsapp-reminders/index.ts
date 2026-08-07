@@ -1,38 +1,31 @@
 // supabase/functions/whatsapp-reminders/index.ts
-// Cron Edge Function — envía recordatorios de WhatsApp 24hs antes del turno.
-// Schedule sugerido: "0 * * * *" (cada hora)
+// Cron Edge Function ? env?a recordatorios de WhatsApp seg?n la configuraci?n
+// guardada en cada negocio. Schedule sugerido: "0 * * * *" (cada hora).
 //
-// Usa la Cloud API de Meta directamente (sin Twilio de por medio).
+// Usa la Cloud API de Meta directamente.
 //
-// Requiere estos secrets en Supabase (Edge Functions → Secrets):
-//   WHATSAPP_PHONE_NUMBER_ID  -> id del numero remitente (Meta lo da en API Setup)
-//   WHATSAPP_ACCESS_TOKEN     -> token permanente (System User), NO el de 24hs
-// Opcionales (tienen default):
-//   WHATSAPP_API_VERSION      -> default v25.0
-//   WHATSAPP_TEMPLATE_NAME    -> default recordatorio_turno
-//   WHATSAPP_TEMPLATE_LANG    -> default es_AR
-//
-// POR QUE PLANTILLA Y NO TEXTO LIBRE: WhatsApp solo permite texto libre dentro
-// de las 24hs desde el ultimo mensaje del cliente. Un recordatorio lo inicia el
-// negocio y cae fuera de esa ventana, asi que con texto libre Meta lo acepta y
-// despues NO lo entrega, en silencio. Por eso va como template.
+// Requiere estos secrets en Supabase (Edge Functions ? Secrets):
+//   WHATSAPP_PHONE_NUMBER_ID
+//   WHATSAPP_ACCESS_TOKEN
+// Opcionales:
+//   WHATSAPP_API_VERSION  -> default v25.0
+//   WHATSAPP_TEMPLATE_NAME -> default recordatorio_turno
+//   WHATSAPP_TEMPLATE_LANG -> default es_AR
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const TZ = "America/Asuncion";
+const MAX_CONFIGURED_REMINDER_HOURS = 48;
 
-/** Numero paraguayo -> E.164 sin el "+" (formato que espera la Cloud API). */
 function normalizePhone(raw: string): string | null {
   const d = String(raw ?? "").replace(/[^\d]/g, "");
   if (!d) return null;
-  if (d.startsWith("595") && d.length === 12) return d;        // 595 + 9 digitos
-  if (d.startsWith("0") && d.length === 10) return `595${d.slice(1)}`; // 0994xxxxxx
-  if (d.length === 9) return `595${d}`;                        // 994xxxxxx
+  if (d.startsWith("595") && d.length === 12) return d;
+  if (d.startsWith("0") && d.length === 10) return `595${d.slice(1)}`;
+  if (d.length === 9) return `595${d}`;
   return null;
 }
 
-// OJO: sin timeZone, Deno formatea en UTC y el recordatorio saldria con 3hs de
-// diferencia (un turno de las 15:30 se anunciaria como 18:30).
 function fechaPy(d: Date): string {
   return new Intl.DateTimeFormat("es-PY", {
     timeZone: TZ, day: "2-digit", month: "2-digit", year: "numeric",
@@ -44,6 +37,9 @@ function horaPy(d: Date): string {
     timeZone: TZ, hour: "2-digit", minute: "2-digit", hour12: false,
   }).format(d);
 }
+
+const uno = <T,>(rel: unknown): T | null =>
+  Array.isArray(rel) ? ((rel[0] ?? null) as T | null) : ((rel ?? null) as T | null);
 
 Deno.serve(async () => {
   const phoneNumberId = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID");
@@ -64,26 +60,21 @@ Deno.serve(async () => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  // Ventana 23-25hs: el cron corre cada hora, asi que cada turno cae en la
-  // ventana una sola vez. whatsapp_reminder_sent evita repetirlo igual.
-  const now = Date.now();
-  const wStart = new Date(now + 23 * 3600_000).toISOString();
-  const wEnd = new Date(now + 25 * 3600_000).toISOString();
+  const now = new Date();
+  const windowStart = new Date(now.getTime() + 60 * 60_000).toISOString();
+  const windowEnd = new Date(now.getTime() + (MAX_CONFIGURED_REMINDER_HOURS + 1) * 60 * 60_000).toISOString();
 
-  // OJO: reservations NO tiene columnas service_name/business_name (el codigo
-  // viejo las pedia y por eso fallaba con "column does not exist"). Los nombres
-  // salen de las tablas relacionadas via service_id / business_id.
   const { data: reservations, error } = await supabase
     .from("reservations")
     .select(
       "id,start_time,is_manual,manual_client_name,manual_client_phone," +
-        "services(name),businesses(name)," +
+        "services(name)," +
+        "businesses(name,reminders_enabled,reminder_hours_before)," +
         "profiles:client_id(first_name,last_name,phone)",
     )
     .in("status", ["pending", "confirmed"])
-    .eq("whatsapp_reminder_sent", false)
-    .gte("start_time", wStart)
-    .lte("start_time", wEnd);
+    .gte("start_time", windowStart)
+    .lte("start_time", windowEnd);
 
   if (error) {
     return new Response(JSON.stringify({ error: error.message }), {
@@ -96,29 +87,46 @@ Deno.serve(async () => {
     });
   }
 
-  const url = `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`;
-  let sent = 0, skipped = 0, failed = 0;
-  const errores: unknown[] = [];
+  const reservationIds = reservations.map((r) => r.id as string);
+  const { data: deliveredRows } = await supabase
+    .from("reservation_reminder_deliveries")
+    .select("reservation_id, reminder_hours_before")
+    .in("reservation_id", reservationIds);
 
-  // PostgREST devuelve la relacion como objeto, pero segun como infiera la
-  // cardinalidad puede venir como array de uno. Aceptamos las dos formas.
-  const uno = <T,>(rel: unknown): T | null =>
-    Array.isArray(rel) ? ((rel[0] ?? null) as T | null) : ((rel ?? null) as T | null);
+  const delivered = new Set(
+    (deliveredRows ?? []).map((row: { reservation_id: string; reminder_hours_before: number }) =>
+      `${row.reservation_id}:${row.reminder_hours_before}`,
+    ),
+  );
+
+  const url = `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`;
+  let sent = 0;
+  let skipped = 0;
+  let failed = 0;
+  const errores: unknown[] = [];
 
   for (const res of reservations) {
     const perfil = uno<{ first_name?: string; last_name?: string; phone?: string }>(res.profiles);
     const servicio = uno<{ name?: string }>(res.services);
-    const negocio = uno<{ name?: string }>(res.businesses);
+    const negocio = uno<{ name?: string; reminders_enabled?: boolean; reminder_hours_before?: number[] }>(res.businesses);
 
-    // Las reservas cargadas a mano por el negocio (turnos por telefono) no
-    // tienen profile: el nombre y el telefono del cliente van en la propia fila.
-    // Sin esto, esos clientes nunca recibirian el recordatorio.
+    if (!negocio?.reminders_enabled) {
+      skipped++;
+      continue;
+    }
+
+    const configuredHours = Array.from(new Set((negocio.reminder_hours_before ?? [24])
+      .filter((value) => Number.isFinite(value) && value > 0)))
+      .sort((a, b) => a - b);
+
     const telefonoCrudo = res.is_manual
       ? (res.manual_client_phone as string | null) ?? perfil?.phone
       : perfil?.phone ?? (res.manual_client_phone as string | null);
-
     const to = normalizePhone(telefonoCrudo ?? "");
-    if (!to) { skipped++; continue; }
+    if (!to) {
+      skipped++;
+      continue;
+    }
 
     const nombrePerfil = `${perfil?.first_name ?? ""} ${perfil?.last_name ?? ""}`.trim();
     const nombre =
@@ -128,9 +136,14 @@ Deno.serve(async () => {
       "Cliente";
 
     const inicio = new Date(res.start_time as string);
+    const diffHours = (inicio.getTime() - now.getTime()) / 3600_000;
+    const dueHours = configuredHours.filter((hours) => diffHours >= hours - 1 && diffHours <= hours + 1);
 
-    // El orden de los parametros TIENE que coincidir con la plantilla aprobada:
-    // {{1}} cliente, {{2}} negocio, {{3}} servicio, {{4}} fecha, {{5}} hora.
+    if (!dueHours.length) {
+      skipped++;
+      continue;
+    }
+
     const parameters = [
       nombre,
       negocio?.name ?? "el negocio",
@@ -139,46 +152,54 @@ Deno.serve(async () => {
       horaPy(inicio),
     ].map((text) => ({ type: "text", text }));
 
-    try {
-      const r = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          to,
-          type: "template",
-          template: {
-            name: templateName,
-            language: { code: templateLang },
-            components: [{ type: "body", parameters }],
+    for (const hours of dueHours) {
+      const deliveryKey = `${res.id}:${hours}`;
+      if (delivered.has(deliveryKey)) continue;
+
+      try {
+        const r = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
           },
-        }),
-      });
+          body: JSON.stringify({
+            messaging_product: "whatsapp",
+            to,
+            type: "template",
+            template: {
+              name: templateName,
+              language: { code: templateLang },
+              components: [{ type: "body", parameters }],
+            },
+          }),
+        });
 
-      const body = await r.json().catch(() => ({}));
+        const body = await r.json().catch(() => ({}));
+        const messageId = body?.messages?.[0]?.id;
 
-      // Solo marcamos como enviado si Meta devolvio un id de mensaje. El codigo
-      // viejo marcaba con que el POST diera OK, asi que daba por "enviados"
-      // recordatorios que nadie recibia.
-      const messageId = body?.messages?.[0]?.id;
-      if (r.ok && messageId) {
-        await supabase
-          .from("reservations")
-          .update({ whatsapp_reminder_sent: true })
-          .eq("id", res.id);
-        sent++;
-      } else {
+        if (r.ok && messageId) {
+          await supabase.from("reservation_reminder_deliveries").insert({
+            reservation_id: res.id,
+            reminder_hours_before: hours,
+            sent_at: new Date().toISOString(),
+          });
+          await supabase
+            .from("reservations")
+            .update({ whatsapp_reminder_sent: true })
+            .eq("id", res.id);
+          delivered.add(deliveryKey);
+          sent++;
+        } else {
+          failed++;
+          errores.push({ id: res.id, hours, status: r.status, body });
+          console.error(`Recordatorio ${res.id} (${hours}h) rechazado por Meta:`, JSON.stringify(body));
+        }
+      } catch (e) {
         failed++;
-        errores.push({ id: res.id, status: r.status, body });
-        console.error(`Recordatorio ${res.id} rechazado por Meta:`, JSON.stringify(body));
+        errores.push({ id: res.id, hours, error: String(e) });
+        console.error(`Recordatorio ${res.id} (${hours}h) fallo:`, e);
       }
-    } catch (e) {
-      failed++;
-      errores.push({ id: res.id, error: String(e) });
-      console.error(`Recordatorio ${res.id} fallo:`, e);
     }
   }
 
