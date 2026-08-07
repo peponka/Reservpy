@@ -1,4 +1,5 @@
 import 'package:reservpy/src/core/supabase/supabase_config.dart';
+import 'package:reservpy/src/shared/models/models.dart';
 
 // ── Plan prices fallback ──────────────────────────────────────────────────────
 const kPlanPrices = <String, int>{
@@ -435,6 +436,16 @@ class AdminRepository {
       revenueThisMonth:       revenueThisMonth,
       monthlyRevenue:         monthlyRevenue,
     );
+  }
+
+  // ── Users ──────────────────────────────────────────────────────────────────
+
+  Future<List<AppUser>> getAllUsers() async {
+    final data = await _db
+        .from('profiles')
+        .select()
+        .order('created_at', ascending: false);
+    return (data as List).map((j) => AppUser.fromJson(j)).toList();
   }
 
   // ── Businesses ─────────────────────────────────────────────────────────────

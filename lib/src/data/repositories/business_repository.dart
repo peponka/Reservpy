@@ -88,7 +88,9 @@ class BusinessRepository {
   Future<void> upgradeToPro(String businessId) async {
     await _client.from('businesses').update({
       'plan': 'pro',
+      'subscription_status': 'active',
       'plan_activated_at': DateTime.now().toIso8601String(),
+      'trial_ends_at': null,
     }).eq('id', businessId);
   }
 
@@ -96,6 +98,7 @@ class BusinessRepository {
   Future<void> downgradeToFree(String businessId) async {
     await _client.from('businesses').update({
       'plan': 'free',
+      'subscription_status': 'free',
       'plan_activated_at': null,
     }).eq('id', businessId);
   }

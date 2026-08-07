@@ -53,7 +53,7 @@ class _ExploreMapScreenState extends ConsumerState<ExploreMapScreen> {
     return categories.cast<BusinessCategory?>().firstWhere(
       (c) => c?.id == categoryId,
       orElse: () => null,
-    ) ?? const BusinessCategory(id: '', name: 'Cargando...', icon: Icons.category, color: Colors.grey);
+    ) ?? const BusinessCategory(id: '', name: 'Sin categoria', icon: Icons.category, color: Colors.grey);
   }
 
   List<Marker> _buildMarkers(
@@ -796,9 +796,8 @@ class _BusinessCard extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final isOpen = business.isCurrentlyOpen;
 
-    // Simulated distance based on business coordinates.
-    final distanceKm =
-        ((business.latitude ?? 0).abs() % 5 * 0.3 + 0.2).toStringAsFixed(1);
+    final hasBusinessLocation =
+        business.latitude != null && business.longitude != null;
 
     // Lighter shade for gradient
     final lighterCategoryColor = Color.lerp(category.color, Colors.white, 0.35)!;
@@ -1010,17 +1009,21 @@ class _BusinessCard extends StatelessWidget {
                         ),
                         const SizedBox(height: AppSizes.s12),
 
-                        // Bottom row: distance, hours, reserve button
+                        // Bottom row: location status, hours, reserve button
                         Row(
                           children: [
                             Icon(
-                              Icons.near_me_rounded,
+                              hasBusinessLocation
+                                  ? Icons.location_on_rounded
+                                  : Icons.location_off_rounded,
                               size: 14,
                               color: colorScheme.outline,
                             ),
                             const SizedBox(width: AppSizes.s4),
                             Text(
-                              '$distanceKm km',
+                              hasBusinessLocation
+                                  ? 'Ubicacion disponible'
+                                  : 'Sin ubicacion cargada',
                               style: GoogleFonts.inter(
                                 fontSize: 12,
                                 color: colorScheme.outline,

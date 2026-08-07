@@ -6,6 +6,8 @@ import 'package:uuid/uuid.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../data/repositories/business_repository.dart';
+import '../../data/repositories/service_repository.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
 import '../../core/widgets/widgets.dart';
@@ -250,6 +252,7 @@ class _EditBusinessScreenState extends ConsumerState<EditBusinessScreen> {
                       : null,
                   durationMinutes: int.parse(durationController.text.trim()),
                   price: double.parse(priceController.text.trim()),
+                  sortOrder: _services.length,
                 );
                 Navigator.of(ctx).pop(service);
               },
@@ -505,11 +508,6 @@ class _EditBusinessScreenState extends ConsumerState<EditBusinessScreen> {
 
     setState(() => _isSaving = true);
 
-    // Simulate network delay
-    await Future.delayed(const Duration(milliseconds: 600));
-
-    if (!mounted) return;
-
     final updatedBusiness = Business(
       id: business.id,
       ownerId: business.ownerId,
@@ -538,8 +536,63 @@ class _EditBusinessScreenState extends ConsumerState<EditBusinessScreen> {
       createdAt: business.createdAt,
     );
 
-    // Invalidate to re-fetch from Supabase
-    ref.invalidate(businessesProvider);
+    final businessRepository = BusinessRepository();
+    final serviceRepository = ServiceRepository();
+    final existingServices =
+        ref.read(businessServicesProvider(business.id)).valueOrNull ?? [];
+
+    try {
+      await businessRepository.update(updatedBusiness);
+
+      final existingById = {
+        for (final service in existingServices) service.id: service,
+      };
+      final editedById = {
+        for (final service in _services)
+          service.id: ServiceModel(
+            id: service.id,
+            businessId:
+                service.businessId.isEmpty ? business.id : service.businessId,
+            name: service.name,
+            description: service.description,
+            durationMinutes: service.durationMinutes,
+            price: service.price,
+            currency: service.currency,
+            isActive: service.isActive,
+            sortOrder: service.sortOrder,
+          ),
+      };
+
+      for (final service in editedById.values) {
+        if (existingById.containsKey(service.id)) {
+          await serviceRepository.update(service);
+        } else {
+          await serviceRepository.create(service);
+        }
+      }
+
+      final deletedIds = existingById.keys
+          .where((id) => !editedById.containsKey(id))
+          .toList(growable: false);
+      for (final id in deletedIds) {
+        await serviceRepository.delete(id);
+      }
+
+      ref.invalidate(businessesProvider);
+      ref.invalidate(ownerBusinessProvider);
+      ref.invalidate(currentBusinessProvider);
+      ref.invalidate(businessServicesProvider(business.id));
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No se pudo guardar los cambios: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
     setState(() => _isSaving = false);
 
@@ -552,7 +605,7 @@ class _EditBusinessScreenState extends ConsumerState<EditBusinessScreen> {
             const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
             const SizedBox(width: AppSizes.s8),
             Expanded(
-              child: Text('¡${updatedBusiness.name} actualizado exitosamente!'),
+              child: Text('${updatedBusiness.name} actualizado correctamente'),
             ),
           ],
         ),
@@ -1495,7 +1548,7 @@ class _EditBusinessHeader extends ConsumerWidget {
     final category = categories.cast<BusinessCategory?>().firstWhere(
       (c) => c?.id == categoryId,
       orElse: () => null,
-    ) ?? const BusinessCategory(id: '', name: 'Cargando...', icon: Icons.category, color: Colors.grey);
+    ) ?? const BusinessCategory(id: '', name: 'Sin categoria', icon: Icons.category, color: Colors.grey);
 
     return Container(
       width: double.infinity,

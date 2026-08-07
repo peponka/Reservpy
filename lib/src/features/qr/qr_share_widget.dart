@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:reservpy/src/core/constants/app_colors.dart';
+import 'package:reservpy/src/core/utils/string_utils.dart';
 
 /// Shows a QR code dialog for sharing a business.
 class BusinessQrDialog extends StatelessWidget {
@@ -18,7 +19,7 @@ class BusinessQrDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Build the shareable URL
-    final url = '${Uri.base.origin}/#/business-detail/$businessId';
+    final url = publicBusinessUrl(businessId);
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),

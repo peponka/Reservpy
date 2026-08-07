@@ -5,12 +5,12 @@ import 'package:intl/intl.dart';
 
 import 'package:reservpy/src/core/constants/app_colors.dart';
 import 'package:reservpy/src/shared/models/models.dart';
-import 'package:reservpy/src/data/repositories/admin_repository.dart';
+import 'package:reservpy/src/shared/providers/providers.dart';
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 final _adminSubsProvider = FutureProvider<List<Business>>((ref) async {
-  return AdminRepository().getAllBusinessesAdmin();
+  return ref.watch(businessesProvider.future);
 });
 
 // ── Screen ────────────────────────────────────────────────────────────────────

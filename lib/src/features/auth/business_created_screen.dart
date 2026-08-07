@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Pantalla de éxito que se muestra justo después de registrar un negocio.
-/// Confirma que el negocio fue creado y lleva al panel del negocio.
+/// Pantalla de exito que se muestra justo despues de registrar un negocio.
+/// Confirma que el negocio fue creado y lleva al onboarding para terminar la configuracion.
 class BusinessCreatedScreen extends StatefulWidget {
   final String businessName;
 
@@ -51,7 +51,7 @@ class _BusinessCreatedScreenState extends State<BusinessCreatedScreen>
             children: [
               const Spacer(flex: 2),
 
-              // Check animado dentro de un círculo
+              // Check animado dentro de un circulo
               ScaleTransition(
                 scale: _scale,
                 child: Container(
@@ -83,7 +83,7 @@ class _BusinessCreatedScreenState extends State<BusinessCreatedScreen>
                 child: Column(
                   children: [
                     Text(
-                      '¡Tu negocio fue creado! ??',
+                      'Tu negocio fue creado',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.inter(
                         fontSize: 26,
@@ -95,8 +95,8 @@ class _BusinessCreatedScreenState extends State<BusinessCreatedScreen>
                     const SizedBox(height: 12),
                     Text(
                       widget.businessName.trim().isNotEmpty
-                          ? '"${widget.businessName.trim()}" ya está listo para empezar a recibir reservas.'
-                          : 'Tu negocio ya está listo para empezar a recibir reservas.',
+                          ? '"${widget.businessName.trim()}" ya esta listo para empezar a recibir reservas.'
+                          : 'Tu negocio ya esta listo para empezar a recibir reservas.',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.inter(
                         fontSize: 16,
@@ -111,11 +111,11 @@ class _BusinessCreatedScreenState extends State<BusinessCreatedScreen>
 
               const Spacer(flex: 3),
 
-              // Botón ? panel del negocio
+              // Boton al panel del negocio
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: () => context.go('/business'),
+                  onPressed: () => context.go('/onboarding'),
                   style: FilledButton.styleFrom(
                     backgroundColor: _primary,
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -124,7 +124,7 @@ class _BusinessCreatedScreenState extends State<BusinessCreatedScreen>
                     ),
                   ),
                   child: Text(
-                    'Ir a mi negocio ?',
+                    'Continuar configuracion',
                     style: GoogleFonts.inter(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,

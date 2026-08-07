@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:reservpy/src/core/constants/app_sizes.dart';
 import 'package:reservpy/src/core/constants/app_colors.dart';
+import 'package:reservpy/src/core/utils/reservation_grouping.dart';
 import 'package:reservpy/src/data/repositories/reservation_repository.dart';
 import 'package:reservpy/src/data/repositories/notification_repository.dart';
 import 'package:reservpy/src/shared/providers/providers.dart';
@@ -13,11 +14,12 @@ import 'package:reservpy/src/features/reviews/review_widgets.dart';
 import 'package:reservpy/src/data/repositories/review_repository.dart';
 import 'package:reservpy/src/data/repositories/profile_repository.dart';
 import 'package:reservpy/src/data/services/email_service.dart';
+import 'package:reservpy/src/data/services/whatsapp_service.dart';
 
 // ─── Filter enum ─────────────────────────────────────────
 enum _ReservationFilter { all, upcoming, completed, cancelled }
 
-// ─── Local state ─────────────────────────────────────────
+
 final _reservationFilterProvider =
     StateProvider.autoDispose<_ReservationFilter>(
   (ref) => _ReservationFilter.all,
@@ -30,7 +32,7 @@ class MyReservationsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final filter = ref.watch(_reservationFilterProvider);
-    final allReservations = ref.watch(clientReservationsProvider).valueOrNull ?? [];
+    final allReservations = ref.watch(groupedClientReservationsProvider);
 
     // ── Apply filter ──
     final now = DateTime.now();
@@ -548,6 +550,22 @@ class _ReservationCardState extends ConsumerState<_ReservationCard> {
   bool _isCancelling = false;
   bool _hovered = false;
 
+  List<Reservation> _groupReservationsForCancellation(Reservation base) {
+    final allReservations = ref.read(clientReservationsProvider).valueOrNull ?? [];
+    final groupId = extractBookingGroupIdFromNotes(base.notes);
+    if (groupId == null) return [base];
+
+    final grouped = allReservations.where((reservation) {
+      if (reservation.businessId != base.businessId) return false;
+      if (reservation.clientId != base.clientId) return false;
+      if (reservation.status == ReservationStatus.cancelled) return false;
+      return extractBookingGroupIdFromNotes(reservation.notes) == groupId;
+    }).toList()
+      ..sort((a, b) => a.startTime.compareTo(b.startTime));
+
+    return grouped.isEmpty ? [base] : grouped;
+  }
+
   @override
   Widget build(BuildContext context) {
     final r = widget.reservation;
@@ -1014,11 +1032,14 @@ class _ReservationCardState extends ConsumerState<_ReservationCard> {
   Future<void> _cancelReservation(Reservation r, String reason) async {
     setState(() => _isCancelling = true);
     try {
-      await ReservationRepository().updateStatus(
-        r.id,
-        ReservationStatus.cancelled.name,
-        cancellationReason: reason.isNotEmpty ? reason : null,
-      );
+      final reservationsToCancel = _groupReservationsForCancellation(r);
+      for (final reservation in reservationsToCancel) {
+        await ReservationRepository().updateStatus(
+          reservation.id,
+          ReservationStatus.cancelled.name,
+          cancellationReason: reason.isNotEmpty ? reason : null,
+        );
+      }
       ref.invalidate(clientReservationsProvider);
 
       // Notify business owner about cancellation
@@ -1047,12 +1068,29 @@ class _ReservationCardState extends ConsumerState<_ReservationCard> {
             cancelledBy: user.fullName,
             reason: reason.isNotEmpty ? reason : null,
           );
+          WhatsAppService.enviarCancelacionTurnoCliente(
+            clientPhone: user.phone,
+            clientName: user.fullName,
+            businessName: r.businessName ?? 'Negocio',
+            serviceName: r.serviceName ?? 'Servicio',
+            startTime: r.startTime,
+            reason: reason.isNotEmpty ? reason : null,
+          );
 
           // Email to business owner
           ProfileRepository().getProfile(biz.ownerId).then((owner) {
             if (owner != null) {
               EmailService.enviarEmailCancelacionTurnoNegocio(
                 businessEmail: owner.email,
+                businessName: biz.name,
+                clientName: user.fullName,
+                serviceName: r.serviceName ?? 'Servicio',
+                startTime: r.startTime,
+                reason: reason.isNotEmpty ? reason : null,
+              );
+              WhatsAppService.enviarCancelacionTurnoNegocio(
+                ownerPhone: owner.phone,
+                ownerName: owner.fullName,
                 businessName: biz.name,
                 clientName: user.fullName,
                 serviceName: r.serviceName ?? 'Servicio',
@@ -1072,7 +1110,9 @@ class _ReservationCardState extends ConsumerState<_ReservationCard> {
                     color: Colors.white, size: 20),
                 const SizedBox(width: 8),
                 Text(
-                  'Reserva cancelada correctamente',
+                  reservationsToCancel.length > 1
+                      ? 'Reserva multiple cancelada correctamente'
+                      : 'Reserva cancelada correctamente',
                   style: GoogleFonts.inter(fontWeight: FontWeight.w500),
                 ),
               ],

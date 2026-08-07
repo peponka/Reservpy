@@ -33,6 +33,7 @@ class _SelectTimeScreenState extends ConsumerState<SelectTimeScreen> {
   DateTime? _selectedSlot;
   CalendarFormat _calendarFormat = CalendarFormat.month;
   List<Reservation> _dayReservations = [];
+  bool _didInitializeDay = false;
 
   @override
   void initState() {
@@ -40,6 +41,20 @@ class _SelectTimeScreenState extends ConsumerState<SelectTimeScreen> {
     final now = DateTime.now();
     _focusedDay = now;
     _selectedDay = DateTime(now.year, now.month, now.day);
+  }
+
+  void _initializeSelectedDay(Business? business) {
+    if (_didInitializeDay) return;
+    _didInitializeDay = true;
+
+    if (business == null) {
+      _fetchDayReservations();
+      return;
+    }
+
+    final nextOpenDay = _findNextOpenDay(business, _selectedDay);
+    _focusedDay = nextOpenDay;
+    _selectedDay = nextOpenDay;
     _fetchDayReservations();
   }
 
@@ -53,8 +68,27 @@ class _SelectTimeScreenState extends ConsumerState<SelectTimeScreen> {
     }
   }
 
+  bool _isBusinessOpenOnDay(Business business, DateTime day) {
+    return business.workingDays.contains(day.weekday);
+  }
+
+  DateTime _findNextOpenDay(Business business, DateTime startDay) {
+    var candidate = DateTime(startDay.year, startDay.month, startDay.day);
+    for (var i = 0; i < 14; i++) {
+      if (_isBusinessOpenOnDay(business, candidate)) {
+        return candidate;
+      }
+      candidate = candidate.add(const Duration(days: 1));
+    }
+    return DateTime(startDay.year, startDay.month, startDay.day);
+  }
+
   /// Generates time slots for the selected day based on business hours.
   List<DateTime> _generateSlots(Business business) {
+    if (!_isBusinessOpenOnDay(business, _selectedDay)) {
+      return [];
+    }
+
     return AppDateUtils.generateSlots(
       _selectedDay,
       business.openingTime.hour,
@@ -90,10 +124,42 @@ class _SelectTimeScreenState extends ConsumerState<SelectTimeScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final businesses = ref.watch(businessesProvider).valueOrNull ?? [];
-    final blockedSlots = ref.watch(blockedSlotsForBusinessProvider(widget.businessId)).valueOrNull ?? [];
+    final businessAsync = ref.watch(businessByIdProvider(widget.businessId));
+    final blockedSlotsAsync = ref.watch(blockedSlotsForBusinessProvider(widget.businessId));
+    final servicesAsync = ref.watch(businessServicesProvider(widget.businessId));
+    final blockedSlots = blockedSlotsAsync.valueOrNull ?? [];
+    final blockedSlotsLoading = blockedSlotsAsync.isLoading && blockedSlotsAsync.valueOrNull == null;
+    final services = servicesAsync.valueOrNull ?? [];
+    final servicesLoading = servicesAsync.isLoading && servicesAsync.valueOrNull == null;
+    final business = businessAsync.valueOrNull;
+    if (businessAsync.isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
-    final business = businesses.where((b) => b.id == widget.businessId).firstOrNull;
+    if (!_didInitializeDay && business != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _initializeSelectedDay(business);
+      });
+    }
+
+    if (business != null && !_isBusinessOpenOnDay(business, _selectedDay)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final nextOpenDay = _findNextOpenDay(business, _selectedDay);
+        if (!isSameDay(nextOpenDay, _selectedDay)) {
+          setState(() {
+            _selectedDay = nextOpenDay;
+            _focusedDay = nextOpenDay;
+            _selectedSlot = null;
+          });
+          _fetchDayReservations();
+        }
+      });
+    }
+
     if (business == null) {
       return Scaffold(
         appBar: AppBar(title: const Text(AppStrings.selectTime)),
@@ -104,16 +170,35 @@ class _SelectTimeScreenState extends ConsumerState<SelectTimeScreen> {
       );
     }
 
-    // Resolve the selected service(s) — puede ser una lista separada por
-    // comas (selección múltiple) — y sumar la duración total.
-    final services = ref.watch(businessServicesProvider(widget.businessId)).valueOrNull ?? [];
+    // Resolve the selected service(s) ? puede ser una lista separada por
+    // comas (selecci?n m?ltiple) ? y sumar la duraci?n total.
+    final activeServices = services.where((s) => s.isActive).toList();
     final selectedIds = widget.serviceId.split(',');
     final selectedServices =
-        services.where((s) => selectedIds.contains(s.id)).toList();
-    final serviceDuration = selectedServices.isEmpty
-        ? business.slotDurationMinutes
-        : selectedServices.fold<int>(
-            0, (sum, s) => sum + s.durationMinutes);
+        activeServices.where((s) => selectedIds.contains(s.id)).toList();
+
+    if (servicesLoading || blockedSlotsLoading) {
+      return Scaffold(
+        appBar: AppBar(title: const Text(AppStrings.selectTime)),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (selectedServices.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: const Text(AppStrings.selectTime)),
+        body: const EmptyState(
+          icon: Icons.design_services_outlined,
+          title: 'Servicios no encontrados',
+          subtitle: 'Volve a elegir el servicio para continuar con la reserva.',
+        ),
+      );
+    }
+
+    final serviceDuration = selectedServices.fold<int>(
+      0,
+      (sum, s) => sum + s.durationMinutes,
+    );
 
     // Use pre-fetched day reservations
     final dayReservations = _dayReservations;
@@ -186,7 +271,8 @@ class _SelectTimeScreenState extends ConsumerState<SelectTimeScreen> {
                   final today = DateTime.now();
                   final dayOnly = DateTime(day.year, day.month, day.day);
                   final todayOnly = DateTime(today.year, today.month, today.day);
-                  return !dayOnly.isBefore(todayOnly);
+                  if (dayOnly.isBefore(todayOnly)) return false;
+                  return _isBusinessOpenOnDay(business, dayOnly);
                 },
                 calendarStyle: CalendarStyle(
                   todayDecoration: BoxDecoration(

@@ -1,7 +1,12 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:reservpy/src/shared/models/models.dart';
@@ -10,11 +15,13 @@ import 'package:reservpy/src/core/widgets/widgets.dart';
 import 'package:reservpy/src/core/constants/app_sizes.dart';
 import 'package:reservpy/src/core/constants/app_strings.dart';
 import 'package:reservpy/src/core/utils/validators.dart';
+import 'package:reservpy/src/data/repositories/business_repository.dart';
+import 'package:reservpy/src/data/repositories/service_repository.dart';
 
 /// Multi-step business creation flow using a [PageController].
 ///
-/// **Step 1 — Category Selection**: 2-column grid of mockCategories.
-/// **Step 2 — Business Info**: Name, address, phone, website fields + map placeholder.
+/// **Step 1 ? Category Selection**: 2-column grid of business categories.
+/// **Step 2 ? Business Info**: Name, address, phone, website fields + interactive map.
 /// **Step 3 — Configuration**: Description, opening/closing times, slot duration,
 /// services list with add-service dialog. On completion, creates the business
 /// and navigates to /business.
@@ -41,6 +48,11 @@ class _CreateBusinessScreenState extends ConsumerState<CreateBusinessScreen> {
   final _phoneController = TextEditingController();
   final _websiteController = TextEditingController();
 
+  double? _latitude;
+  double? _longitude;
+  final _mapController = MapController();
+  bool _isSearchingAddress = false;
+
   // Step 3 — Configuration
   final _descriptionController = TextEditingController();
   TimeOfDay _openingTime = const TimeOfDay(hour: 8, minute: 0);
@@ -59,7 +71,69 @@ class _CreateBusinessScreenState extends ConsumerState<CreateBusinessScreen> {
     _phoneController.dispose();
     _websiteController.dispose();
     _descriptionController.dispose();
+    _mapController.dispose();
     super.dispose();
+  }
+
+  Future<void> _searchAddressOnMap() async {
+    final query = _addressController.text.trim().isNotEmpty
+        ? _addressController.text.trim()
+        : _searchController.text.trim();
+    if (query.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Escribi una direccion para buscar en el mapa')),
+      );
+      return;
+    }
+
+    if (_addressController.text.trim().isEmpty) {
+      _addressController.text = query;
+    }
+
+    setState(() => _isSearchingAddress = true);
+
+    try {
+      final searchUrl =
+          'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(query)}&format=json&limit=1';
+      final response = await http.get(
+        Uri.parse(searchUrl),
+        headers: {'User-Agent': 'com.reservpy.app'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data is List && data.isNotEmpty) {
+          final lat = double.tryParse(data[0]['lat'].toString());
+          final lon = double.tryParse(data[0]['lon'].toString());
+          if (lat != null && lon != null) {
+            setState(() {
+              _latitude = lat;
+              _longitude = lon;
+            });
+            _mapController.move(LatLng(lat, lon), 16.0);
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Ubicacion encontrada y marcada en el mapa')),
+            );
+            return;
+          }
+        }
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No pudimos encontrar esa direccion. Proba una mas especifica.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Hubo un error de red al buscar la direccion')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSearchingAddress = false);
+      }
+    }
   }
 
   /// Validates current step and advances the PageView.
@@ -196,7 +270,7 @@ class _CreateBusinessScreenState extends ConsumerState<CreateBusinessScreen> {
     }
   }
 
-  /// Creates the business, adds it to the provider, and navigates away.
+  /// Creates the business in Supabase and persists the initial services.
   Future<void> _handleCreate() async {
     if (_descriptionController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -205,49 +279,88 @@ class _CreateBusinessScreenState extends ConsumerState<CreateBusinessScreen> {
       return;
     }
 
+    final user = ref.read(currentUserProvider);
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Necesitás iniciar sesión para crear un negocio')),
+      );
+      return;
+    }
+
     setState(() => _isCreating = true);
 
-    await Future.delayed(const Duration(milliseconds: 600));
+    try {
+      final businessId = const Uuid().v4();
+      final businessRepo = BusinessRepository();
+      final serviceRepo = ServiceRepository();
 
-    if (!mounted) return;
+      final newBusiness = Business(
+        id: businessId,
+        ownerId: user.id,
+        categoryId: _selectedCategoryId!,
+        name: _nameController.text.trim(),
+        description: _descriptionController.text.trim(),
+        address: _addressController.text.trim(),
+        phone: _phoneController.text.trim(),
+        website: _websiteController.text.trim().isNotEmpty
+            ? _websiteController.text.trim()
+            : null,
+        openingTime: _openingTime,
+        closingTime: _closingTime,
+        slotDurationMinutes: _slotDurationMinutes,
+        latitude: _latitude,
+        longitude: _longitude,
+        createdAt: DateTime.now(),
+      );
 
-    final user = ref.read(currentUserProvider);
-    final businessId = const Uuid().v4();
+      await businessRepo.create(newBusiness);
 
-    final newBusiness = Business(
-      id: businessId,
-      ownerId: user?.id ?? const Uuid().v4(),
-      categoryId: _selectedCategoryId!,
-      name: _nameController.text.trim(),
-      description: _descriptionController.text.trim(),
-      address: _addressController.text.trim(),
-      phone: _phoneController.text.trim(),
-      website: _websiteController.text.trim().isNotEmpty ? _websiteController.text.trim() : null,
-      openingTime: _openingTime,
-      closingTime: _closingTime,
-      slotDurationMinutes: _slotDurationMinutes,
-      createdAt: DateTime.now(),
-    );
+      for (var i = 0; i < _services.length; i++) {
+        final service = _services[i];
+        await serviceRepo.create(
+          ServiceModel(
+            id: const Uuid().v4(),
+            businessId: businessId,
+            name: service.name,
+            description: service.description,
+            durationMinutes: service.durationMinutes,
+            price: service.price,
+            currency: service.currency,
+            isActive: service.isActive,
+            sortOrder: i,
+          ),
+        );
+      }
 
-    ref.invalidate(businessesProvider);
+      ref.invalidate(businessesProvider);
+      ref.invalidate(ownerBusinessProvider);
+      ref.invalidate(currentBusinessProvider);
+      ref.invalidate(servicesProvider);
+      ref.invalidate(businessServicesProvider(businessId));
 
-    setState(() => _isCreating = false);
+      if (!mounted) return;
 
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-            const SizedBox(width: AppSizes.s8),
-            Expanded(child: Text('¡${newBusiness.name} creado exitosamente!')),
-          ],
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: AppSizes.s8),
+              Expanded(child: Text('¡${newBusiness.name} creado exitosamente!')),
+            ],
+          ),
         ),
-      ),
-    );
+      );
 
-    context.go('/business');
+      context.go('/business');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al crear el negocio: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isCreating = false);
+    }
   }
 
   String _formatTimeOfDay(TimeOfDay tod) {
@@ -562,14 +675,23 @@ class _CreateBusinessScreenState extends ConsumerState<CreateBusinessScreen> {
 
                 const SizedBox(height: AppSizes.s24),
 
-                // Search (simulated Google Places)
                 AppTextField(
                   controller: _searchController,
-                  label: 'Buscar dirección',
-                  hint: 'Escribí para buscar...',
+                  label: 'Buscar direccion',
+                  hint: 'Escribi para buscar...',
                   prefixIcon: Icons.search_rounded,
+                  suffix: IconButton(
+                    onPressed: _isSearchingAddress ? null : _searchAddressOnMap,
+                    icon: _isSearchingAddress
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.travel_explore_rounded),
+                    tooltip: 'Buscar en el mapa',
+                  ),
                   onChanged: (value) {
-                    // Simulate autofill from search.
                     if (value.length > 5 && _addressController.text.isEmpty) {
                       _addressController.text = value;
                     }
@@ -629,36 +751,117 @@ class _CreateBusinessScreenState extends ConsumerState<CreateBusinessScreen> {
                     .fadeIn(delay: 500.ms, duration: 400.ms)
                     .slideY(begin: 0.1, end: 0, delay: 500.ms, duration: 400.ms),
 
-                const SizedBox(height: AppSizes.s20),
+                const SizedBox(height: AppSizes.s12),
 
-                // Map placeholder
-                Container(
-                  height: 160,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: colorScheme.outline.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: FilledButton.tonalIcon(
+                    onPressed: _isSearchingAddress ? null : _searchAddressOnMap,
+                    icon: const Icon(Icons.search_rounded, size: 18),
+                    label: Text(_isSearchingAddress ? 'Buscando...' : 'Buscar direccion en el mapa'),
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.place_rounded,
-                        size: 40,
-                        color: colorScheme.primary.withValues(alpha: 0.5),
-                      ),
-                      const SizedBox(height: AppSizes.s8),
-                      Text(
-                        _addressController.text.isNotEmpty
-                            ? _addressController.text
-                            : 'Ubicación del negocio',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurface.withValues(alpha: 0.5),
+                )
+                    .animate()
+                    .fadeIn(delay: 540.ms, duration: 400.ms),
+
+                const SizedBox(height: AppSizes.s16),
+
+                Text(
+                  'Toca el mapa para ajustar la ubicacion exacta de tu negocio',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurface.withValues(alpha: 0.55),
+                  ),
+                ),
+
+                const SizedBox(height: AppSizes.s8),
+
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                  child: SizedBox(
+                    height: 220,
+                    width: double.infinity,
+                    child: Stack(
+                      children: [
+                        FlutterMap(
+                          mapController: _mapController,
+                          options: MapOptions(
+                            initialCenter: LatLng(
+                              _latitude ?? -25.2637,
+                              _longitude ?? -57.5759,
+                            ),
+                            initialZoom: _latitude != null ? 16.0 : 13.0,
+                            onTap: (tapPosition, point) {
+                              setState(() {
+                                _latitude = point.latitude;
+                                _longitude = point.longitude;
+                              });
+                            },
+                          ),
+                          children: [
+                            TileLayer(
+                              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                              userAgentPackageName: 'com.reservpy.app',
+                            ),
+                            if (_latitude != null && _longitude != null)
+                              MarkerLayer(
+                                markers: [
+                                  Marker(
+                                    point: LatLng(_latitude!, _longitude!),
+                                    width: 48,
+                                    height: 48,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: colorScheme.primary,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: Colors.white, width: 3),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: colorScheme.primary.withValues(alpha: 0.35),
+                                            blurRadius: 8,
+                                            spreadRadius: 2,
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Icon(
+                                        Icons.store_rounded,
+                                        color: Colors.white,
+                                        size: 22,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                          ],
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
+                        if (_latitude != null && _longitude != null)
+                          Positioned(
+                            left: 8,
+                            bottom: 8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.72),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.check_circle, color: Colors.white, size: 14),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    '${_latitude!.toStringAsFixed(4)}, ${_longitude!.toStringAsFixed(4)}',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 )
                     .animate()

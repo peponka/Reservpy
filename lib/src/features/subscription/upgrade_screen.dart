@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
 
-/// Plan upgrade screen — shows Pro plan features and price.
+/// Plan upgrade screen for business owners.
 class UpgradeScreen extends StatelessWidget {
   const UpgradeScreen({super.key});
 
@@ -23,7 +24,6 @@ class UpgradeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── Header ─────────────────────────────────────────
             Center(
               child: Container(
                 width: 72,
@@ -43,23 +43,30 @@ class UpgradeScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: const Icon(Icons.workspace_premium_rounded,
-                    size: 36, color: Colors.white),
+                child: const Icon(
+                  Icons.workspace_premium_rounded,
+                  size: 36,
+                  color: Colors.white,
+                ),
               ),
             ),
             const SizedBox(height: AppSizes.s16),
-            Text('Plan Pro',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold)),
+            Text(
+              'Plan Pro',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: AppSizes.s8),
-            Text('Desbloqueá todo el potencial de tu negocio',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.6))),
+            Text(
+              'Desbloquea todo el potencial de tu negocio',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withOpacity(0.6),
+              ),
+            ),
             const SizedBox(height: AppSizes.s32),
-
-            // ── Price card ─────────────────────────────────────
             Container(
               padding: const EdgeInsets.all(AppSizes.s24),
               decoration: BoxDecoration(
@@ -79,24 +86,26 @@ class UpgradeScreen extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  const Row(
+                  Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.star_rounded,
-                          color: Color(0xFFFFD54F), size: 18),
+                      Icon(Icons.star_rounded, color: Color(0xFFFFD54F), size: 18),
                       SizedBox(width: 6),
-                      Text('PRO',
-                          style: TextStyle(
-                              color: Color(0xFFFFD54F),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                              letterSpacing: 2)),
+                      Text(
+                        'PRO',
+                        style: TextStyle(
+                          color: Color(0xFFFFD54F),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          letterSpacing: 2,
+                        ),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: AppSizes.s12),
+                  SizedBox(height: AppSizes.s12),
                   RichText(
                     textAlign: TextAlign.center,
-                    text: const TextSpan(
+                    text: TextSpan(
                       children: [
                         TextSpan(
                           text: 'Gs. 99.000',
@@ -108,70 +117,82 @@ class UpgradeScreen extends StatelessWidget {
                         ),
                         TextSpan(
                           text: ' / mes',
-                          style: TextStyle(
-                              color: Colors.white60, fontSize: 16),
+                          style: TextStyle(color: Colors.white60, fontSize: 16),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: AppSizes.s8),
-                  const Text('Renovación mensual · Cancelá cuando quieras',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                          color: Colors.white38, fontSize: 12)),
+                  SizedBox(height: AppSizes.s8),
+                  Text(
+                    'Renovacion mensual - Cancela cuando quieras',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white38, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSizes.s24),
+            Container(
+              padding: const EdgeInsets.all(AppSizes.s16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF8E1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFFFE082)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.info_outline_rounded, color: Color(0xFFFFA000)),
+                  const SizedBox(width: AppSizes.s12),
+                  Expanded(
+                    child: Text(
+                      'En este entorno todavia no esta conectada la pasarela real de Bancard. La siguiente pantalla activa Pro en modo demo para poder probar el producto completo sin pedir datos de tarjeta falsos.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withOpacity(0.8),
+                        height: 1.35,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: AppSizes.s32),
-
-            // ── Features list ──────────────────────────────────
-            Text('¿Qué incluye el Plan Pro?',
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              'Que incluye el Plan Pro',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: AppSizes.s16),
-            _Feature(icon: Icons.all_inclusive_rounded,
-                label: 'Reservas ilimitadas'),
-            _Feature(icon: Icons.people_rounded,
-                label: 'Equipo ilimitado (empleados)'),
-            _Feature(icon: Icons.trending_up_rounded,
-                label: 'Reportes y métricas avanzadas'),
-            _Feature(icon: Icons.download_rounded,
-                label: 'Exportar a Excel para tu contador'),
-            _Feature(icon: Icons.notifications_active_rounded,
-                label: 'Recordatorios automáticos a clientes'),
-            _Feature(icon: Icons.support_agent_rounded,
-                label: 'Soporte prioritario'),
+            const _Feature(icon: Icons.all_inclusive_rounded, label: 'Reservas ilimitadas'),
+            const _Feature(icon: Icons.people_rounded, label: 'Equipo ilimitado (empleados)'),
+            const _Feature(icon: Icons.trending_up_rounded, label: 'Reportes y metricas avanzadas'),
+            const _Feature(icon: Icons.download_rounded, label: 'Exportar reportes CSV'),
+            const _Feature(icon: Icons.notifications_active_rounded, label: 'Recordatorios automaticos a clientes'),
+            const _Feature(icon: Icons.support_agent_rounded, label: 'Soporte prioritario'),
             const SizedBox(height: AppSizes.s32),
-
-            // ── CTA ────────────────────────────────────────────
             FilledButton.icon(
               onPressed: () => context.push('/upgrade/payment'),
-              icon: const Icon(Icons.credit_card_rounded),
-              label: const Text('Pagar con Bancard'),
+              icon: const Icon(Icons.arrow_forward_rounded),
+              label: const Text('Continuar con la activacion'),
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                textStyle: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.bold),
+                textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
             ),
             const SizedBox(height: AppSizes.s12),
             Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.lock_outline_rounded,
-                      size: 14,
-                      color: theme.colorScheme.onSurface.withOpacity(0.4)),
-                  const SizedBox(width: 4),
-                  Text('Pago seguro procesado por Bancard',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                          color:
-                              theme.colorScheme.onSurface.withOpacity(0.4))),
-                ],
+              child: Text(
+                'El cobro corresponde al negocio, no a tus clientes.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withOpacity(0.5),
+                ),
               ),
             ),
             const SizedBox(height: AppSizes.s24),
@@ -185,6 +206,7 @@ class UpgradeScreen extends StatelessWidget {
 class _Feature extends StatelessWidget {
   final IconData icon;
   final String label;
+
   const _Feature({required this.icon, required this.label});
 
   @override
@@ -204,11 +226,14 @@ class _Feature extends StatelessWidget {
           ),
           const SizedBox(width: 14),
           Expanded(
-              child: Text(label,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500))),
-          const Icon(Icons.check_circle_rounded,
-              size: 18, color: AppColors.primary),
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+            ),
+          ),
+          const Icon(Icons.check_circle_rounded, size: 18, color: AppColors.primary),
         ],
       ),
     );

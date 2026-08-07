@@ -382,7 +382,7 @@ class Business {
 
   /// Whether this business currently has Pro-level access — either because
   /// it's a paying customer, or because it's still inside its free trial.
-  bool get hasActiveAccess => isPro || subscriptionStatus == 'trial';
+  bool get hasActiveAccess => isPro || trialDaysLeft > 0;
 
   /// Days left in the free trial. 0 if not in a trial or already expired.
   int get trialDaysLeft {
@@ -663,6 +663,40 @@ class BlockedSlot {
     'start_time': startTime.toIso8601String(),
     'end_time': endTime.toIso8601String(),
     'reason': reason,
+  };
+}
+
+class ClientPrivateNote {
+  final String id;
+  final String businessId;
+  final String clientId;
+  final String note;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  const ClientPrivateNote({
+    required this.id,
+    required this.businessId,
+    required this.clientId,
+    required this.note,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory ClientPrivateNote.fromJson(Map<String, dynamic> json) => ClientPrivateNote(
+    id: json['id'] as String,
+    businessId: json['business_id'] as String,
+    clientId: json['client_id'] as String,
+    note: json['note'] as String? ?? '',
+    createdAt: DateTime.parse(json['created_at'] as String),
+    updatedAt: DateTime.parse(json['updated_at'] as String),
+  );
+
+  Map<String, dynamic> toJson() => {
+    'business_id': businessId,
+    'client_id': clientId,
+    'note': note,
+    'updated_at': updatedAt.toIso8601String(),
   };
 }
 

@@ -48,6 +48,8 @@ class _AvailabilityScreenState extends ConsumerState<AvailabilityScreen> {
         updatedDays,
       );
       ref.invalidate(ownerBusinessProvider);
+      ref.invalidate(currentBusinessProvider);
+      ref.invalidate(businessesProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

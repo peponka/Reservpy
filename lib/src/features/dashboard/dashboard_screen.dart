@@ -69,9 +69,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ref.watch(businessReservationsProvider).valueOrNull ?? [];
 
     final userName = user?.firstName ?? 'Usuario';
-    final reservationCount = allReservations
-        .where((r) => r.status != ReservationStatus.cancelled)
-        .length;
+    final reservationCount = allReservations.where((r) {
+      if (r.status == ReservationStatus.cancelled) return false;
+      return r.startTime.year == _now.year && r.startTime.month == _now.month;
+    }).length;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -1189,8 +1190,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
 
     // -- Still inside the free trial: show a countdown banner --
-    if (business?.subscriptionStatus == 'trial') {
-      final daysLeft = business!.trialDaysLeft;
+    final daysLeft = business?.trialDaysLeft ?? 0;
+    if (daysLeft > 0) {
       final isUrgent = daysLeft <= 7;
       final urgentColors = isDark
           ? [const Color(0xFFDC2626), const Color(0xFFB91C1C)]
@@ -1459,6 +1460,8 @@ class _ReviewInsightsCardState extends State<_ReviewInsightsCard> {
   int _count = 0;
   double _avg = 0;
   List<String> _insights = [];
+  bool _hasCommentsToAnalyze = false;
+  bool _analysisUnavailable = false;
 
   @override
   void initState() {
@@ -1482,11 +1485,12 @@ class _ReviewInsightsCardState extends State<_ReviewInsightsCard> {
 
       final comments = reviews
           .where((r) => r.comment.trim().isNotEmpty)
-          .map((r) => '${r.rating}★: ${r.comment.trim()}')
+          .map((r) => '${r.rating}*: ${r.comment.trim()}')
           .take(20)
           .join('\n');
 
-      if (comments.isNotEmpty) {
+      _hasCommentsToAnalyze = comments.isNotEmpty;
+      if (_hasCommentsToAnalyze) {
         final res = await SupabaseConfig.client.functions.invoke(
           'ai-generate',
           body: {
@@ -1503,8 +1507,11 @@ class _ReviewInsightsCardState extends State<_ReviewInsightsCard> {
             .map((l) => l.trim())
             .where((l) => l.isNotEmpty)
             .toList();
+        _analysisUnavailable = _insights.isEmpty;
       }
-    } catch (_) {}
+    } catch (_) {
+      _analysisUnavailable = _hasCommentsToAnalyze;
+    }
 
     if (mounted) setState(() => _loading = false);
   }
@@ -1554,7 +1561,9 @@ class _ReviewInsightsCardState extends State<_ReviewInsightsCard> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Análisis de reseñas IA',
+                        _analysisUnavailable
+                            ? 'Resumen de resenas'
+                            : 'Analisis de resenas IA',
                         style: GoogleFonts.inter(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
@@ -1616,7 +1625,11 @@ class _ReviewInsightsCardState extends State<_ReviewInsightsCard> {
                   )
                 : _insights.isEmpty
                     ? Text(
-                        'No hay reseñas con comentarios para analizar.',
+                        !_hasCommentsToAnalyze
+                            ? 'No hay resenas con comentarios para analizar.'
+                            : _analysisUnavailable
+                                ? 'Las resenas existen, pero el analisis IA no esta disponible en este momento.'
+                                : 'No se pudieron generar conclusiones con los comentarios actuales.',
                         style: GoogleFonts.inter(
                           fontSize: 13,
                           color: AppColors.textSecondary,

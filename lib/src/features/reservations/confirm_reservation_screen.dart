@@ -19,8 +19,10 @@ import 'package:reservpy/src/data/repositories/reservation_repository.dart';
 import 'package:reservpy/src/data/repositories/notification_repository.dart';
 import 'package:reservpy/src/data/repositories/profile_repository.dart';
 import 'package:reservpy/src/data/services/email_service.dart';
+import 'package:reservpy/src/data/services/whatsapp_service.dart';
 
 const _uuid = Uuid();
+const _freePlanMonthlyReservationLimit = 10;
 
 String _formatGs(double value) {
   if (value == 0) return '0 Gs.';
@@ -80,7 +82,49 @@ class _ConfirmReservationScreenState
     return _fieldControllers.putIfAbsent(key, () => TextEditingController());
   }
 
-  String _serializeFields(List<CategoryField> fields) {
+  void _showReservationLimitReached() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Este negocio ya alcanzó las 10 reservas del mes en el plan gratis. Actualizá a Pro o esperá al mes siguiente.',
+        ),
+        backgroundColor: Color(0xFFE53E3E),
+      ),
+    );
+  }
+
+  Future<bool> _fitsFreePlanMonthlyLimit(
+    Business business,
+    List<Reservation> requestedReservations,
+  ) async {
+    if (business.hasActiveAccess) return true;
+
+    final requestedByMonth = <String, int>{};
+    for (final reservation in requestedReservations) {
+      final monthKey = '${reservation.startTime.year}-${reservation.startTime.month.toString().padLeft(2, '0')}';
+      requestedByMonth.update(monthKey, (value) => value + 1, ifAbsent: () => 1);
+    }
+
+    for (final entry in requestedByMonth.entries) {
+      final parts = entry.key.split('-');
+      final monthDate = DateTime(int.parse(parts[0]), int.parse(parts[1]));
+      final existingCount = await ReservationRepository().countActiveForBusinessInMonth(
+        business.id,
+        monthDate,
+      );
+      if (existingCount + entry.value > _freePlanMonthlyReservationLimit) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  String _serializeFields(
+    List<CategoryField> fields, {
+    Map<String, dynamic> extraData = const {},
+  }) {
     final data = <String, dynamic>{};
     for (final field in fields) {
       final value = _fieldValues[field.key];
@@ -91,6 +135,7 @@ class _ConfirmReservationScreenState
     }
     final extraNotes = _notesController.text.trim();
     if (extraNotes.isNotEmpty) data['notes'] = extraNotes;
+    data.addAll(extraData);
     if (data.isEmpty) return '';
     return jsonEncode(data);
   }
@@ -109,17 +154,46 @@ class _ConfirmReservationScreenState
       }
       return;
     }
-    final businesses = ref.read(businessesProvider).valueOrNull ?? [];
-    final services = ref.read(businessServicesProvider(widget.businessId)).valueOrNull ?? [];
+    var business = ref.read(businessByIdProvider(widget.businessId)).valueOrNull;
+    business ??= await ref
+        .read(businessByIdProvider(widget.businessId).future)
+        .catchError((_) => null);
 
-    final business =
-        businesses.where((b) => b.id == widget.businessId).firstOrNull;
-    // Selección múltiple: serviceId puede ser una lista separada por comas.
+    var services = ref.read(businessServicesProvider(widget.businessId)).valueOrNull;
+    services ??= await ref
+        .read(businessServicesProvider(widget.businessId).future)
+        .catchError((_) => <ServiceModel>[]);
+
+    final activeServices = services.where((s) => s.isActive).toList();
+
+    // Selecci?n m?ltiple: serviceId puede ser una lista separada por comas.
     final selectedIds = widget.serviceId.split(',');
     final selectedServices =
-        services.where((s) => selectedIds.contains(s.id)).toList();
+        activeServices.where((s) => selectedIds.contains(s.id)).toList();
 
-    if (business == null || selectedServices.isEmpty) return;
+    if (business == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No pudimos cargar el negocio. Proba de nuevo.'),
+            backgroundColor: Color(0xFFE53E3E),
+          ),
+        );
+      }
+      return;
+    }
+
+    if (selectedServices.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No pudimos cargar los servicios. Proba de nuevo.'),
+            backgroundColor: Color(0xFFE53E3E),
+          ),
+        );
+      }
+      return;
+    }
 
     setState(() => _isSubmitting = true);
 
@@ -127,17 +201,23 @@ class _ConfirmReservationScreenState
         0, (sum, s) => sum + s.durationMinutes);
     final endTime =
         widget.selectedTime.add(Duration(minutes: totalMinutes));
+    final bookingGroupId = selectedServices.length > 1 ? _uuid.v4() : null;
 
     final sharedNotes = () {
       final cats = ref.read(categoriesProvider).valueOrNull ?? [];
       final catName = cats.isEmpty
           ? 'Otros'
           : cats.firstWhere(
-              (c) => c.id == business.categoryId,
+              (c) => c.id == business!.categoryId,
               orElse: () => cats.first,
             ).name;
       final fields = getFieldsForCategory(catName);
-      final serialized = _serializeFields(fields);
+      final serialized = _serializeFields(
+        fields,
+        extraData: bookingGroupId != null
+            ? {'booking_group_id': bookingGroupId}
+            : const {},
+      );
       return serialized.isNotEmpty ? serialized : null;
     }();
 
@@ -169,6 +249,67 @@ class _ConfirmReservationScreenState
     final reservation = reservations.first;
     final combinedServiceNames =
         selectedServices.map((s) => s.name).join(' + ');
+
+    final requestedReservations = <Reservation>[...reservations];
+    if (_isRecurring) {
+      for (int i = 1; i <= _recurrenceCount; i++) {
+        final offset = _recurrenceType == 'weekly'
+            ? Duration(days: 7 * i)
+            : _recurrenceType == 'biweekly'
+                ? Duration(days: 14 * i)
+                : Duration(days: 0);
+
+        DateTime nextStart;
+        if (_recurrenceType == 'monthly') {
+          final targetMonth = widget.selectedTime.month + i;
+          final lastDay = DateTime(widget.selectedTime.year, targetMonth + 1, 0).day;
+          nextStart = DateTime(
+            widget.selectedTime.year,
+            targetMonth,
+            widget.selectedTime.day > lastDay ? lastDay : widget.selectedTime.day,
+            widget.selectedTime.hour,
+            widget.selectedTime.minute,
+          );
+        } else {
+          nextStart = widget.selectedTime.add(offset);
+        }
+
+        var recBlockStart = nextStart;
+        for (final svc in selectedServices) {
+          final recBlockEnd = recBlockStart
+              .add(Duration(minutes: svc.durationMinutes));
+          requestedReservations.add(Reservation(
+            id: _uuid.v4(),
+            businessId: widget.businessId,
+            clientId: user.id,
+            serviceId: svc.id,
+            startTime: recBlockStart,
+            endTime: recBlockEnd,
+            status: ReservationStatus.pending,
+            notes: reservation.notes,
+            createdAt: DateTime.now(),
+            clientName: user.fullName,
+            serviceName: svc.name,
+            businessName: business.name,
+            employeeId: _selectedEmployee?.id,
+            employeeName: _selectedEmployee?.name,
+          ));
+          recBlockStart = recBlockEnd;
+        }
+      }
+    }
+
+    final canCreateRequestedReservations = await _fitsFreePlanMonthlyLimit(
+      business,
+      requestedReservations,
+    );
+    if (!canCreateRequestedReservations) {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        _showReservationLimitReached();
+      }
+      return;
+    }
 
     // Re-verify slot availability before creating (prevent race condition)
     try {
@@ -269,6 +410,14 @@ class _ConfirmReservationScreenState
           notes: reservation.notes,
         );
       }
+      WhatsAppService.enviarConfirmacionTurnoCliente(
+        clientPhone: user.phone,
+        clientName: user.fullName,
+        businessName: business.name,
+        serviceName: combinedServiceNames,
+        startTime: widget.selectedTime,
+        address: business.address,
+      );
       // ── Notify business owner (fire-and-forget) ──
       NotificationRepository().create(
         userId: business.ownerId,
@@ -284,11 +433,21 @@ class _ConfirmReservationScreenState
         if (owner != null && owner.email.isNotEmpty) {
           EmailService.enviarEmailConfirmacionTurnoNegocio(
             businessEmail: owner.email,
-            businessName: business.name,
+            businessName: business!.name,
             clientName: user.fullName,
             serviceName: combinedServiceNames,
             startTime: widget.selectedTime,
             notes: reservation.notes,
+          );
+        }
+        if (owner != null) {
+          WhatsAppService.enviarConfirmacionTurnoNegocio(
+            ownerPhone: owner.phone,
+            ownerName: owner.fullName,
+            businessName: business!.name,
+            clientName: user.fullName,
+            serviceName: combinedServiceNames,
+            startTime: widget.selectedTime,
           );
         }
       }).catchError((_) {});
@@ -330,22 +489,46 @@ class _ConfirmReservationScreenState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final businesses = ref.watch(businessesProvider).valueOrNull ?? [];
-    final services = ref.watch(businessServicesProvider(widget.businessId)).valueOrNull ?? [];
-
-    final business =
-        businesses.where((b) => b.id == widget.businessId).firstOrNull;
+    final businessAsync = ref.watch(businessByIdProvider(widget.businessId));
+    final servicesAsync = ref.watch(businessServicesProvider(widget.businessId));
+    final services = servicesAsync.valueOrNull ?? [];
+    final activeServices = services.where((s) => s.isActive).toList();
+    final business = businessAsync.valueOrNull;
+    final servicesLoading = servicesAsync.isLoading && servicesAsync.valueOrNull == null;
     // Selección múltiple: serviceId puede traer varios ids separados por coma
     final selIds = widget.serviceId.split(',');
     final selServices =
-        services.where((s) => selIds.contains(s.id)).toList();
+        activeServices.where((s) => selIds.contains(s.id)).toList();
 
-    if (business == null || selServices.isEmpty) {
+    if (businessAsync.isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (business == null) {
       return Scaffold(
         appBar: AppBar(title: const Text(AppStrings.confirmReservation)),
         body: const EmptyState(
           icon: Icons.error_outline_rounded,
-          title: 'Datos no encontrados',
+          title: 'Negocio no encontrado',
+        ),
+      );
+    }
+
+    if (servicesLoading) {
+      return Scaffold(
+        appBar: AppBar(title: const Text(AppStrings.confirmReservation)),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (selServices.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: const Text(AppStrings.confirmReservation)),
+        body: const EmptyState(
+          icon: Icons.error_outline_rounded,
+          title: 'Servicios no encontrados',
         ),
       );
     }
@@ -526,10 +709,43 @@ class _ConfirmReservationScreenState
                     icon: Icons.payments_rounded,
                     iconColor: Colors.amber.shade700,
                     label: selServices.length == 1
-                        ? 'Precio'
-                        : 'Precio total',
+                        ? 'Valor del servicio'
+                        : 'Valor de los servicios',
                     value: _formatGs(totalPrice),
                     isHighlighted: true,
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: AppSizes.s12),
+
+            Container(
+              padding: const EdgeInsets.all(AppSizes.s16),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                border: Border.all(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.info_outline_rounded,
+                    size: 18,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(width: AppSizes.s8),
+                  Expanded(
+                    child: Text(
+                      'Este valor es informativo. Tu reserva no requiere un pago online desde ReservPy.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
+                        height: 1.4,
+                      ),
+                    ),
                   ),
                 ],
               ),
