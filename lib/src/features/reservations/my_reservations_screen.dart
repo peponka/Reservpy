@@ -31,6 +31,10 @@ class MyReservationsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final filter = ref.watch(_reservationFilterProvider);
     final allReservations = ref.watch(clientReservationsProvider).valueOrNull ?? [];
+    // Lista de espera (12/9/2026)
+    final waitlistEntries = ref.watch(clientWaitlistProvider).valueOrNull ?? [];
+    final waitlistNotifiedCount =
+        waitlistEntries.where((e) => e.status == WaitlistStatus.notified).length;
 
     // ── Apply filter ──
     final now = DateTime.now();
@@ -76,6 +80,15 @@ class MyReservationsScreen extends ConsumerWidget {
                 // ── 1. Header ──
                 _buildHeader(),
                 const SizedBox(height: AppSizes.s20),
+
+                // ── Lista de espera (12/9/2026): banner si hay anotaciones activas ──
+                if (waitlistEntries.isNotEmpty) ...[
+                  _WaitlistBanner(
+                    total: waitlistEntries.length,
+                    notifiedCount: waitlistNotifiedCount,
+                  ),
+                  const SizedBox(height: AppSizes.s20),
+                ],
 
                 // ── 2. Stats Row ──
                 _buildStatsRow(upcoming, completed, cancelled),
@@ -401,6 +414,53 @@ class MyReservationsScreen extends ConsumerWidget {
       case _ReservationFilter.cancelled:
         return AppColors.success;
     }
+  }
+}
+
+// ─── Lista de espera banner (12/9/2026) ─────────────────
+class _WaitlistBanner extends StatelessWidget {
+  final int total;
+  final int notifiedCount;
+  const _WaitlistBanner({required this.total, required this.notifiedCount});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final urgent = notifiedCount > 0;
+    return InkWell(
+      borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+      onTap: () => context.push('/waitlist'),
+      child: Container(
+        padding: const EdgeInsets.all(AppSizes.s16),
+        decoration: BoxDecoration(
+          color: urgent
+              ? theme.colorScheme.primary.withValues(alpha: 0.12)
+              : theme.colorScheme.primary.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+          border: Border.all(
+            color: theme.colorScheme.primary.withValues(alpha: urgent ? 0.4 : 0.15),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              urgent ? Icons.notifications_active_rounded : Icons.hourglass_top_rounded,
+              color: theme.colorScheme.primary,
+            ),
+            const SizedBox(width: AppSizes.s12),
+            Expanded(
+              child: Text(
+                urgent
+                    ? '¡Se liberó un turno! Tenés $notifiedCount para confirmar antes de que pase al siguiente.'
+                    : 'Estás en $total lista${total == 1 ? '' : 's'} de espera.',
+                style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: theme.colorScheme.primary),
+          ],
+        ),
+      ),
+    );
   }
 }
 

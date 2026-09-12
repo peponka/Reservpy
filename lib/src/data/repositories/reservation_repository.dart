@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:reservpy/src/core/supabase/supabase_config.dart';
 import 'package:reservpy/src/shared/models/models.dart';
+import 'package:reservpy/src/data/repositories/waitlist_repository.dart';
 
 class ReservationRepository {
   final _client = SupabaseConfig.client;
@@ -53,6 +55,29 @@ class ReservationRepository {
     final updates = <String, dynamic>{'status': status, 'updated_at': DateTime.now().toIso8601String()};
     if (cancellationReason != null) updates['cancellation_reason'] = cancellationReason;
     await _client.from('reservations').update(updates).eq('id', id);
+
+    // Lista de espera (12/9/2026): si el turno se acaba de cancelar, se
+    // liberó un horario real — avisarle al primero en la fila para ese
+    // negocio+fecha. No debe romper la cancelación si algo falla acá.
+    if (status == 'cancelled') {
+      try {
+        final row = await _client
+            .from('reservations')
+            .select('business_id, service_id, start_time, end_time, businesses(name)')
+            .eq('id', id)
+            .single();
+        final businessesMap = row['businesses'] as Map<String, dynamic>?;
+        await WaitlistRepository().tryFillFromCancellation(
+          businessId: row['business_id'] as String,
+          serviceId: row['service_id'] as String?,
+          startTime: DateTime.parse(row['start_time'] as String),
+          endTime: DateTime.parse(row['end_time'] as String),
+          businessName: businessesMap?['name'] as String? ?? 'el negocio',
+        );
+      } catch (e) {
+        debugPrint('[ReservationRepository] ⚠️ No se pudo procesar lista de espera: $e');
+      }
+    }
   }
 
   /// Check if a time slot is available

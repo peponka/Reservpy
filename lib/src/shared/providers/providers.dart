@@ -16,6 +16,7 @@ import 'package:reservpy/src/data/repositories/review_repository.dart';
 import 'package:reservpy/src/data/repositories/business_photo_repository.dart';
 import 'package:reservpy/src/data/repositories/favorite_repository.dart';
 import 'package:reservpy/src/data/repositories/promotion_repository.dart';
+import 'package:reservpy/src/data/repositories/waitlist_repository.dart';
 import 'package:reservpy/src/shared/models/employee.dart';
 
 // ─── Theme ───────────────────────────────────────────────
@@ -110,6 +111,17 @@ final clientReservationsProvider = FutureProvider<List<Reservation>>((ref) async
   final user = ref.watch(currentUserProvider);
   if (user == null) return [];
   return ReservationRepository().getByClient(user.id);
+});
+
+// ─── Waitlist (12/9/2026) ──────────────────────────────────
+final clientWaitlistProvider = FutureProvider<List<WaitlistEntry>>((ref) async {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return [];
+  return WaitlistRepository().getByClient(user.id);
+});
+
+final businessWaitlistProvider = FutureProvider.family<List<WaitlistEntry>, String>((ref, businessId) async {
+  return WaitlistRepository().getByBusiness(businessId);
 });
 
 // ─── Dashboard ───────────────────────────────────────────

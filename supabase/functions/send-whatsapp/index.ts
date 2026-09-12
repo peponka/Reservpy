@@ -22,7 +22,7 @@ function getWhatsAppMessage(type, data) {
   const reason = data.reason ?? "";
   switch (type) {
     case "reservation_confirmed_client":
-      return `✅ *Reserva confirmada en ReservPy*\n\nHola ${name}! Tu turno quedó agendado 🎉\n\n📋 *Servicio:* ${service}\n🏢 *Negocio:* ${business}\n📅 *Fecha:* ${date}\n🕐 *Hora:* ${time}\nwill address here\nTe esperamos. ¡Hasta pronto! 👋`;
+      return `✅ *Reserva confirmada en ReservPy*\n\nHola ${name}! Tu turno quedó agendado 🎉\n\n📋 *Servicio:* ${service}\n🏢 *Negocio:* ${business}\n📅 *Fecha:* ${date}\n🕐 *Hora:* ${time}\n${address ? "📍 *Dirección:* " + address + "\n" : ""}Te esperamos. ¡Hasta pronto! 👋`;
     case "reservation_confirmed_business":
       return `📬 *Nueva reserva — ReservPy*\n\nHola ${name}! Nuevo turno.\n\n👤 *Cliente:* ${clientName}\n📋 *Servicio:* ${service}\n📅 *Fecha:* ${date}\n🕐 *Hora:* ${time}\n`;
     case "reservation_reminder_24h":
@@ -30,7 +30,11 @@ function getWhatsAppMessage(type, data) {
     case "reservation_cancelled_client":
       return `❌ *Turno cancelado — ReservPy*\n\nHola ${name}, tu turno fue cancelado.\n\n📋 ${service}\n🏢 ${business}\n📅 ${date}\n${reason ? "Motivo: " + reason : ""}\n`;
     case "reservation_cancelled_business":
-      return `₝� *Turno cancelado — ReservPy*\n\nHola ${name}.\n\n👤 ${clientName}\n📋 ${service}\n📅 ${date}\n`;
+      return `❌ *Turno cancelado — ReservPy*\n\nHola ${name}.\n\n👤 ${clientName}\n📋 ${service}\n📅 ${date}\n`;
+    case "waitlist_slot_available": {
+      const hours = data.hoursToConfirm ?? "2";
+      return `🎉 *¡Se liberó un turno! — ReservPy*\n\nHola ${name}! Se liberó un lugar que te puede interesar en *${business}*.\n\n📅 *Fecha:* ${date}\n🕐 *Hora:* ${time}\n\n⏳ Tenés *${hours} horas* para confirmarlo en la app (Mi lista de espera) antes de que se le ofrezca al siguiente en la fila.`;
+    }
     default: return `Mensaje ReservPy: ${type}`;
   }
 }
@@ -42,7 +46,7 @@ Deno.serve(async (req) => {
   if (!auth) return new Response(JSON.stringify({error:"Unauthorized"}),{status:401});
   const supabase = createClient(Deno.env.get("SUPABASE_URL"),Deno.env.get("SUPABASE_ANON_KEY"),{global:{headers:{Authorization:auth}}});
   const {data:{user},error:authErr} = await supabase.auth.getUser();
-  if (authErr || !user) return new Response(JSON.stringify({error:"Unauthorized"}),{ status:41});
+  if (authErr || !user) return new Response(JSON.stringify({error:"Unauthorized"}),{ status:401});
   const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
   const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
   const fromNum = Deno.env.get("TWILIO_WHATSAPP_FROM") ?? "whatsapp:+14155238886";
@@ -55,7 +59,7 @@ Deno.serve(async (req) => {
     const form = new URLSearchParams();
     form.append("From",fromNum);
     form.append("To",toWA);
-    form.append("Body",msgBody);
+    form.append("Body",body);
     const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,{method:"POST",headers:{"Authorization":"Basic "+btoa(accountSid+":"+authToken),"Content-Type":"application/x-www-form-urlencoded"},body:form.toString()});
     const rb = await r.json();
     if (!r.ok) return new Response(JSON.stringify({error:"Twilio error",details:rb}),{status:r.status});

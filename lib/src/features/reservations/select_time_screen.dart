@@ -11,6 +11,8 @@ import 'package:reservpy/src/core/constants/app_sizes.dart';
 import 'package:reservpy/src/core/constants/app_strings.dart';
 import 'package:reservpy/src/core/utils/date_utils.dart';
 import 'package:reservpy/src/data/repositories/reservation_repository.dart';
+import 'package:reservpy/src/data/repositories/waitlist_repository.dart';
+import 'package:reservpy/src/core/supabase/supabase_config.dart';
 
 /// Time slot selection screen with calendar and slot grid.
 class SelectTimeScreen extends ConsumerStatefulWidget {
@@ -87,6 +89,44 @@ class _SelectTimeScreenState extends ConsumerState<SelectTimeScreen> {
     return slot.isBefore(DateTime.now());
   }
 
+  bool _joiningWaitlist = false;
+  bool _joinedWaitlistToday = false;
+
+  /// Lista de espera (12/9/2026): el cliente pide que le avisen si se libera
+  /// un turno este día. serviceId va null cuando eligió varios servicios a
+  /// la vez — no inventamos a cuál de ellos referirse.
+  Future<void> _joinWaitlist() async {
+    final clientId = SupabaseConfig.client.auth.currentUser?.id;
+    if (clientId == null) return;
+    final selectedIds = widget.serviceId.split(',');
+    setState(() => _joiningWaitlist = true);
+    try {
+      await WaitlistRepository().join(
+        businessId: widget.businessId,
+        clientId: clientId,
+        serviceId: selectedIds.length == 1 ? selectedIds.first : null,
+        preferredDate: _selectedDay,
+      );
+      if (mounted) {
+        setState(() => _joinedWaitlistToday = true);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Listo, te avisamos por WhatsApp si se libera un turno este día'),
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        // El índice único de la tabla waitlist rechaza un segundo alta para
+        // el mismo negocio+fecha+servicio mientras la primera siga activa.
+        setState(() => _joinedWaitlistToday = true);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Ya estás en la lista de espera para este día'),
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _joiningWaitlist = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -128,6 +168,13 @@ class _SelectTimeScreenState extends ConsumerState<SelectTimeScreen> {
     }).toList();
 
     final slots = _generateSlots(business);
+    // Lista de espera (12/9/2026): el negocio tiene horario ese día pero
+    // ningún slot es reservable (todo pasado, ocupado o bloqueado).
+    final anySlotAvailable = slots.any((s) =>
+        !_isSlotInPast(s) &&
+        !_isSlotOccupied(s, dayReservations, serviceDuration) &&
+        !_isSlotBlocked(s, dayBlocked, serviceDuration));
+    final dayIsFull = slots.isNotEmpty && !anySlotAvailable;
 
     return Scaffold(
       appBar: AppBar(
@@ -173,6 +220,7 @@ class _SelectTimeScreenState extends ConsumerState<SelectTimeScreen> {
                     );
                     _focusedDay = focusedDay;
                     _selectedSlot = null;
+                    _joinedWaitlistToday = false;
                   });
                   _fetchDayReservations();
                 },
@@ -350,6 +398,45 @@ class _SelectTimeScreenState extends ConsumerState<SelectTimeScreen> {
                           },
                   );
                 },
+              ),
+
+            // ── Lista de espera (12/9/2026): día completo, ofrecer anotarse ──
+            if (dayIsFull)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(AppSizes.s16, AppSizes.s16, AppSizes.s16, 0),
+                child: Container(
+                  padding: const EdgeInsets.all(AppSizes.s16),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+                    border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.2)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.notifications_active_outlined, color: theme.colorScheme.primary),
+                      const SizedBox(width: AppSizes.s12),
+                      Expanded(
+                        child: Text(
+                          _joinedWaitlistToday
+                              ? 'Estás en la lista de espera para este día. Te avisamos por WhatsApp si se libera un turno.'
+                              : 'No quedan horarios este día. Anotate y te avisamos por WhatsApp si se libera un turno.',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ),
+                      const SizedBox(width: AppSizes.s8),
+                      if (!_joinedWaitlistToday)
+                        TextButton(
+                          onPressed: _joiningWaitlist ? null : _joinWaitlist,
+                          child: _joiningWaitlist
+                              ? const SizedBox(
+                                  width: 16, height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Text('Anotarme'),
+                        ),
+                    ],
+                  ),
+                ),
               ),
 
             const SizedBox(height: AppSizes.s16),

@@ -640,6 +640,96 @@ class BlockedSlot {
   };
 }
 
+/// Lista de espera (12/9/2026): estado de una anotación para un turno que
+/// todavía no existe pero que el cliente quiere aprovechar si se libera.
+enum WaitlistStatus { waiting, notified, booked, expired, cancelled }
+
+/// Fila de lista de espera — cliente esperando que se libere un turno
+/// para un negocio (y opcionalmente un servicio puntual) en una fecha dada.
+class WaitlistEntry {
+  final String id;
+  final String businessId;
+  final String clientId;
+  final String? serviceId;
+  final DateTime preferredDate;
+  final WaitlistStatus status;
+
+  // Se llenan cuando status pasa a 'notified' (el horario concreto ofrecido).
+  final DateTime? notifiedStartTime;
+  final DateTime? notifiedEndTime;
+  final DateTime? notifyExpiresAt;
+  final String? reservationId;
+  final DateTime createdAt;
+
+  // Joined data (para mostrar en pantalla)
+  final String? clientName;
+  final String? clientPhone;
+  final String? serviceName;
+  final String? businessName;
+
+  const WaitlistEntry({
+    required this.id,
+    required this.businessId,
+    required this.clientId,
+    this.serviceId,
+    required this.preferredDate,
+    this.status = WaitlistStatus.waiting,
+    this.notifiedStartTime,
+    this.notifiedEndTime,
+    this.notifyExpiresAt,
+    this.reservationId,
+    required this.createdAt,
+    this.clientName,
+    this.clientPhone,
+    this.serviceName,
+    this.businessName,
+  });
+
+  factory WaitlistEntry.fromJson(Map<String, dynamic> json) {
+    final profilesMap = json['profiles'] as Map<String, dynamic>?;
+    return WaitlistEntry(
+      id: json['id'] as String,
+      businessId: json['business_id'] as String,
+      clientId: json['client_id'] as String,
+      serviceId: json['service_id'] as String?,
+      preferredDate: DateTime.parse(json['preferred_date'] as String),
+      status: WaitlistStatus.values.firstWhere(
+        (s) => s.name == (json['status'] as String? ?? 'waiting'),
+        orElse: () => WaitlistStatus.waiting,
+      ),
+      notifiedStartTime: json['notified_start_time'] != null
+          ? DateTime.parse(json['notified_start_time'] as String)
+          : null,
+      notifiedEndTime: json['notified_end_time'] != null
+          ? DateTime.parse(json['notified_end_time'] as String)
+          : null,
+      notifyExpiresAt: json['notify_expires_at'] != null
+          ? DateTime.parse(json['notify_expires_at'] as String)
+          : null,
+      reservationId: json['reservation_id'] as String?,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      clientName: profilesMap != null
+          ? '${profilesMap['first_name']} ${profilesMap['last_name']}'
+          : null,
+      clientPhone: profilesMap != null ? profilesMap['phone'] as String? : null,
+      serviceName: json['services'] != null ? json['services']['name'] as String? : null,
+      businessName: json['businesses'] != null ? json['businesses']['name'] as String? : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    final d = preferredDate;
+    return {
+      'business_id': businessId,
+      'client_id': clientId,
+      'service_id': serviceId,
+      'preferred_date':
+          '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}',
+      'status': status.name,
+    };
+  }
+}
+
 /// Dashboard statistics.
 class DashboardStats {
   final int reservationsToday;

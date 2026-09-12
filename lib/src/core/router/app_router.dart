@@ -27,6 +27,7 @@ import '../../features/reservations/select_time_screen.dart';
 import '../../features/reservations/confirm_reservation_screen.dart';
 import '../../features/reservations/reservation_success_screen.dart';
 import '../../features/reservations/business_detail_screen.dart';
+import '../../features/reservations/waitlist_screen.dart';
 import '../../features/shell/client_shell.dart';
 import '../../features/shell/business_shell.dart';
 import '../../features/admin/admin_shell.dart';
@@ -390,6 +391,14 @@ final routerProvider = Provider<GoRouter>((ref) {
             ),
           );
         },
+      ),
+      // ─── Lista de espera (12/9/2026) ─────────────────────
+      GoRoute(
+        path: '/waitlist',
+        pageBuilder: (context, state) => _buildPage(
+          state,
+          const WaitlistScreen(),
+        ),
       ),
       GoRoute(
         path: '/reservation-success',

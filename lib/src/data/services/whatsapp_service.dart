@@ -51,4 +51,11 @@ class WhatsAppService {
 
   static Future<void> enviarRecordatorio24h({required String? clientPhone, required String clientName, required String businessName, required String serviceName, required DateTime startTime, String? address}) =>
       _invoke('reservation_reminder_24h', clientPhone, {'recipientName':clientName,'businessName':businessName,'serviceName':serviceName,'date':_fd(startTime),'time':_ft(startTime),'address':address??''});
+
+  /// Lista de espera (12/9/2026): se libero un turno por una cancelacion y
+  /// este cliente es el primero en la fila para esa fecha. Tiene
+  /// [horasParaConfirmar] horas para entrar a "Mi lista de espera" y
+  /// confirmarlo antes de que pase al siguiente.
+  static Future<void> enviarTurnoLiberado({required String? clientPhone, required String clientName, required String businessName, required DateTime startTime, required int horasParaConfirmar}) =>
+      _invoke('waitlist_slot_available', clientPhone, {'recipientName':clientName,'businessName':businessName,'date':_fd(startTime),'time':_ft(startTime),'hoursToConfirm':'$horasParaConfirmar'});
 }
