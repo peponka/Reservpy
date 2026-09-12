@@ -30,7 +30,7 @@ import 'package:reservpy/src/data/services/email_service.dart';
 /// Multi-step registration screen with:
 ///   Step 1 ? Role selection (business vs client)
 ///   Step 2 ? Registration form (split-screen for business)
-///   Step 3 ? Email verification (simulated OTP + success)
+///   Step 3 ? Email confirmation guidance
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
@@ -55,10 +55,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
 
   bool _obscurePassword = true;
-  bool _obscureConfirm = true;
   bool _isLoading = false;
   String? _selectedCategoryId;
 
@@ -101,7 +99,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
-    _confirmPasswordController.dispose();
     for (final c in _otpControllers) {
       c.dispose();
     }
@@ -341,6 +338,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
           // 4) Invalidar para que el panel cargue el negocio recién creado.
           ref.invalidate(businessesProvider);
           ref.invalidate(ownerBusinessProvider);
+          ref.invalidate(currentBusinessProvider);
+          ref.invalidate(servicesProvider);
           ref.invalidate(businessServicesProvider(created.id));
 
           if (!mounted) return;
@@ -350,10 +349,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
           );
         } else {
           if (!mounted) return;
+
+          // If registration started from a reservation the user was
+          // confirming as a guest, send them straight back to it.
+          final pendingRedirect = ref.read(pendingRedirectProvider);
+          if (pendingRedirect != null) {
+            ref.read(pendingRedirectProvider.notifier).state = null;
+            GoRouter.of(context).go(pendingRedirect);
+            return;
+          }
+
           GoRouter.of(context).go('/client');
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('¡Cuenta creada con éxito! ??'),
+              content: const Text('¡Cuenta creada con éxito! ?'),
               backgroundColor: const Color(0xFF20A482),
               behavior: SnackBarBehavior.floating,
               duration: const Duration(seconds: 3),
@@ -396,34 +405,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   // -------------------------------------------------------------
 
   Future<void> _handleVerify() async {
-    final code = _otpControllers.map((c) => c.text).join();
-    if (code.length < 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Ingresá los 6 dígitos del código'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.radiusMd)),
-        ),
-      );
-      return;
-    }
-
-    setState(() => _isVerifying = true);
-    await Future.delayed(const Duration(seconds: 2));
     if (!mounted) return;
-
-    setState(() {
-      _isVerifying = false;
-      _isVerified = true;
-    });
-    _checkAnimController.forward();
-
-    // After showing success, create user + navigate
-    await Future.delayed(const Duration(seconds: 2));
-    if (!mounted) return;
-    _completeRegistration();
+    context.go('/login');
   }
 
   void _completeRegistration() {
@@ -469,17 +452,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                     emailController: _emailController,
                     phoneController: _phoneController,
                     passwordController: _passwordController,
-                    confirmPasswordController: _confirmPasswordController,
                     selectedCategoryId: _selectedCategoryId,
                     onCategoryChanged: (v) => setState(() => _selectedCategoryId = v),
                     categories: ref.watch(categoriesProvider).valueOrNull ?? [],
                     obscurePassword: _obscurePassword,
-                    obscureConfirm: _obscureConfirm,
                     isLoading: _isLoading,
                     onTogglePassword: () =>
                         setState(() => _obscurePassword = !_obscurePassword),
-                    onToggleConfirm: () =>
-                        setState(() => _obscureConfirm = !_obscureConfirm),
                     onSubmit: _handleFormSubmit,
                     onSwitchRole: () => _goToStep(0),
                   ),
@@ -983,15 +962,12 @@ class _StepRegistrationForm extends StatelessWidget {
   final TextEditingController emailController;
   final TextEditingController phoneController;
   final TextEditingController passwordController;
-  final TextEditingController confirmPasswordController;
   final String? selectedCategoryId;
   final ValueChanged<String?> onCategoryChanged;
   final List<BusinessCategory> categories;
   final bool obscurePassword;
-  final bool obscureConfirm;
   final bool isLoading;
   final VoidCallback onTogglePassword;
-  final VoidCallback onToggleConfirm;
   final VoidCallback onSubmit;
   final VoidCallback onSwitchRole;
 
@@ -1004,15 +980,12 @@ class _StepRegistrationForm extends StatelessWidget {
     required this.emailController,
     required this.phoneController,
     required this.passwordController,
-    required this.confirmPasswordController,
     required this.selectedCategoryId,
     required this.onCategoryChanged,
     required this.categories,
     required this.obscurePassword,
-    required this.obscureConfirm,
     required this.isLoading,
     required this.onTogglePassword,
-    required this.onToggleConfirm,
     required this.onSubmit,
     required this.onSwitchRole,
   });
@@ -1098,7 +1071,7 @@ class _StepRegistrationForm extends StatelessWidget {
 
                 const SizedBox(height: AppSizes.s24),
 
-                // Google button (placeholder)
+                // Google button
                 _GoogleSignUpButton()
                     .animate()
                     .fadeIn(delay: 100.ms, duration: 400.ms)
@@ -1226,51 +1199,24 @@ class _StepRegistrationForm extends StatelessWidget {
 
                 const SizedBox(height: AppSizes.s16),
 
-                // Password (campo completo, a lo ancho)
-                Column(
-                  children: [
-                    AppTextField(
-                      controller: passwordController,
-                      label: AppStrings.password,
-                      hint: '••••••••',
-                      prefixIcon: Icons.lock_outline_rounded,
-                      obscureText: obscurePassword,
-                      validator: Validators.password,
-                      suffix: IconButton(
-                        icon: Icon(
-                          obscurePassword
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
-                          size: 20,
-                          color: colorScheme.onSurface.withValues(alpha: 0.5),
-                        ),
-                        onPressed: onTogglePassword,
-                      ),
+                // Password
+                AppTextField(
+                  controller: passwordController,
+                  label: AppStrings.password,
+                  hint: '••••••••',
+                  prefixIcon: Icons.lock_outline_rounded,
+                  obscureText: obscurePassword,
+                  validator: Validators.password,
+                  suffix: IconButton(
+                    icon: Icon(
+                      obscurePassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      size: 20,
+                      color: colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
-                    const SizedBox(height: AppSizes.s16),
-                    // Confirmar contraseña (abajo, a lo ancho)
-                    AppTextField(
-                      controller: confirmPasswordController,
-                      label: AppStrings.confirmPassword,
-                      hint: '••••••••',
-                      prefixIcon: Icons.lock_outline_rounded,
-                      obscureText: obscureConfirm,
-                      validator: (v) => Validators.confirmPassword(
-                        v,
-                        passwordController.text,
-                      ),
-                      suffix: IconButton(
-                        icon: Icon(
-                          obscureConfirm
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
-                          size: 20,
-                          color: colorScheme.onSurface.withValues(alpha: 0.5),
-                        ),
-                        onPressed: onToggleConfirm,
-                      ),
-                    ),
-                  ],
+                    onPressed: onTogglePassword,
+                  ),
                 )
                     .animate()
                     .fadeIn(delay: 350.ms, duration: 400.ms)
@@ -1489,17 +1435,50 @@ class _StepRegistrationForm extends StatelessWidget {
 
                 const SizedBox(height: AppSizes.s16),
 
-                // Phone (optional)
+                // Phone (required: es el canal de los recordatorios de WhatsApp)
                 AppTextField(
                   controller: phoneController,
-                  label: '${AppStrings.phone} (opcional)',
+                  label: AppStrings.phone,
                   hint: '+595 981 123456',
                   prefixIcon: Icons.phone_outlined,
                   keyboardType: TextInputType.phone,
+                  validator: Validators.phone,
                 )
                     .animate()
                     .fadeIn(delay: 300.ms, duration: 400.ms)
                     .slideY(begin: 0.08, end: 0, delay: 300.ms, duration: 400.ms),
+
+                const SizedBox(height: AppSizes.s8),
+                Padding(
+                  padding: const EdgeInsets.only(left: AppSizes.s4),
+                  child: Row(
+                    children: [
+                      Icon(Icons.chat_bubble_outline_rounded,
+                          size: 14,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withOpacity(0.5)),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Te avisamos por WhatsApp cuando se acerque tu turno',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withOpacity(0.55),
+                              ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+                    .animate()
+                    .fadeIn(delay: 320.ms, duration: 400.ms),
 
                 const SizedBox(height: AppSizes.s16),
 
@@ -1525,34 +1504,6 @@ class _StepRegistrationForm extends StatelessWidget {
                     .animate()
                     .fadeIn(delay: 350.ms, duration: 400.ms)
                     .slideY(begin: 0.08, end: 0, delay: 350.ms, duration: 400.ms),
-
-                const SizedBox(height: AppSizes.s16),
-
-                // Confirm password
-                AppTextField(
-                  controller: confirmPasswordController,
-                  label: AppStrings.confirmPassword,
-                  hint: '••••••••',
-                  prefixIcon: Icons.lock_outline_rounded,
-                  obscureText: obscureConfirm,
-                  validator: (v) => Validators.confirmPassword(
-                    v,
-                    passwordController.text,
-                  ),
-                  suffix: IconButton(
-                    icon: Icon(
-                      obscureConfirm
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
-                      size: 20,
-                      color: colorScheme.onSurface.withValues(alpha: 0.5),
-                    ),
-                    onPressed: onToggleConfirm,
-                  ),
-                )
-                    .animate()
-                    .fadeIn(delay: 400.ms, duration: 400.ms)
-                    .slideY(begin: 0.08, end: 0, delay: 400.ms, duration: 400.ms),
 
                 const SizedBox(height: AppSizes.s24),
 
@@ -1959,8 +1910,6 @@ class _VerificationForm extends StatelessWidget {
     return Column(
       children: [
         const SizedBox(height: AppSizes.s40),
-
-        // Mail icon
         Container(
           width: 80,
           height: 80,
@@ -1982,27 +1931,26 @@ class _VerificationForm extends StatelessWidget {
               duration: 500.ms,
               curve: Curves.elasticOut,
             ),
-
         const SizedBox(height: AppSizes.s24),
-
         Text(
-          'Verificá tu email',
+          'Revisa tu email',
           style: theme.textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.w800,
           ),
         )
             .animate()
             .fadeIn(delay: 100.ms, duration: 400.ms),
-
         const SizedBox(height: AppSizes.s8),
-
         Text.rich(
           TextSpan(
-            text: 'Enviamos un código de 6 dígitos a ',
+            text: 'Te enviamos un enlace de confirmacion a ',
             children: [
               TextSpan(
                 text: email.isNotEmpty ? email : 'tu correo',
-                style: TextStyle(fontWeight: FontWeight.w600),
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const TextSpan(
+                text: '. Abri ese enlace para activar tu cuenta y despues inicia sesion.',
               ),
             ],
           ),
@@ -2013,113 +1961,77 @@ class _VerificationForm extends StatelessWidget {
         )
             .animate()
             .fadeIn(delay: 150.ms, duration: 400.ms),
-
-        const SizedBox(height: AppSizes.s40),
-
-        // OTP fields
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(6, (i) {
-            return Container(
-              width: 48,
-              height: 56,
-              margin: EdgeInsets.only(
-                right: i < 5 ? (i == 2 ? AppSizes.s16 : AppSizes.s8) : 0,
-              ),
-              child: TextField(
-                controller: otpControllers[i],
-                focusNode: otpFocusNodes[i],
-                textAlign: TextAlign.center,
-                keyboardType: TextInputType.number,
-                maxLength: 1,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: InputDecoration(
-                  counterText: '',
-                  contentPadding: EdgeInsets.zero,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    borderSide: BorderSide(
-                      color: colorScheme.outline.withValues(alpha: 0.3),
+        const SizedBox(height: AppSizes.s32),
+        AppCard(
+          padding: const EdgeInsets.all(AppSizes.s20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.check_circle_outline_rounded, color: colorScheme.primary),
+                  const SizedBox(width: AppSizes.s8),
+                  Expanded(
+                    child: Text(
+                      '1. Busca el mensaje en tu bandeja principal, spam o promociones.',
+                      style: theme.textTheme.bodyMedium,
                     ),
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.radiusMd),
-                    borderSide: BorderSide(
-                      color: colorScheme.primary,
-                      width: 2,
+                ],
+              ),
+              const SizedBox(height: AppSizes.s12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.open_in_new_rounded, color: colorScheme.primary),
+                  const SizedBox(width: AppSizes.s8),
+                  Expanded(
+                    child: Text(
+                      '2. Toca el enlace de confirmacion para activar la cuenta.',
+                      style: theme.textTheme.bodyMedium,
                     ),
                   ),
-                  filled: true,
-                  fillColor: colorScheme.surface,
-                ),
-                onChanged: (value) {
-                  if (value.isNotEmpty && i < 5) {
-                    otpFocusNodes[i + 1].requestFocus();
-                  } else if (value.isEmpty && i > 0) {
-                    otpFocusNodes[i - 1].requestFocus();
-                  }
-                  // Auto-verify when all filled
-                  if (i == 5 && value.isNotEmpty) {
-                    final code =
-                        otpControllers.map((c) => c.text).join();
-                    if (code.length == 6) {
-                      Future.delayed(
-                        const Duration(milliseconds: 300),
-                        onVerify,
-                      );
-                    }
-                  }
-                },
+                ],
               ),
-            );
-          }),
+              const SizedBox(height: AppSizes.s12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.login_rounded, color: colorScheme.primary),
+                  const SizedBox(width: AppSizes.s8),
+                  Expanded(
+                    child: Text(
+                      '3. Cuando ya este confirmada, entra desde la pantalla de inicio de sesion.',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         )
             .animate()
             .fadeIn(delay: 250.ms, duration: 400.ms)
             .slideY(begin: 0.1, end: 0, delay: 250.ms, duration: 400.ms),
-
         const SizedBox(height: AppSizes.s32),
-
-        // Verify CTA
         SizedBox(
           width: double.infinity,
           child: AppButton(
-            label: 'Verificar cuenta',
-            icon: Icons.verified_rounded,
+            label: 'Ir al login',
+            icon: Icons.login_rounded,
             isLoading: isVerifying,
-            onPressed: isVerifying ? null : onVerify,
+            onPressed: isVerifying ? null : onGoToLogin,
           ),
         )
             .animate()
             .fadeIn(delay: 350.ms, duration: 400.ms)
             .slideY(begin: 0.08, end: 0, delay: 350.ms, duration: 400.ms),
-
-        const SizedBox(height: AppSizes.s24),
-
-        // Expiry info
-        Text(
-          'El código expira en 15 minutos.',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: colorScheme.onSurface.withValues(alpha: 0.5),
-          ),
-          textAlign: TextAlign.center,
-        )
-            .animate()
-            .fadeIn(delay: 400.ms, duration: 400.ms),
-
-        const SizedBox(height: AppSizes.s4),
-
-        // Resend link
+        const SizedBox(height: AppSizes.s16),
         GestureDetector(
           onTap: onGoToLogin,
           child: Text(
-            '¿No llegó? Registrate de nuevo',
+            'Si no lo encontras, volve a intentar el registro con el correo correcto.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: colorScheme.primary,
               fontWeight: FontWeight.w600,
@@ -2129,35 +2041,11 @@ class _VerificationForm extends StatelessWidget {
         )
             .animate()
             .fadeIn(delay: 425.ms, duration: 400.ms),
-
-        const SizedBox(height: AppSizes.s16),
-
-        // Wrong email link
-        GestureDetector(
-          onTap: () {
-            // Navigate back to form step
-            // This is handled by the back button in the top bar
-          },
-          child: Text(
-            'Escribí mal mi correo',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurface.withValues(alpha: 0.5),
-              decoration: TextDecoration.underline,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        )
-            .animate()
-            .fadeIn(delay: 450.ms, duration: 400.ms),
-
         const SizedBox(height: AppSizes.s32),
       ],
     );
   }
 }
-
-// --- Verification Success -----------------------------------------------
-
 class _VerificationSuccess extends StatelessWidget {
   final Animation<double> checkAnimation;
   final VoidCallback onContinue;
@@ -2177,8 +2065,6 @@ class _VerificationSuccess extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         const SizedBox(height: AppSizes.s64),
-
-        // Animated checkmark
         ScaleTransition(
           scale: checkAnimation,
           child: Container(
@@ -2205,11 +2091,9 @@ class _VerificationSuccess extends StatelessWidget {
             ),
           ),
         ),
-
         const SizedBox(height: AppSizes.s32),
-
         Text(
-          '¡Cuenta verificada!',
+          'Cuenta confirmada',
           style: theme.textTheme.headlineMedium?.copyWith(
             fontWeight: FontWeight.w800,
             color: AppColors.success,
@@ -2218,11 +2102,9 @@ class _VerificationSuccess extends StatelessWidget {
             .animate()
             .fadeIn(delay: 300.ms, duration: 400.ms)
             .slideY(begin: 0.1, end: 0, delay: 300.ms, duration: 400.ms),
-
         const SizedBox(height: AppSizes.s8),
-
         Text(
-          'Tu email fue confirmado. Ya podés ingresar.',
+          'Tu email ya fue confirmado. Ahora podes iniciar sesion.',
           style: theme.textTheme.bodyLarge?.copyWith(
             color: colorScheme.onSurface.withValues(alpha: 0.6),
           ),
@@ -2230,66 +2112,23 @@ class _VerificationSuccess extends StatelessWidget {
         )
             .animate()
             .fadeIn(delay: 450.ms, duration: 400.ms),
-
         const SizedBox(height: AppSizes.s40),
-
-        // Confetti-like dots (decorative)
-        SizedBox(
-          height: 40,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(5, (i) {
-              final colors = [
-                AppColors.primary,
-                AppColors.success,
-                AppColors.info,
-                AppColors.warning,
-                AppColors.primary,
-              ];
-              return Container(
-                width: 8,
-                height: 8,
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                decoration: BoxDecoration(
-                  color: colors[i],
-                  shape: BoxShape.circle,
-                ),
-              )
-                  .animate()
-                  .fadeIn(
-                    delay: Duration(milliseconds: 500 + i * 100),
-                    duration: 300.ms,
-                  )
-                  .scale(
-                    begin: const Offset(0, 0),
-                    end: const Offset(1, 1),
-                    delay: Duration(milliseconds: 500 + i * 100),
-                    duration: 400.ms,
-                    curve: Curves.elasticOut,
-                  );
-            }),
-          ),
-        ),
-
-        const SizedBox(height: AppSizes.s32),
-
-        // CTA
         SizedBox(
           width: double.infinity,
           child: _GradientButton(
-            label: 'Ir a iniciar sesión ?',
+            label: 'Ir a iniciar sesion',
             onPressed: onContinue,
           ),
         )
             .animate()
             .fadeIn(delay: 700.ms, duration: 400.ms)
             .slideY(begin: 0.08, end: 0, delay: 700.ms, duration: 400.ms),
-
         const SizedBox(height: AppSizes.s32),
       ],
     );
   }
 }
+
 
 // ---------------------------------------------------------------------------
 // SHARED WIDGETS
@@ -2601,8 +2440,8 @@ class _CategoryPickerSheetState extends State<_CategoryPickerSheet> {
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
               shrinkWrap: true,
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                childAspectRatio: 1.0,
+                crossAxisCount: 2,
+                childAspectRatio: 1.3,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
               ),
@@ -2638,30 +2477,30 @@ class _CategoryPickerSheetState extends State<_CategoryPickerSheet> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Container(
-                          width: 44,
-                          height: 44,
+                          width: 56,
+                          height: 56,
                           decoration: BoxDecoration(
                             color: isSelected
                                 ? cat.color.withValues(alpha: 0.2)
                                 : cat.color.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(14),
                           ),
                           child: Icon(
                             cat.icon,
-                            size: 22,
+                            size: 28,
                             color: cat.color,
                           ),
                         ),
                         const SizedBox(height: 8),
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
                           child: Text(
                             cat.name,
                             textAlign: TextAlign.center,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 13,
                               fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                               color: isSelected ? cat.color : Colors.grey.shade700,
                               height: 1.2,

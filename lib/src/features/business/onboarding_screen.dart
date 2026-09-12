@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:reservpy/src/core/constants/app_colors.dart';
 import 'package:reservpy/src/core/constants/app_sizes.dart';
@@ -25,7 +26,7 @@ import 'package:reservpy/src/core/utils/string_utils.dart';
 /// **Step 2 — Definir horarios**: Work-day toggles, open/close pickers,
 ///   slot duration, optional break, schedule preview.
 /// **Step 3 — Compartir link**: Celebration animation, shareable link card,
-///   QR placeholder, plan summary, CTA to dashboard.
+///   QR code, plan summary, CTA to dashboard.
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -41,7 +42,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   // ─── Step 0 state ──────────────────────────────────────
   String? _selectedCategoryId;
-  // Rubro guardado en el registro, pendiente de aplicar cuando carguen las categorías
+  // Rubro guardado en el registro, se aplica automaticamente cuando cargan las categorias
   String? _pendingCategoryId;
   final _businessNameController = TextEditingController();
   final _businessRepo = BusinessRepository();
@@ -574,11 +575,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   // ─── Copy link ─────────────────────────────────────────
 
   String _getBusinessUrl() {
-    final business = ref.read(currentBusinessProvider);
-    final slug = (business?.name ?? 'tu-negocio')
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9]+'), '-');
-    return 'https://reservpy.com.py/$slug';
+    final businessId = ref.read(currentBusinessProvider)?.id ?? '';
+    return publicBusinessUrl(businessId);
   }
 
   Future<void> _shareOnWhatsApp() async {
@@ -634,7 +632,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           ? _businessNameController.text.trim()
           : '${user?.firstName ?? 'Mi'} Business';
 
-      // ¿Ya existe un negocio de este dueño? (creado en el registro)
+      final workingDays = <int>[];
+      for (var i = 0; i < _workDays.length; i++) {
+        if (_workDays[i]) workingDays.add(i + 1);
+      }
+
+      // ?Ya existe un negocio de este due?o? (creado en el registro)
       // Si existe, lo ACTUALIZAMOS en vez de crear uno nuevo (evita duplicados).
       final existing = await _businessRepo.getByOwner(authUser.id);
       final Business created;
@@ -646,24 +649,34 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           openingTime: _openingTime,
           closingTime: _closingTime,
           slotDurationMinutes: _slotDurationMinutes,
+          workingDays: workingDays,
         );
         await _businessRepo.update(created);
       } else {
         created = await _businessRepo.create(Business(
           id: '',
-          ownerId: authUser.id, // auth.uid() — never from provider
+          ownerId: authUser.id, // auth.uid() ?? never from provider
           categoryId: _selectedCategoryId ?? '',
           name: businessName,
           openingTime: _openingTime,
           closingTime: _closingTime,
           slotDurationMinutes: _slotDurationMinutes,
+          workingDays: workingDays,
           createdAt: DateTime.now(),
         ));
       }
 
-      // ── Persist services to Supabase ──
+      // Persist services to Supabase without duplicating existing ones
       final serviceRepo = ServiceRepository();
+      final existingServices = await serviceRepo.getByBusiness(created.id);
+      final existingKeys = existingServices
+          .map((svc) => '${svc.name.trim().toLowerCase()}|${svc.durationMinutes}|${svc.price}|${svc.currency}')
+          .toSet();
+
       for (final svc in _createdServices) {
+        final key = '${svc.name.trim().toLowerCase()}|${svc.durationMinutes}|${svc.price}|${svc.currency}';
+        if (existingKeys.contains(key)) continue;
+
         await serviceRepo.create(ServiceModel(
           id: '',
           businessId: created.id,
@@ -673,11 +686,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           price: svc.price,
           currency: svc.currency,
         ));
+        existingKeys.add(key);
       }
 
       // Invalidate providers so BusinessShell refetches from Supabase
       ref.invalidate(businessesProvider);
       ref.invalidate(ownerBusinessProvider);
+      ref.invalidate(currentBusinessProvider);
+      ref.invalidate(servicesProvider);
+      ref.invalidate(businessServicesProvider(created.id));
 
       if (!mounted) return;
       context.go('/business');
@@ -696,14 +713,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   String _formatTimeOfDay(TimeOfDay tod) =>
       '${tod.hour.toString().padLeft(2, '0')}:${tod.minute.toString().padLeft(2, '0')}';
-
-  String _businessSlug() {
-    final business = ref.read(currentBusinessProvider);
-    return (business?.name ?? 'tu-negocio')
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9]+'), '-');
-  }
-
   // ─── BUILD ─────────────────────────────────────────────
 
   @override
@@ -1464,7 +1473,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   // ════════════════════════════════════════════════════════
 
   Widget _buildStep3(ThemeData theme, ColorScheme colorScheme) {
-    final slug = _businessSlug();
+    final publicUrl = _getBusinessUrl();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSizes.s24),
@@ -1544,7 +1553,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
               // Title
               Text(
-                '¡Tu negocio está listo!',
+                'Tu negocio esta listo',
                 style: theme.textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
@@ -1554,7 +1563,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               const SizedBox(height: AppSizes.s8),
 
               Text(
-                'Compartí tu link para empezar a recibir reservas',
+                'Comparti tu link para empezar a recibir reservas',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
@@ -1596,7 +1605,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                               ),
                               const SizedBox(height: AppSizes.s2),
                               Text(
-                                'reservpy.com.py/$slug',
+                                publicUrl,
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.w600,
                                   color: colorScheme.primary,
@@ -1655,42 +1664,54 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
               const SizedBox(height: AppSizes.s24),
 
-              // ─── QR Placeholder ─────────────────────────────
+              // QR de reservas
               AppCard(
                 padding: const EdgeInsets.all(AppSizes.s24),
                 child: Column(
                   children: [
                     Container(
-                      width: 160,
-                      height: 160,
+                      width: 176,
+                      height: 176,
+                      padding: const EdgeInsets.all(AppSizes.s12),
                       decoration: BoxDecoration(
-                        color: colorScheme.outline.withValues(alpha: 0.08),
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(AppSizes.radiusMd),
                         border: Border.all(
                           color: colorScheme.outline.withValues(alpha: 0.2),
                         ),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.qr_code_2_rounded,
-                            size: 80,
-                            color: colorScheme.onSurface.withValues(alpha: 0.25),
-                          ),
-                          const SizedBox(height: AppSizes.s4),
-                          Text(
-                            'Código QR',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurface.withValues(alpha: 0.4),
-                            ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 18,
+                            offset: const Offset(0, 8),
                           ),
                         ],
+                      ),
+                      child: QrImageView(
+                        data: publicUrl,
+                        version: QrVersions.auto,
+                        size: 152,
+                        eyeStyle: const QrEyeStyle(
+                          eyeShape: QrEyeShape.square,
+                          color: Color(0xFF1A1A2E),
+                        ),
+                        dataModuleStyle: const QrDataModuleStyle(
+                          dataModuleShape: QrDataModuleShape.square,
+                          color: Color(0xFF1A1A2E),
+                        ),
                       ),
                     ),
                     const SizedBox(height: AppSizes.s12),
                     Text(
-                      'Imprimí este código y colocalo en tu local',
+                      'Escanea este codigo para abrir la pagina de reservas del negocio.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurface.withValues(alpha: 0.5),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSizes.s8),
+                    Text(
+                      'Imprimi este codigo y colocalo en tu local',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: colorScheme.onSurface.withValues(alpha: 0.5),
                       ),

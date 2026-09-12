@@ -69,9 +69,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ref.watch(businessReservationsProvider).valueOrNull ?? [];
 
     final userName = user?.firstName ?? 'Usuario';
-    final reservationCount = allReservations
-        .where((r) => r.status != ReservationStatus.cancelled)
-        .length;
+    final reservationCount = allReservations.where((r) {
+      if (r.status == ReservationStatus.cancelled) return false;
+      return r.startTime.year == _now.year && r.startTime.month == _now.month;
+    }).length;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -1188,7 +1189,104 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       );
     }
 
-    // -- Free plan: show upgrade banner --
+    // -- Still inside the free trial: show a countdown banner --
+    final daysLeft = business?.trialDaysLeft ?? 0;
+    if (daysLeft > 0) {
+      final isUrgent = daysLeft <= 7;
+      final urgentColors = isDark
+          ? [const Color(0xFFDC2626), const Color(0xFFB91C1C)]
+          : [const Color(0xFFEF4444), const Color(0xFFF87171)];
+
+      return Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSizes.s24,
+          vertical: AppSizes.s20,
+        ),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: isUrgent
+                ? urgentColors
+                : [AppColors.primary, isDark ? AppColors.accent : AppColors.accentLight],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(AppSizes.radiusXl),
+          boxShadow: [
+            BoxShadow(
+              color: (isUrgent ? const Color(0xFFEF4444) : AppColors.primary)
+                  .withValues(alpha: 0.2),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(AppSizes.s8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(AppSizes.radiusMd),
+              ),
+              child: Icon(
+                isUrgent ? Icons.timer_rounded : Icons.workspace_premium_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: AppSizes.s16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    daysLeft > 0
+                        ? 'Te queda${daysLeft == 1 ? '' : 'n'} $daysLeft día${daysLeft == 1 ? '' : 's'} de prueba gratis'
+                        : 'Tu prueba gratis vence hoy',
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: AppSizes.s4),
+                  Text(
+                    'Activá el plan Pro para no perder el acceso',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.white.withValues(alpha: 0.85),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(
+              height: 38,
+              child: ElevatedButton(
+                onPressed: () {
+                  ref.read(businessNavIndexProvider.notifier).state = 7;
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: isUrgent ? const Color(0xFFDC2626) : AppColors.accent,
+                  padding: const EdgeInsets.symmetric(horizontal: AppSizes.s16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+                  ),
+                ),
+                child: Text(
+                  'Ver planes',
+                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // -- Free plan (trial already expired): show upgrade banner --
     final usage = (reservationCount / 10).clamp(0.0, 1.0);
 
     return Container(
@@ -1362,6 +1460,8 @@ class _ReviewInsightsCardState extends State<_ReviewInsightsCard> {
   int _count = 0;
   double _avg = 0;
   List<String> _insights = [];
+  bool _hasCommentsToAnalyze = false;
+  bool _analysisUnavailable = false;
 
   @override
   void initState() {
@@ -1385,11 +1485,12 @@ class _ReviewInsightsCardState extends State<_ReviewInsightsCard> {
 
       final comments = reviews
           .where((r) => r.comment.trim().isNotEmpty)
-          .map((r) => '${r.rating}★: ${r.comment.trim()}')
+          .map((r) => '${r.rating}*: ${r.comment.trim()}')
           .take(20)
           .join('\n');
 
-      if (comments.isNotEmpty) {
+      _hasCommentsToAnalyze = comments.isNotEmpty;
+      if (_hasCommentsToAnalyze) {
         final res = await SupabaseConfig.client.functions.invoke(
           'ai-generate',
           body: {
@@ -1406,8 +1507,11 @@ class _ReviewInsightsCardState extends State<_ReviewInsightsCard> {
             .map((l) => l.trim())
             .where((l) => l.isNotEmpty)
             .toList();
+        _analysisUnavailable = _insights.isEmpty;
       }
-    } catch (_) {}
+    } catch (_) {
+      _analysisUnavailable = _hasCommentsToAnalyze;
+    }
 
     if (mounted) setState(() => _loading = false);
   }
@@ -1457,7 +1561,9 @@ class _ReviewInsightsCardState extends State<_ReviewInsightsCard> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Análisis de reseñas IA',
+                        _analysisUnavailable
+                            ? 'Resumen de resenas'
+                            : 'Analisis de resenas IA',
                         style: GoogleFonts.inter(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
@@ -1519,7 +1625,11 @@ class _ReviewInsightsCardState extends State<_ReviewInsightsCard> {
                   )
                 : _insights.isEmpty
                     ? Text(
-                        'No hay reseñas con comentarios para analizar.',
+                        !_hasCommentsToAnalyze
+                            ? 'No hay resenas con comentarios para analizar.'
+                            : _analysisUnavailable
+                                ? 'Las resenas existen, pero el analisis IA no esta disponible en este momento.'
+                                : 'No se pudieron generar conclusiones con los comentarios actuales.',
                         style: GoogleFonts.inter(
                           fontSize: 13,
                           color: AppColors.textSecondary,

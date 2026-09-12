@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:reservpy/src/core/utils/reservation_grouping.dart';
 import '../models/models.dart';
 import 'package:reservpy/src/core/supabase/supabase_config.dart';
-import '../mock_data.dart';
 import 'package:reservpy/src/data/repositories/category_repository.dart';
 import 'package:reservpy/src/data/repositories/business_repository.dart';
 import 'package:reservpy/src/data/repositories/profile_repository.dart';
@@ -46,6 +46,11 @@ final activeRoleProvider = StateProvider<UserRole>((ref) => UserRole.client);
 /// Points to the same provider as activeRoleProvider.
 final selectedRoleProvider = activeRoleProvider;
 
+/// Deep link a guest was trying to reach when the router bounced them to
+/// /register (e.g. confirming a reservation). Read once after a successful
+/// login/registration to send them back instead of the default dashboard.
+final pendingRedirectProvider = StateProvider<String?>((ref) => null);
+
 /// All roles for the current user (fetched from user_roles table).
 final userRolesProvider = FutureProvider<List<UserRole>>((ref) async {
   final user = ref.watch(currentUserProvider);
@@ -84,6 +89,11 @@ final currentBusinessProvider = Provider<Business?>((ref) {
 
 final selectedBusinessProvider = StateProvider<Business?>((ref) => null);
 
+final businessByIdProvider = FutureProvider.family<Business?, String>((ref, businessId) async {
+  if (businessId.trim().isEmpty) return null;
+  return BusinessRepository().getById(businessId);
+});
+
 final businessServicesProvider = FutureProvider.family<List<ServiceModel>, String>((ref, businessId) async {
   return ServiceRepository().getByBusiness(businessId);
 });
@@ -93,7 +103,8 @@ final categoriesProvider = FutureProvider<List<BusinessCategory>>((ref) async {
   try {
     return await CategoryRepository().getAll();
   } catch (_) {
-    return mockCategories;
+    // Avoid inventing categories when the real source is unavailable.
+    return [];
   }
 });
 
@@ -122,6 +133,11 @@ final clientWaitlistProvider = FutureProvider<List<WaitlistEntry>>((ref) async {
 
 final businessWaitlistProvider = FutureProvider.family<List<WaitlistEntry>, String>((ref, businessId) async {
   return WaitlistRepository().getByBusiness(businessId);
+});
+
+final groupedClientReservationsProvider = Provider<List<Reservation>>((ref) {
+  final reservations = ref.watch(clientReservationsProvider).valueOrNull ?? [];
+  return groupReservationsForDisplay(reservations);
 });
 
 // ─── Dashboard ───────────────────────────────────────────
@@ -222,6 +238,12 @@ final employeesProvider = FutureProvider<List<Employee>>((ref) async {
   final business = ref.watch(currentBusinessProvider);
   if (business == null) return [];
   return EmployeeRepository().getByBusiness(business.id);
+});
+
+/// Active employees for any business id, used by public business-facing screens.
+final businessEmployeesProvider = FutureProvider.family<List<Employee>, String>((ref, businessId) async {
+  if (businessId.trim().isEmpty) return [];
+  return EmployeeRepository().getActiveByBusiness(businessId);
 });
 
 // ─── Day-based Filtering ──────────────────────────────────────

@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_sizes.dart';
 import '../../data/repositories/business_repository.dart';
 import '../../data/services/email_service.dart';
 import '../../shared/providers/providers.dart';
 
-/// Simulated Bancard payment screen.
-/// In production, this would redirect to Bancard's hosted payment page.
+/// Demo activation screen used until Bancard credentials are connected.
 class BancardPaymentScreen extends ConsumerStatefulWidget {
   const BancardPaymentScreen({super.key});
 
@@ -18,42 +17,11 @@ class BancardPaymentScreen extends ConsumerStatefulWidget {
       _BancardPaymentScreenState();
 }
 
-class _BancardPaymentScreenState
-    extends ConsumerState<BancardPaymentScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _cardNumberCtrl = TextEditingController();
-  final _cardNameCtrl = TextEditingController();
-  final _expiryCtrl = TextEditingController();
-  final _cvvCtrl = TextEditingController();
+class _BancardPaymentScreenState extends ConsumerState<BancardPaymentScreen> {
   bool _isProcessing = false;
-  bool _obscureCvv = true;
 
-  @override
-  void dispose() {
-    _cardNumberCtrl.dispose();
-    _cardNameCtrl.dispose();
-    _expiryCtrl.dispose();
-    _cvvCtrl.dispose();
-    super.dispose();
-  }
-
-  String _formatCardNumber(String value) {
-    final digits = value.replaceAll(' ', '');
-    final buffer = StringBuffer();
-    for (int i = 0; i < digits.length; i++) {
-      if (i > 0 && i % 4 == 0) buffer.write(' ');
-      buffer.write(digits[i]);
-    }
-    return buffer.toString();
-  }
-
-  Future<void> _processPayment() async {
-    if (!_formKey.currentState!.validate()) return;
-
+  Future<void> _activateProDemo() async {
     setState(() => _isProcessing = true);
-
-    // Simulate processing delay
-    await Future.delayed(const Duration(seconds: 2));
 
     final business = ref.read(currentBusinessProvider);
     if (business == null) {
@@ -62,15 +30,11 @@ class _BancardPaymentScreenState
     }
 
     try {
-      // Update plan in DB
       await BusinessRepository().upgradeToPro(business.id);
-
-      // Refresh business data
       ref.invalidate(ownerBusinessProvider);
       ref.invalidate(currentBusinessProvider);
       ref.invalidate(businessesProvider);
 
-      // Get owner profile for email
       final user = ref.read(currentUserProvider);
       if (user != null) {
         await EmailService.enviarEmailPlanUpgraded(
@@ -83,15 +47,14 @@ class _BancardPaymentScreenState
       }
 
       if (!mounted) return;
-      // Navigate to success
       context.go('/upgrade/success');
     } catch (e) {
       if (!mounted) return;
       setState(() => _isProcessing = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error al procesar el pago: $e'),
-          backgroundColor: Colors.red,
+          content: Text('No se pudo activar el plan Pro: $e'),
+          backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -101,231 +64,150 @@ class _BancardPaymentScreenState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final business = ref.watch(currentBusinessProvider);
 
     return Scaffold(
       appBar: AppBar(
         leading: BackButton(onPressed: () => context.pop()),
-        title: Row(
-          children: [
-            Image.asset('assets/bancard_logo.png',
-                height: 22,
-                errorBuilder: (_, __, ___) => const Text(
-                      'Bancard',
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF003087),
-                          fontSize: 18),
-                    )),
-          ],
-        ),
+        title: const Text('Activacion Pro'),
         elevation: 0,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSizes.s24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // ── Order summary ───────────────────────────────
-              Container(
-                padding: const EdgeInsets.all(AppSizes.s16),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                      color: AppColors.primary.withOpacity(0.2)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.workspace_premium_rounded,
-                        color: Color(0xFFFFA000), size: 28),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Plan Pro — ReservPy',
-                              style: theme.textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.bold)),
-                          Text('Suscripción mensual',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurface
-                                      .withOpacity(0.55))),
-                        ],
-                      ),
-                    ),
-                    Text('Gs. 99.000',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary)),
-                  ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(AppSizes.s20),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppColors.primary.withOpacity(0.16),
                 ),
               ),
-              const SizedBox(height: AppSizes.s24),
-
-              // ── Card form ───────────────────────────────────
-              Text('Datos de tu tarjeta',
-                  style: theme.textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.bold)),
-              const SizedBox(height: AppSizes.s16),
-
-              // Card number
-              TextFormField(
-                controller: _cardNumberCtrl,
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(16),
-                  _CardNumberFormatter(),
-                ],
-                decoration: _inputDecoration(
-                  label: 'Número de tarjeta',
-                  icon: Icons.credit_card_rounded,
-                  hint: '0000 0000 0000 0000',
-                ),
-                validator: (v) {
-                  final digits = (v ?? '').replaceAll(' ', '');
-                  if (digits.length < 16) return 'Ingresá un número válido';
-                  return null;
-                },
-              ),
-              const SizedBox(height: AppSizes.s16),
-
-              // Card name
-              TextFormField(
-                controller: _cardNameCtrl,
-                textCapitalization: TextCapitalization.characters,
-                decoration: _inputDecoration(
-                  label: 'Nombre en la tarjeta',
-                  icon: Icons.person_outline_rounded,
-                  hint: 'JUAN PEREZ',
-                ),
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? 'Ingresá el nombre'
-                    : null,
-              ),
-              const SizedBox(height: AppSizes.s16),
-
-              // Expiry + CVV row
-              Row(
+              child: Row(
                 children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _expiryCtrl,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                        LengthLimitingTextInputFormatter(4),
-                        _ExpiryFormatter(),
-                      ],
-                      decoration: _inputDecoration(
-                        label: 'Vencimiento',
-                        icon: Icons.calendar_month_outlined,
-                        hint: 'MM/AA',
-                      ),
-                      validator: (v) {
-                        if (v == null || v.length < 5) return 'Inválido';
-                        return null;
-                      },
-                    ),
+                  const Icon(
+                    Icons.workspace_premium_rounded,
+                    color: Color(0xFFFFA000),
+                    size: 28,
                   ),
                   const SizedBox(width: AppSizes.s12),
                   Expanded(
-                    child: TextFormField(
-                      controller: _cvvCtrl,
-                      obscureText: _obscureCvv,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                        LengthLimitingTextInputFormatter(4),
-                      ],
-                      decoration: _inputDecoration(
-                        label: 'CVV',
-                        icon: Icons.lock_outline_rounded,
-                        hint: '•••',
-                      ).copyWith(
-                        suffixIcon: IconButton(
-                          icon: Icon(_obscureCvv
-                              ? Icons.visibility_off_outlined
-                              : Icons.visibility_outlined,
-                              size: 18),
-                          onPressed: () =>
-                              setState(() => _obscureCvv = !_obscureCvv),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          business?.name ?? 'Tu negocio',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      validator: (v) {
-                        if (v == null || v.length < 3) return 'Inválido';
-                        return null;
-                      },
+                        Text(
+                          'Plan Pro - Gs. 99.000 por mes',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.6),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: AppSizes.s32),
-
-              // ── Pay button ──────────────────────────────────
-              FilledButton(
-                onPressed: _isProcessing ? null : _processPayment,
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF003087),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                ),
-                child: _isProcessing
-                    ? const SizedBox(
-                        height: 22,
-                        width: 22,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Text('Pagar Gs. 99.000',
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
+            const SizedBox(height: AppSizes.s24),
+            Container(
+              padding: const EdgeInsets.all(AppSizes.s20),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF8E1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFFFE082)),
               ),
-              const SizedBox(height: AppSizes.s16),
-
-              // ── Security note ───────────────────────────────
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.verified_user_outlined,
-                      size: 14,
-                      color:
-                          theme.colorScheme.onSurface.withOpacity(0.4)),
-                  const SizedBox(width: 4),
-                  Text('Transacción segura — encriptada con SSL',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface
-                              .withOpacity(0.4))),
+                  Row(
+                    children: [
+                      const Icon(Icons.info_outline_rounded, color: Color(0xFFFFA000)),
+                      const SizedBox(width: AppSizes.s8),
+                      Text(
+                        'Estado de la integracion',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSizes.s12),
+                  Text(
+                    'Esta pantalla no esta conectada todavia a un checkout real de Bancard. Para no simular un cobro inexistente, no se solicitan datos de tarjeta en este entorno.',
+                    style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
+                  ),
+                  const SizedBox(height: AppSizes.s12),
+                  Text(
+                    'Si continuas, ReservPy activara el plan Pro en modo demo para probar el flujo completo del negocio.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withOpacity(0.7),
+                      height: 1.35,
+                    ),
+                  ),
                 ],
               ),
-              const SizedBox(height: AppSizes.s24),
-            ],
-          ),
+            ),
+            const SizedBox(height: AppSizes.s24),
+            _InfoRow(
+              icon: Icons.check_circle_outline_rounded,
+              text: 'Se habilitan reportes, recordatorios y reservas ilimitadas.',
+            ),
+            const SizedBox(height: AppSizes.s12),
+            _InfoRow(
+              icon: Icons.mail_outline_rounded,
+              text: 'Si hay email del negocio, se envia la confirmacion de activacion.',
+            ),
+            const SizedBox(height: AppSizes.s12),
+            _InfoRow(
+              icon: Icons.warning_amber_rounded,
+              text: 'Falta conectar las credenciales reales de Bancard para cobrar de verdad.',
+            ),
+            const SizedBox(height: AppSizes.s32),
+            FilledButton.icon(
+              onPressed: _isProcessing ? null : _activateProDemo,
+              icon: _isProcessing
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.rocket_launch_rounded),
+              label: Text(
+                _isProcessing ? 'Activando Pro...' : 'Activar Pro para pruebas',
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSizes.s12),
+            OutlinedButton(
+              onPressed: _isProcessing ? null : () => context.pop(),
+              child: const Text('Volver'),
+            ),
+          ],
         ),
       ),
     );
   }
-
-  InputDecoration _inputDecoration({
-    required String label,
-    required IconData icon,
-    required String hint,
-  }) {
-    return InputDecoration(
-      labelText: label,
-      hintText: hint,
-      prefixIcon: Icon(icon, size: 20),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      filled: true,
-    );
-  }
 }
 
-// ── Payment success screen ─────────────────────────────────────
 class PaymentSuccessScreen extends StatelessWidget {
   const PaymentSuccessScreen({super.key});
 
@@ -341,7 +223,6 @@ class PaymentSuccessScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Spacer(),
-              // Success icon
               Center(
                 child: Container(
                   width: 96,
@@ -350,22 +231,28 @@ class PaymentSuccessScreen extends StatelessWidget {
                     color: AppColors.primary.withOpacity(0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.check_circle_rounded,
-                      size: 56, color: AppColors.primary),
+                  child: const Icon(
+                    Icons.check_circle_rounded,
+                    size: 56,
+                    color: AppColors.primary,
+                  ),
                 ),
               ),
               const SizedBox(height: AppSizes.s24),
-              Text('¡Pago exitoso!',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.headlineMedium
-                      ?.copyWith(fontWeight: FontWeight.bold)),
+              Text(
+                'Plan Pro activado',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const SizedBox(height: AppSizes.s12),
               Text(
-                'Tu negocio ya tiene el Plan Pro activo.\nRevisá tu email — te enviamos el comprobante.',
+                'La activacion se completo en este entorno de prueba y tu negocio ya puede usar las funciones Pro.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                    color:
-                        theme.colorScheme.onSurface.withOpacity(0.6)),
+                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                ),
               ),
               const SizedBox(height: AppSizes.s16),
               Container(
@@ -377,13 +264,15 @@ class PaymentSuccessScreen extends StatelessWidget {
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.workspace_premium_rounded,
-                        color: Color(0xFFFFA000)),
+                    Icon(Icons.workspace_premium_rounded, color: Color(0xFFFFA000)),
                     SizedBox(width: 8),
-                    Text('Plan Pro activado',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFFFFA000))),
+                    Text(
+                      'Funciones Pro disponibles',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFFFA000),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -394,11 +283,13 @@ class PaymentSuccessScreen extends StatelessWidget {
                   backgroundColor: AppColors.primary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
-                child: const Text('Ir a mi negocio',
-                    style: TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold)),
+                child: const Text(
+                  'Ir a mi negocio',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),
@@ -408,39 +299,27 @@ class PaymentSuccessScreen extends StatelessWidget {
   }
 }
 
-// ─── Input formatters ──────────────────────────────────────────
-class _CardNumberFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
-    final digits = newValue.text.replaceAll(' ', '');
-    final buffer = StringBuffer();
-    for (int i = 0; i < digits.length; i++) {
-      if (i > 0 && i % 4 == 0) buffer.write(' ');
-      buffer.write(digits[i]);
-    }
-    final string = buffer.toString();
-    return newValue.copyWith(
-      text: string,
-      selection: TextSelection.collapsed(offset: string.length),
-    );
-  }
-}
+class _InfoRow extends StatelessWidget {
+  final IconData icon;
+  final String text;
 
-class _ExpiryFormatter extends TextInputFormatter {
+  const _InfoRow({required this.icon, required this.text});
+
   @override
-  TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
-    final digits = newValue.text.replaceAll('/', '');
-    final buffer = StringBuffer();
-    for (int i = 0; i < digits.length && i < 4; i++) {
-      if (i == 2) buffer.write('/');
-      buffer.write(digits[i]);
-    }
-    final string = buffer.toString();
-    return newValue.copyWith(
-      text: string,
-      selection: TextSelection.collapsed(offset: string.length),
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: AppColors.primary),
+        const SizedBox(width: AppSizes.s8),
+        Expanded(
+          child: Text(
+            text,
+            style: theme.textTheme.bodySmall?.copyWith(height: 1.35),
+          ),
+        ),
+      ],
     );
   }
 }

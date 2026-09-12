@@ -118,7 +118,7 @@ class EmployeesScreen extends ConsumerWidget {
                                 ),
                                 const SizedBox(height: AppSizes.s4),
                                 Text(
-                                  business?.name ?? 'Studio Bella',
+                                  business?.name ?? 'Tu negocio',
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: Colors.white.withValues(alpha: 0.8),
                                   ),

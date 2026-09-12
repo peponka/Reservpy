@@ -34,7 +34,7 @@ class ClientsScreen extends ConsumerStatefulWidget {
 
 class _ClientsScreenState extends ConsumerState<ClientsScreen> {
   final _searchController = TextEditingController();
-  String _sortBy = 'Última reserva';
+  String _sortBy = 'Ultima reserva';
   String _searchQuery = '';
 
   @override
@@ -79,10 +79,10 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
       case 'Nombre (A-Z)':
         filtered.sort((a, b) => a.clientName.compareTo(b.clientName));
         break;
-      case 'Más visitas':
+      case 'Mas visitas':
         filtered.sort((a, b) => b.visits.compareTo(a.visits));
         break;
-      default: // 'Última reserva'
+      default: // 'Ultima reserva'
         filtered.sort((a, b) => b.lastVisit.compareTo(a.lastVisit));
     }
 
@@ -109,14 +109,14 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
               children: [
                 // ── Header ────────────────────────────────────
                 Text(
-                  'Gestión de Clientes',
+                  'Gestion de Clientes',
                   style: theme.textTheme.headlineLarge?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: AppSizes.s4),
                 Text(
-                  'Historial y estadísticas de tus clientes',
+                  'Historial y estadisticas de tus clientes',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: colorScheme.outline,
                   ),
@@ -193,7 +193,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                           onChanged: (String? v) {
                             if (v != null) setState(() => _sortBy = v);
                           },
-                          items: ['Última reserva', 'Nombre (A-Z)', 'Más visitas']
+                          items: ['Ultima reserva', 'Nombre (A-Z)', 'Mas visitas']
                               .map((v) => DropdownMenuItem(
                                     value: v,
                                     child: Text('Ordenar: $v'),
@@ -258,7 +258,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                           children: [
                             _KpiCard(
                               value: '$uniqueCount',
-                              label: 'Clientes únicos',
+                              label: 'Clientes unicos',
                               icon: Icons.people_rounded,
                               color: colorScheme.primary,
                               theme: theme,
@@ -350,7 +350,7 @@ class _EmptyClients extends StatelessWidget {
           ),
           const SizedBox(height: AppSizes.s24),
           Text(
-            hasSearch ? 'Sin resultados' : 'Sin clientes aún',
+            hasSearch ? 'Sin resultados' : 'Sin clientes aun',
             style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w700,
             ),
@@ -358,8 +358,8 @@ class _EmptyClients extends StatelessWidget {
           const SizedBox(height: AppSizes.s8),
           Text(
             hasSearch
-                ? 'No hay clientes que coincidan con la búsqueda.'
-                : 'Cuando recibas reservas, tus clientes aparecerán aquí.',
+                ? 'No hay clientes que coincidan con la busqueda.'
+                : 'Cuando recibas reservas, tus clientes apareceran aqui.',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: colorScheme.outline,
             ),

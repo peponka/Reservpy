@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:reservpy/src/core/constants/app_colors.dart';
 import 'package:reservpy/src/core/constants/app_sizes.dart';
 import 'package:reservpy/src/core/widgets/widgets.dart';
 import 'package:reservpy/src/shared/models/models.dart';
 import 'package:reservpy/src/shared/providers/providers.dart';
+import 'package:reservpy/src/data/repositories/client_private_note_repository.dart';
 
 /// Detail screen showing a client's profile, stats, and reservation history
 /// from the business owner's perspective.
@@ -28,15 +32,6 @@ class ClientDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
-  final _notesController = TextEditingController();
-  bool _notesSaved = false;
-
-  @override
-  void dispose() {
-    _notesController.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final allReservations = ref.watch(businessReservationsProvider).valueOrNull ?? [];
@@ -110,7 +105,12 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
                 padding: const EdgeInsets.only(right: AppSizes.s8),
                 child: _CircleIconButton(
                   icon: Icons.more_vert_rounded,
-                  onPressed: () => _showOptionsSheet(context),
+                  onPressed: () => _showOptionsSheet(
+                    context,
+                    clientName: clientName,
+                    clientPhone: clientPhone,
+                    clientEmail: clientEmail,
+                  ),
                 ),
               ),
             ],
@@ -121,22 +121,8 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
                 memberSince: memberSince,
                 phone: clientPhone,
                 email: clientEmail,
-                onPhoneTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Llamando a $clientPhone...'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                },
-                onEmailTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Enviando email a $clientEmail...'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                },
+                onPhoneTap: () => _callClient(clientPhone),
+                onEmailTap: () => _emailClient(clientEmail),
               ),
             ),
           ),
@@ -188,20 +174,8 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
 
                       // ─── Notes Section ──────────────────────
                       _NotesSection(
-                        controller: _notesController,
-                        saved: _notesSaved,
-                        onSave: () {
-                          setState(() => _notesSaved = true);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Nota guardada correctamente'),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                          Future.delayed(const Duration(seconds: 2), () {
-                            if (mounted) setState(() => _notesSaved = false);
-                          });
-                        },
+                        businessId: widget.businessId,
+                        clientId: widget.clientId,
                       )
                           .animate()
                           .fadeIn(delay: 650.ms, duration: 400.ms)
@@ -216,26 +190,14 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
                       // ─── Quick Actions ──────────────────────
                       _QuickActions(
                         clientName: clientName,
-                        onCreateReservation: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Crear turno para $clientName — próximamente',
-                              ),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        },
-                        onShare: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Compartir perfil de $clientName — próximamente',
-                              ),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        },
+                        onCreateReservation: _startReservationFlow,
+                        onShare: () => _shareClientProfile(
+                          clientName: clientName,
+                          clientPhone: clientPhone,
+                          clientEmail: clientEmail,
+                          totalVisits: totalVisits,
+                          lastVisitDate: lastVisitDate,
+                        ),
                       )
                           .animate()
                           .fadeIn(delay: 750.ms, duration: 400.ms)
@@ -258,7 +220,12 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
   }
 
   /// Shows a bottom sheet with additional options.
-  void _showOptionsSheet(BuildContext context) {
+  void _showOptionsSheet(
+    BuildContext context, {
+    required String clientName,
+    required String clientPhone,
+    required String clientEmail,
+  }) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -288,12 +255,7 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
                   label: 'Crear turno para este cliente',
                   onTap: () {
                     Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Crear turno — próximamente'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
+                    _startReservationFlow();
                   },
                 ),
                 _BottomSheetOption(
@@ -301,25 +263,12 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
                   label: 'Compartir perfil',
                   onTap: () {
                     Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Compartir — próximamente'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  },
-                ),
-                _BottomSheetOption(
-                  icon: Icons.block_rounded,
-                  label: 'Bloquear cliente',
-                  color: AppColors.error,
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Bloquear cliente — próximamente'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
+                    _shareClientProfile(
+                      clientName: clientName,
+                      clientPhone: clientPhone,
+                      clientEmail: clientEmail,
+                      totalVisits: null,
+                      lastVisitDate: null,
                     );
                   },
                 ),
@@ -328,6 +277,83 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
           ),
         );
       },
+    );
+  }
+
+  Future<void> _callClient(String clientPhone) async {
+    final phone = clientPhone.trim();
+    if (phone.isEmpty || phone == 'Sin telefono') {
+      _showInfo('Este cliente no tiene telefono cargado.');
+      return;
+    }
+
+    final uri = Uri(scheme: 'tel', path: phone);
+    await _launchUri(uri, errorMessage: 'No se pudo abrir la llamada.');
+  }
+
+  Future<void> _emailClient(String clientEmail) async {
+    final email = clientEmail.trim();
+    if (email.isEmpty || email == 'Sin email') {
+      _showInfo('Este cliente no tiene email cargado.');
+      return;
+    }
+
+    final uri = Uri(scheme: 'mailto', path: email);
+    await _launchUri(uri, errorMessage: 'No se pudo abrir el email.');
+  }
+
+  Future<void> _launchUri(Uri uri, {required String errorMessage}) async {
+    try {
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched && mounted) {
+        _showInfo(errorMessage);
+      }
+    } catch (_) {
+      if (mounted) _showInfo(errorMessage);
+    }
+  }
+
+  void _startReservationFlow() {
+    if (widget.businessId.isEmpty) {
+      _showInfo('No se pudo identificar el negocio.');
+      return;
+    }
+
+    if (!mounted) return;
+    context.push('/reserve/${widget.businessId}/service');
+  }
+
+  Future<void> _shareClientProfile({
+    required String clientName,
+    required String clientPhone,
+    required String clientEmail,
+    required int? totalVisits,
+    required DateTime? lastVisitDate,
+  }) async {
+    final details = <String>[
+      'Cliente: $clientName',
+      if (clientPhone.trim().isNotEmpty && clientPhone != 'Sin telefono')
+        'Telefono: $clientPhone',
+      if (clientEmail.trim().isNotEmpty && clientEmail != 'Sin email')
+        'Email: $clientEmail',
+      if (totalVisits != null) 'Visitas: $totalVisits',
+      if (lastVisitDate != null)
+        'Ultima visita: ${DateFormat('dd/MM/yyyy HH:mm', 'es').format(lastVisitDate)}',
+    ];
+
+    await Share.share(
+      details.join('\n'),
+      subject: 'Perfil de cliente - $clientName',
+    );
+  }
+
+  void _showInfo(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
@@ -593,7 +619,7 @@ class _StatsRow extends StatelessWidget {
     final diff = now.difference(date);
     if (diff.inDays == 0) return 'Hoy';
     if (diff.inDays == 1) return 'Ayer';
-    if (diff.inDays < 7) return 'Hace ${diff.inDays} días';
+    if (diff.inDays < 7) return 'Hace ${diff.inDays} dias';
     return DateFormat('dd/MM/yy').format(date);
   }
 
@@ -623,7 +649,7 @@ class _StatsRow extends StatelessWidget {
         const SizedBox(width: AppSizes.s8),
         Expanded(
           child: KpiCard(
-            title: 'Última visita',
+            title: 'Ultima visita',
             value: _formatLastVisit(lastVisitDate),
             icon: Icons.schedule_rounded,
             color: AppColors.info,
@@ -842,32 +868,108 @@ class _EmptyHistoryPlaceholder extends StatelessWidget {
     return const EmptyState(
       icon: Icons.history_rounded,
       title: 'Sin historial',
-      subtitle: 'Este cliente aún no tiene turnos registrados en tu negocio.',
+      subtitle: 'Este cliente aun no tiene turnos registrados en tu negocio.',
     );
   }
 }
 
 // ─── Notes Section ─────────────────────────────────────────────────
-class _NotesSection extends StatelessWidget {
-  final TextEditingController controller;
-  final bool saved;
-  final VoidCallback onSave;
-
+class _NotesSection extends StatefulWidget {
   const _NotesSection({
-    required this.controller,
-    required this.saved,
-    required this.onSave,
+    required this.businessId,
+    required this.clientId,
   });
+
+  final String businessId;
+  final String clientId;
+
+  @override
+  State<_NotesSection> createState() => _NotesSectionState();
+}
+
+class _NotesSectionState extends State<_NotesSection> {
+  final _repository = ClientPrivateNoteRepository();
+  final _controller = TextEditingController();
+  bool _isLoading = true;
+  bool _isSaving = false;
+  String _savedNote = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNote();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadNote() async {
+    try {
+      final note = await _repository.getNote(widget.businessId, widget.clientId);
+      final value = note?.note ?? '';
+      _controller.text = value;
+      _savedNote = value;
+    } catch (_) {
+      _controller.text = '';
+      _savedNote = '';
+    }
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _saveNote() async {
+    final text = _controller.text.trim();
+    setState(() => _isSaving = true);
+    try {
+      if (text.isEmpty) {
+        await _repository.deleteNote(widget.businessId, widget.clientId);
+      } else {
+        await _repository.saveNote(
+          businessId: widget.businessId,
+          clientId: widget.clientId,
+          note: text,
+        );
+      }
+      _savedNote = text;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(text.isEmpty ? 'Nota eliminada correctamente' : 'Nota guardada correctamente'),
+            backgroundColor: AppColors.primary,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No se pudo guardar la nota: $e'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final hasChanges = _controller.text.trim() != _savedNote.trim();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ─── Section header ───────────────────────────
         Row(
           children: [
             Container(
@@ -894,7 +996,7 @@ class _NotesSection extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'Solo vos podés ver estas notas',
+                    'Estas notas quedan guardadas solo para tu negocio.',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
@@ -902,68 +1004,82 @@ class _NotesSection extends StatelessWidget {
                 ],
               ),
             ),
-            if (saved)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSizes.s8,
-                  vertical: AppSizes.s4,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.success.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(AppSizes.radiusFull),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
+            StatusBadge(
+              label: _isSaving ? 'GUARDANDO' : 'ACTIVO',
+              color: _isSaving ? AppColors.warning : AppColors.success,
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSizes.s12),
+        AppCard(
+          padding: const EdgeInsets.all(AppSizes.s16),
+          child: _isLoading
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(AppSizes.s16),
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.check_circle, size: 14, color: AppColors.success),
-                    SizedBox(width: AppSizes.s4),
-                    Text(
-                      'Guardado',
-                      style: TextStyle(
-                        color: AppColors.success,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                    TextField(
+                      controller: _controller,
+                      minLines: 4,
+                      maxLines: 6,
+                      decoration: const InputDecoration(
+                        hintText: 'Escribi informacion interna util sobre este cliente...',
+                        border: OutlineInputBorder(),
+                        alignLabelWithHint: true,
                       ),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                    const SizedBox(height: AppSizes.s12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            hasChanges
+                                ? 'Tenes cambios sin guardar.'
+                                : 'Solo tu negocio puede ver esta nota.',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurface.withValues(alpha: 0.6),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: AppSizes.s12),
+                        FilledButton.tonal(
+                          onPressed: _isSaving || (!hasChanges && _controller.text.trim().isNotEmpty)
+                              ? null
+                              : () {
+                                  _controller.clear();
+                                  setState(() {});
+                                },
+                          child: const Text('Limpiar'),
+                        ),
+                        const SizedBox(width: AppSizes.s8),
+                        FilledButton.icon(
+                          onPressed: _isSaving || !hasChanges ? null : _saveNote,
+                          icon: _isSaving
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                )
+                              : const Icon(Icons.save_rounded, size: 18),
+                          label: Text(_isSaving ? 'Guardando...' : 'Guardar'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ),
-          ],
-        ),
-
-        const SizedBox(height: AppSizes.s12),
-
-        // ─── Text field ───────────────────────────────
-        AppCard(
-          padding: const EdgeInsets.all(AppSizes.s4),
-          child: Column(
-            children: [
-              AppTextField(
-                controller: controller,
-                hint: 'Agregá notas sobre este cliente...',
-                prefixIcon: Icons.edit_note_rounded,
-                maxLines: 4,
-              ),
-              const SizedBox(height: AppSizes.s8),
-              Align(
-                alignment: Alignment.centerRight,
-                child: AppButton(
-                  label: 'Guardar nota',
-                  icon: Icons.save_rounded,
-                  width: 160,
-                  height: AppSizes.buttonSm,
-                  onPressed: onSave,
-                ),
-              ),
-            ],
-          ),
         ),
       ],
     );
   }
 }
 
-// ─── Quick Actions ─────────────────────────────────────────────────
+// Quick Actions
 class _QuickActions extends StatelessWidget {
   final String clientName;
   final VoidCallback onCreateReservation;
@@ -983,7 +1099,7 @@ class _QuickActions extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SectionHeader(title: 'Acciones rápidas'),
+        const SectionHeader(title: 'Acciones rapidas'),
         const SizedBox(height: AppSizes.s8),
 
         // ─── Create reservation button ────────────────

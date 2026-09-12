@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:reservpy/src/shared/models/models.dart';
 import 'package:reservpy/src/shared/providers/providers.dart';
 import 'package:reservpy/src/core/constants/app_sizes.dart';
@@ -22,14 +23,19 @@ class BusinessDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final businesses = ref.watch(businessesProvider).valueOrNull ?? [];
-    final business = businesses.cast<Business?>().firstWhere(
-          (b) => b?.id == businessId,
-          orElse: () => null,
-        );
+    final businessAsync = ref.watch(businessByIdProvider(businessId));
 
-    if (business == null) {
-      return Scaffold(
+    return businessAsync.when(
+      loading: () => Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: () => context.pop(),
+          ),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      ),
+      error: (_, __) => Scaffold(
         appBar: AppBar(
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_rounded),
@@ -40,67 +46,109 @@ class BusinessDetailScreen extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.storefront_outlined,
-                  size: 64, color: AppColors.textMuted),
+              Icon(Icons.storefront_outlined, size: 64, color: AppColors.textMuted),
               const SizedBox(height: AppSizes.s16),
               Text(
                 'Negocio no encontrado',
                 style: GoogleFonts.inter(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ],
           ),
         ),
-      );
-    }
-
-    final categories = ref.watch(categoriesProvider).valueOrNull ?? [];
-    final category = categories.isEmpty
-        ? BusinessCategory(
-            id: '', name: '...', icon: Icons.category, color: Colors.grey)
-        : categories.firstWhere(
-            (c) => c.id == business.categoryId,
-            orElse: () => categories.first,
-          );
-    final services =
-        ref.watch(businessServicesProvider(businessId)).valueOrNull ?? [];
-    final isOpen = business.isCurrentlyOpen;
-
-    return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isDesktop = constraints.maxWidth >= 800;
-
-          return Column(
-            children: [
-              Expanded(
-                child: CustomScrollView(
-                  slivers: [
-                    // ── Collapsing App Bar with Hero ──
-                    _buildSliverAppBar(context, business, category, isOpen),
-
-                    // ── Body Content ──
-                    SliverToBoxAdapter(
-                      child: isDesktop
-                          ? _buildDesktopLayout(
-                              context, business, category, services, isOpen)
-                          : _buildMobileLayout(
-                              context, business, category, services, isOpen),
-                    ),
-                  ],
-                ),
-              ),
-              // ── Sticky CTA ──
-              _buildCtaBar(context, business, services),
-            ],
-          );
-        },
       ),
+      data: (business) {
+        if (business == null) {
+          return Scaffold(
+            appBar: AppBar(
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                onPressed: () => context.pop(),
+              ),
+            ),
+            body: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.storefront_outlined, size: 64, color: AppColors.textMuted),
+                  const SizedBox(height: AppSizes.s16),
+                  Text(
+                    'Negocio no encontrado',
+                    style: GoogleFonts.inter(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final categoriesAsync = ref.watch(categoriesProvider);
+        final categories = categoriesAsync.valueOrNull ?? [];
+        final categoriesLoading = categoriesAsync.isLoading && categoriesAsync.valueOrNull == null;
+        final category = categories.isEmpty
+            ? BusinessCategory(
+                id: '',
+                name: categoriesLoading ? 'Cargando...' : 'Sin categoria',
+                icon: Icons.category,
+                color: Colors.grey,
+              )
+            : categories.firstWhere(
+                (c) => c.id == business.categoryId,
+                orElse: () => categories.first,
+              );
+        final servicesAsync = ref.watch(businessServicesProvider(businessId));
+        final services = servicesAsync.valueOrNull ?? [];
+        final servicesLoading = servicesAsync.isLoading && servicesAsync.valueOrNull == null;
+        final isOpen = business.isCurrentlyOpen;
+
+        return Scaffold(
+          backgroundColor: AppColors.backgroundLight,
+          body: LayoutBuilder(
+            builder: (context, constraints) {
+              final isDesktop = constraints.maxWidth >= 800;
+
+              return Column(
+                children: [
+                  Expanded(
+                    child: CustomScrollView(
+                      slivers: [
+                        // Collapsing app bar with hero
+                        _buildSliverAppBar(context, business, category, isOpen),
+
+                        // Body content
+                        SliverToBoxAdapter(
+                          child: servicesLoading
+                              ? const Padding(
+                                  padding: EdgeInsets.all(AppSizes.s24),
+                                  child: Center(child: CircularProgressIndicator()),
+                                )
+                              : isDesktop
+                                  ? _buildDesktopLayout(
+                                      context, business, category, services, isOpen)
+                                  : _buildMobileLayout(
+                                      context, business, category, services, isOpen),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Sticky CTA
+                  _buildCtaBar(context, business, services, servicesLoading: servicesLoading),
+                ],
+              );
+            },
+          ),
+        );
+      },
     );
   }
+
 
   // ═══════════════════════════════════════════════════════════════════════════
   // SLIVER APP BAR — Hero with gradient
@@ -441,6 +489,7 @@ class BusinessDetailScreen extends ConsumerWidget {
               iconColor: AppColors.error,
               label: 'Dirección',
               value: business.address!,
+              onTap: () => _openAddress(business.address!),
             ),
           ],
 
@@ -452,6 +501,7 @@ class BusinessDetailScreen extends ConsumerWidget {
               iconColor: AppColors.info,
               label: 'Teléfono',
               value: business.phone!,
+              onTap: () => _openPhone(business.phone!),
             ),
           ],
 
@@ -463,6 +513,7 @@ class BusinessDetailScreen extends ConsumerWidget {
               iconColor: AppColors.primary,
               label: 'Web',
               value: business.website!,
+              onTap: () => _openWebsite(business.website!),
             ),
           ],
         ],
@@ -508,6 +559,46 @@ class BusinessDetailScreen extends ConsumerWidget {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  Future<void> _openAddress(String address) async {
+    final query = Uri.encodeComponent(address.trim());
+    await _launchExternal(Uri.parse('https://www.google.com/maps/search/?api=1&query=$query'));
+  }
+
+  Future<void> _openMapLocation(Business business) async {
+    if (business.latitude != null && business.longitude != null) {
+      await _launchExternal(
+        Uri.parse(
+          'https://www.google.com/maps/search/?api=1&query=${business.latitude},${business.longitude}',
+        ),
+      );
+      return;
+    }
+    final address = business.address?.trim() ?? '';
+    if (address.isNotEmpty) {
+      await _openAddress(address);
+    }
+  }
+
+  Future<void> _openPhone(String phone) async {
+    await _launchExternal(Uri(scheme: 'tel', path: phone.trim()));
+  }
+
+  Future<void> _openWebsite(String website) async {
+    final trimmed = website.trim();
+    final normalized = trimmed.startsWith('http://') || trimmed.startsWith('https://')
+        ? trimmed
+        : 'https://$trimmed';
+    await _launchExternal(Uri.parse(normalized));
+  }
+
+  Future<void> _launchExternal(Uri uri) async {
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      // Ignore launch failures on unsupported platforms.
+    }
+  }
+
   // PHOTO GALLERY — Horizontal scroll
   // ═══════════════════════════════════════════════════════════════════════════
   Widget _buildPhotoGallery(Business business) {
@@ -659,7 +750,7 @@ class BusinessDetailScreen extends ConsumerWidget {
                     service: service,
                     categoryColor: category.color,
                     onBook: () {
-                      context.push('/reserve/$businessId/service');
+                      context.push('/reserve/$businessId/time/${service.id}');
                     },
                   ),
                 ],
@@ -674,6 +765,9 @@ class BusinessDetailScreen extends ConsumerWidget {
   // MAP CARD
   // ═══════════════════════════════════════════════════════════════════════════
   Widget _buildMapCard(Business business) {
+    final hasLocation = business.latitude != null && business.longitude != null;
+    final canOpenMap = hasLocation || ((business.address ?? '').trim().isNotEmpty);
+
     return _Card(
       padding: EdgeInsets.zero,
       child: Column(
@@ -688,26 +782,49 @@ class BusinessDetailScreen extends ConsumerWidget {
                     size: 20, color: AppColors.primary),
                 const SizedBox(width: AppSizes.s8),
                 Text(
-                  'Ubicación',
+                  'Ubicacion',
                   style: GoogleFonts.inter(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
                     color: AppColors.accent,
                   ),
                 ),
+                const Spacer(),
+                if (canOpenMap)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+                    ),
+                    child: Text(
+                      'Abrir mapa',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
-          ClipRRect(
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(AppSizes.radiusLg),
-              bottomRight: Radius.circular(AppSizes.radiusLg),
-            ),
-            child: SizedBox(
-              height: 220,
-              child: business.latitude != null && business.longitude != null
-                  ? _buildMap(business.latitude!, business.longitude!)
-                  : _buildMapPlaceholder(),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: canOpenMap ? () => _openMapLocation(business) : null,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(AppSizes.radiusLg),
+                  bottomRight: Radius.circular(AppSizes.radiusLg),
+                ),
+                child: SizedBox(
+                  height: 220,
+                  child: hasLocation
+                      ? _buildMap(business.latitude!, business.longitude!)
+                      : _buildMapPlaceholder(business.address ?? ''),
+                ),
+              ),
             ),
           ),
         ],
@@ -758,7 +875,7 @@ class BusinessDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildMapPlaceholder() {
+  Widget _buildMapPlaceholder(String address) {
     return Container(
       color: AppColors.backgroundLight,
       alignment: Alignment.center,
@@ -767,10 +884,13 @@ class BusinessDetailScreen extends ConsumerWidget {
         children: [
           Icon(Icons.map_outlined, size: 48, color: AppColors.textMuted),
           const SizedBox(height: AppSizes.s8),
-          Text(
-            'Ubicación no disponible',
-            style:
-                GoogleFonts.inter(fontSize: 14, color: AppColors.textMuted),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSizes.s20),
+            child: Text(
+              address.trim().isNotEmpty ? address : 'Ubicacion no disponible',
+              style: GoogleFonts.inter(fontSize: 14, color: AppColors.textMuted),
+              textAlign: TextAlign.center,
+            ),
           ),
         ],
       ),
@@ -813,7 +933,7 @@ class BusinessDetailScreen extends ConsumerWidget {
             label: 'Recordatorios',
             value: business.remindersEnabled
                 ? 'Activos (${business.reminderHoursBefore.map((h) => '${h}h').join(', ')} antes)'
-                : 'No disponibles',
+                : 'Desactivados',
           ),
           const SizedBox(height: AppSizes.s12),
           _PolicyRow(
@@ -830,10 +950,16 @@ class BusinessDetailScreen extends ConsumerWidget {
   // STICKY CTA BAR
   // ═══════════════════════════════════════════════════════════════════════════
   Widget _buildCtaBar(
-      BuildContext context, Business business, List<ServiceModel> services) {
+    BuildContext context,
+    Business business,
+    List<ServiceModel> services, {
+    bool servicesLoading = false,
+  }) {
+    final activeServices = services.where((s) => s.isActive).toList();
+
     // Price range
-    final prices = services
-        .where((s) => s.isActive && s.price != null && s.price! > 0)
+    final prices = activeServices
+        .where((s) => s.price != null && s.price! > 0)
         .map((s) => s.price!)
         .toList()
       ..sort();
@@ -877,7 +1003,7 @@ class BusinessDetailScreen extends ConsumerWidget {
                   ),
                 ] else ...[
                   Text(
-                    '${services.where((s) => s.isActive).length} servicios',
+                    '${activeServices.length} servicios',
                     style: GoogleFonts.inter(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -895,7 +1021,15 @@ class BusinessDetailScreen extends ConsumerWidget {
               height: AppSizes.buttonLg,
               width: 200,
               child: ElevatedButton.icon(
-                onPressed: () => context.push('/reserve/$businessId/service'),
+                onPressed: servicesLoading || activeServices.isEmpty
+                    ? null
+                    : () {
+                        if (activeServices.length == 1) {
+                          context.push('/reserve/$businessId/time/${activeServices.first.id}');
+                          return;
+                        }
+                        context.push('/reserve/$businessId/service');
+                      },
                 icon: const Icon(Icons.calendar_today_rounded,
                     color: Colors.white, size: 20),
                 label: Text(
@@ -907,7 +1041,9 @@ class BusinessDetailScreen extends ConsumerWidget {
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: servicesLoading || activeServices.isEmpty
+                      ? AppColors.textMuted
+                      : AppColors.primary,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(AppSizes.radiusMd),
@@ -1014,6 +1150,7 @@ class _InfoRow extends StatelessWidget {
   final String label;
   final String value;
   final Widget? trailing;
+  final VoidCallback? onTap;
 
   const _InfoRow({
     required this.icon,
@@ -1021,11 +1158,12 @@ class _InfoRow extends StatelessWidget {
     required this.label,
     required this.value,
     this.trailing,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final row = Row(
       children: [
         Container(
           width: 36,
@@ -1055,7 +1193,8 @@ class _InfoRow extends StatelessWidget {
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.accent,
+                  color: onTap != null ? iconColor : AppColors.accent,
+                  decoration: onTap != null ? TextDecoration.underline : null,
                 ),
               ),
             ],
@@ -1063,6 +1202,17 @@ class _InfoRow extends StatelessWidget {
         ),
         if (trailing != null) trailing!,
       ],
+    );
+
+    if (onTap == null) return row;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppSizes.radiusSm),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: row,
+      ),
     );
   }
 }

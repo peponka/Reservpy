@@ -267,6 +267,7 @@ class _ServicesBody extends ConsumerWidget {
                               service: service,
                             ),
                             onToggle: () => _toggleActive(context, ref, businessId, service),
+                            onDelete: () => _confirmDelete(context, ref, businessId, service),
                           ),
                           const Divider(height: 1),
                         ],
@@ -348,6 +349,58 @@ class _ServicesBody extends ConsumerWidget {
     }
   }
 
+  void _confirmDelete(
+    BuildContext context,
+    WidgetRef ref,
+    String businessId,
+    ServiceModel service,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusLg),
+        ),
+        title: const Text('Eliminar servicio'),
+        content: Text(
+          'Se va a eliminar "${service.name}" de forma permanente. Esta accion no se puede deshacer.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              try {
+                await ServiceRepository().delete(service.id);
+                ref.invalidate(businessServicesProvider(businessId));
+                ref.invalidate(servicesProvider);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('${service.name} eliminado')),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error al eliminar: $e')),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showServiceForm({
     required BuildContext context,
     required WidgetRef ref,
@@ -408,11 +461,13 @@ class _ServiceRow extends StatelessWidget {
   final bool isMobile;
   final VoidCallback onEdit;
   final VoidCallback onToggle;
+  final VoidCallback onDelete;
   const _ServiceRow({
     required this.service,
     required this.isMobile,
     required this.onEdit,
     required this.onToggle,
+    required this.onDelete,
   });
 
   @override
@@ -555,6 +610,21 @@ class _ServiceRow extends StatelessWidget {
                         visualDensity: VisualDensity.compact,
                       ),
                       tooltip: isActive ? 'Pausar' : 'Activar',
+                    ),
+                    const SizedBox(width: 12),
+                    IconButton(
+                      onPressed: onDelete,
+                      icon: const Icon(
+                        Icons.delete_outline_rounded,
+                        size: 16,
+                        color: AppColors.error,
+                      ),
+                      constraints: const BoxConstraints(),
+                      style: IconButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      tooltip: 'Eliminar',
                     ),
                   ],
                 ),
@@ -704,6 +774,22 @@ class _ServiceRow extends StatelessWidget {
                   label: Text(
                     isActive ? 'Pausar' : 'Activar',
                     style: TextStyle(color: isActive ? AppColors.warning : AppColors.success),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSizes.s8),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: onDelete,
+                  icon: const Icon(
+                    Icons.delete_outline_rounded,
+                    size: 14,
+                    color: AppColors.error,
+                  ),
+                  label: const Text(
+                    'Eliminar',
+                    style: TextStyle(color: AppColors.error),
                   ),
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: AppSizes.s8),
